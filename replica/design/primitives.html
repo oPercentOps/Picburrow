@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primitives</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: var(--weight-base) var(--text-base) var(--font-sans); }
+  main { max-width: 1100px; margin: 0 auto; padding: var(--space-6) var(--space-5); }
+  h1 { font: var(--weight-xl) var(--text-xl) var(--font-sans); margin: 0 0 var(--space-6); }
+  h2 { font: var(--weight-lg) var(--text-lg) var(--font-sans); margin: var(--space-7) 0 var(--space-4); }
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+  .muted { color: var(--text-muted); font: var(--weight-sm) var(--text-sm) var(--font-sans); }
+  svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  .btn { display: inline-flex; align-items: center; gap: var(--space-3); height: 40px; padding: 0 var(--space-5); border-radius: var(--radius-md);
+         border: 1px solid transparent; font: 600 var(--text-sm) var(--font-sans); cursor: pointer; transition: background var(--motion-fast) var(--motion-ease); }
+  .btn.sm { height: 32px; padding: 0 var(--space-4); }
+  .primary { background: var(--accent); color: var(--on-accent); }
+  .primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--text)); }
+  .secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .ghost { background: transparent; color: var(--text); }
+  .ghost:hover, .secondary:hover { background: color-mix(in srgb, var(--surface) 92%, var(--text)); }
+  .danger { background: var(--danger); color: var(--bg); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .icon-btn { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: var(--radius-pill); }
+
+  .field { display: grid; gap: var(--space-2); width: 280px; }
+  .field label { font: 600 var(--text-sm) var(--font-sans); }
+  .field input { height: 40px; padding: 0 var(--space-4); border: 1px solid var(--border-input); border-radius: var(--radius-sm);
+                 background: var(--bg); color: var(--text); font: var(--text-base) var(--font-sans); }
+  .field input:focus-visible { border-color: var(--accent); }
+  .field.error input { border-color: var(--danger); }
+  .field .msg { color: var(--danger); font: var(--text-sm) var(--font-sans); }
+
+  .chip { display: inline-flex; align-items: center; gap: var(--space-2); height: 32px; padding: 0 var(--space-4); border-radius: var(--radius-pill);
+          border: 1px solid var(--border); background: var(--bg); color: var(--text); font: var(--text-sm) var(--font-sans); cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--accent-tint); color: var(--accent); border-color: var(--accent); }
+
+  .day { font: 600 var(--text-sm) var(--font-sans); padding: var(--space-5) 0 var(--space-3); }
+  .grid { display: flex; flex-wrap: wrap; gap: var(--grid-gap); }
+  .tile { position: relative; height: var(--row-height-mobile); flex-grow: 1; overflow: hidden; display: block; color: #fff; }
+  @media (min-width: 768px) { .tile { height: 160px; } }
+  .tile .ph { position: absolute; inset: 0; transition: inset var(--motion-fast) var(--motion-ease); }
+  .tile .badge { position: absolute; display: flex; align-items: center; gap: 4px; font: 600 var(--text-xs) var(--font-sans); filter: drop-shadow(var(--shadow-on-photo)); }
+  .tile .badge svg { width: 16px; height: 16px; }
+  .tile .br { right: 6px; bottom: 6px; } .tile .bl { left: 6px; bottom: 6px; } .tile .tl { left: 6px; top: 6px; }
+  .tile[aria-checked="true"] .ph { inset: 8px; border-radius: var(--radius-sm); outline: 3px solid var(--accent); }
+  .tile[aria-checked="true"] { background: var(--surface); }
+  .tile .check { left: 6px; top: 6px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; justify-content: center; }
+  .tile[aria-checked="true"] .check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); filter: none; }
+  .tile.err .ph { background: var(--surface); color: var(--text-muted); display: grid; place-items: center; text-align: center; font: var(--text-xs) var(--font-sans); padding: var(--space-3); }
+
+  .viewer { position: relative; background: var(--viewer-bg); color: var(--viewer-text); height: 260px; border-radius: var(--radius-md); overflow: hidden; }
+  .viewer .photo { position: absolute; inset: 0 25%; background: linear-gradient(135deg, #f2b06b, #b9506b 55%, #2c3e7a); }
+  .viewer .bar { position: absolute; inset: 0 0 auto; display: flex; justify-content: space-between; padding: var(--space-2);
+                 background: linear-gradient(rgba(0,0,0,.55), transparent); }
+  .viewer .bar .btn { color: var(--viewer-text); background: transparent; }
+  .viewer .bar [aria-pressed="true"] svg { fill: currentColor; }
+  .viewer .nav { position: absolute; top: 50%; translate: 0 -50%; }
+  .viewer .count { position: absolute; bottom: 0; width: 100%; padding: var(--space-6) 0 var(--space-4); background: linear-gradient(transparent, rgba(0,0,0,.55)); text-align: center; color: var(--viewer-text-muted); font: var(--text-sm) var(--font-sans); }
+
+  .progress { height: 4px; background: var(--border); border-radius: var(--radius-pill); overflow: hidden; flex: 1 1 200px; max-width: 320px; }
+  .progress div { height: 100%; width: 38%; background: var(--accent); }
+  .banner { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; padding: var(--space-4) var(--space-5); background: var(--surface); border-radius: var(--radius-md); }
+
+  .toast { display: inline-flex; gap: var(--space-5); align-items: center; padding: var(--space-4) var(--space-5); background: var(--text); color: var(--bg);
+           border-radius: var(--radius-md); box-shadow: var(--shadow-pop); font: var(--text-sm) var(--font-sans); }
+  .toast button { background: none; border: 0; color: inherit; font: 600 var(--text-sm) var(--font-sans); text-decoration: underline; cursor: pointer; }
+
+  .empty { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-7) var(--space-5); text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-lg); }
+  .empty svg { width: 48px; height: 48px; color: var(--text-muted); }
+
+  nav.bottom { display: flex; justify-content: space-around; height: var(--bottom-nav); background: var(--bg); border-top: 1px solid var(--border); border-radius: var(--radius-md); }
+  nav.bottom a { display: grid; justify-items: center; align-content: center; gap: 2px; min-width: var(--touch-target); color: var(--text-muted); text-decoration: none; font: var(--weight-xs) var(--text-xs) var(--font-sans); }
+  nav.bottom a[aria-current="page"] { color: var(--accent); }
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-album" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M11 3v8l3-3 3 3V3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+</svg>
+<main>
+  <h1>Primitives</h1>
+  <p class="muted">Design-system check for RaspictureGalleryNas. Every colour comes from tokens.css. Add <code>?theme=dark</code> to force dark.</p>
+
+  <h2>Buttons</h2>
+  <div class="row">
+    <button class="btn primary"><svg><use href="#i-plus"/></svg>Add a photo folder</button>
+    <button class="btn secondary">Cancel</button>
+    <button class="btn ghost">Skip</button>
+    <button class="btn danger">Revoke link</button>
+    <button class="btn primary" disabled>Disabled</button>
+    <button class="btn primary sm">Small</button>
+    <button class="btn secondary icon-btn" aria-label="Favourite" aria-pressed="false"><svg><use href="#i-heart"/></svg></button>
+  </div>
+
+  <h2>Form fields and chips</h2>
+  <div class="row" style="align-items:start">
+    <div class="field"><label for="p">Photo folder</label><input id="p" value="/mnt/nas/phone-backup"></div>
+    <div class="field error"><label for="q">Password</label><input id="q" type="password" value="xxxx" aria-invalid="true" aria-describedby="qe"><span class="msg" id="qe">Wrong password</span></div>
+  </div>
+  <div class="row" style="margin-top:var(--space-5)">
+    <button class="chip" aria-pressed="true"><svg><use href="#i-heart"/></svg>Favourites</button>
+    <button class="chip" aria-pressed="false"><svg><use href="#i-play"/></svg>Videos</button>
+    <span class="chip">Camera: Pixel 7 <svg aria-label="Remove filter Camera: Pixel 7"><use href="#i-x"/></svg></span>
+  </div>
+
+  <h2>Timeline tiles</h2>
+  <div class="day">Sat 14 Sep 2024</div>
+  <div class="grid" role="list">
+    <a class="tile" style="flex-basis:160px" href="#" aria-label="IMG_2041.HEIC, 14 Sep 2024"><span class="ph" style="background:linear-gradient(135deg,#7fb3d5,#2e5f86)"></span><span class="badge bl"><svg style="fill:currentColor"><use href="#i-heart"/></svg></span></a>
+    <a class="tile" style="flex-basis:90px" href="#" aria-label="VID_2042.mp4, 0:42"><span class="ph" style="background:linear-gradient(160deg,#c9d97a,#5e7d3a)"></span><span class="badge br"><svg style="fill:currentColor"><use href="#i-play"/></svg>0:42</span></a>
+    <a class="tile" style="flex-basis:160px" href="#" aria-label="IMG_2043.HEIC, live photo"><span class="ph" style="background:linear-gradient(120deg,#f2c38b,#b5654a)"></span><span class="badge tl">LIVE</span></a>
+    <span class="tile" style="flex-basis:120px" role="checkbox" aria-checked="true" tabindex="0" aria-label="IMG_2044.jpg"><span class="ph" style="background:linear-gradient(135deg,#d7a1c7,#6a3d73)"></span><span class="badge check tl"><svg><use href="#i-check"/></svg></span></span>
+    <span class="tile err" style="flex-basis:120px"><span class="ph"><svg><use href="#i-image"/></svg>IMG_2045.CR3<br>can't preview</span></span>
+  </div>
+
+  <h2>Viewer (always dark)</h2>
+  <div class="viewer" role="dialog" aria-label="Photo viewer">
+    <div class="photo"></div>
+    <div class="bar">
+      <button class="btn icon-btn" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+      <div class="row" style="gap:0">
+        <button class="btn icon-btn" aria-label="Favourite" aria-pressed="true"><svg><use href="#i-heart"/></svg></button>
+        <button class="btn icon-btn" aria-label="Details"><svg><use href="#i-info"/></svg></button>
+        <button class="btn icon-btn" aria-label="Download original"><svg><use href="#i-download"/></svg></button>
+      </div>
+    </div>
+    <button class="btn icon-btn nav" style="left:8px;color:var(--viewer-text);background:var(--viewer-surface)" aria-label="Previous"><svg><use href="#i-left"/></svg></button>
+    <button class="btn icon-btn nav" style="right:8px;color:var(--viewer-text);background:var(--viewer-surface)" aria-label="Next"><svg><use href="#i-right"/></svg></button>
+    <div class="count" aria-live="polite">Photo 12 of 340</div>
+  </div>
+
+  <h2>Progress, toast, empty state</h2>
+  <div class="banner" role="status"><div><div>Still indexing: new photos appear as they're ready</div><div class="muted">Thumbnails 3,812 of 10,000</div></div><div class="progress" role="progressbar" aria-valuenow="3812" aria-valuemax="10000"><div></div></div></div>
+  <div class="row" style="margin-top:var(--space-5)"><div class="toast" role="status">Added 3 photos to “Summer”<button>Undo</button></div></div>
+  <div class="empty" style="margin-top:var(--space-5)"><svg><use href="#i-heart"/></svg><strong>No favourites yet</strong><span class="muted">Tap the heart on any photo to keep it here.</span></div>
+
+  <h2>Bottom navigation (mobile)</h2>
+  <nav class="bottom" aria-label="Main">
+    <a href="#" aria-current="page"><svg><use href="#i-image"/></svg>Photos</a>
+    <a href="#"><svg><use href="#i-folder"/></svg>Folders</a>
+    <a href="#"><svg><use href="#i-album"/></svg>Albums</a>
+    <a href="#"><svg><use href="#i-search"/></svg>Search</a>
+  </nav>
+</main>
+<script>
+  const t = new URLSearchParams(location.search).get("theme");
+  if (t) document.documentElement.dataset.theme = t;
+</script>
+</body>
+</html>
