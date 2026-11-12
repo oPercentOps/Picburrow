@@ -24,7 +24,7 @@ Memory budget (1 GB Pi, ~750 MB usable after the OS): server 40 MB + SQLite cach
 
 ## Schema
 
-Tables: 9 (`users, sessions, libraries, assets, albums, album_assets, shared_links, tags, asset_tags`). See `replica/schema.sql`, which is checked to load, enforce its checks and cascade on delete.
+Tables: 9 (`users, sessions, libraries, assets, albums, album_assets, shared_links, tags, asset_tags`). See `server/schema.sql`, which is checked to load, enforce its checks and cascade on delete.
 
 Access rules: **data-layer checks.** SQLite has no RLS. Every query that touches user data goes through a small repository function that takes the caller's `user_id` and joins `libraries.owner_id` / `albums.owner_id`. Public links resolve `token → album_id` and may read only `album_assets` of that album.
 
