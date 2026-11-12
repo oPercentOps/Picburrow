@@ -1,24 +1,24 @@
 feature,area,priority,original,clone,notes
-Point the app at existing photo folders on the NAS (read-only),library,must,yes,partial,one folder chosen at setup; adding more folders needs S13 Libraries (milestone 2)
+Point the app at existing photo folders on the NAS (read-only),library,must,yes,yes,several folders per library from S13; each validated before saving
 Recursive scan of import paths with exclusion globs,library,must,yes,yes,default globs skip @eaDir and hidden folders; editing them is S13 (milestone 2)
-Rescan on schedule + manual rescan button,library,must,yes,partial,"scan at start + nightly 03:00; manual rescan exists as an admin API, button comes with S13"
+Rescan on schedule + manual rescan button,library,must,yes,yes,"start-up + nightly 03:00 + ""Scan now"" on S13; a request during a scan queues one more pass"
 Detect deleted/moved files on rescan,library,must,yes,yes,deleted -> missing_at (trash); moved -> relinked by quick hash; unmounted/empty share is never trashed
 Thumbnail generation (small grid + large preview),library,must,yes,yes,"WebP 1920 + 1000x440, newest first, on-demand jumps the queue, one decode at a time"
 Read EXIF date/camera/GPS/orientation,library,must,yes,yes,"exiftool -stay_open, 50 files per batch; dateless files fall back to file time"
 Timeline grouped by day/month with infinite scroll,browse,must,yes,yes,month sections mount only near the viewport
-Date scrubber to jump to a month/year,browse,must,yes,no,
-Folder view mirroring the disk tree,browse,must,yes,no,Immich folder-view; the core of 'Simple Gallery' habits
+Date scrubber to jump to a month/year,browse,must,yes,yes,"rail sized by photo count; drag, click or keyboard (slider); on mobile only the thumb takes touches"
+Folder view mirroring the disk tree,browse,must,yes,yes,URL mirrors the path; subfolders with counts and covers; viewer steps within the folder
 Fullscreen viewer: next/prev swipe + keyboard,view,must,yes,yes,"swipe, arrows, Esc; overlay keeps timeline scroll; deep links work"
 Pinch/scroll zoom in viewer,view,must,yes,yes,"pinch, double-tap, ctrl+wheel, +/-; swaps in the original when the browser can decode it"
 Info panel (EXIF date camera lens size location),view,must,yes,yes,"drawer on desktop, bottom sheet on mobile; map is a could"
 Video playback of originals (no transcode),view,must,yes,yes,HTTP Range streaming; codec support is up to the browser
 HEIC/HEIF display,view,must,yes,partial,pipeline uses libheif via vips; not yet tested on a real iPhone HEIC (no encoder in the build box)
 Download original,view,must,yes,yes,
-Favourites,organize,must,yes,partial,favourite badge shown on tiles; toggling + S09 page in milestone 2
+Favourites,organize,must,yes,yes,heart / F key in the viewer; S09 page; viewer steps through favourites
 Responsive mobile web layout,browse,must,yes,yes,"bottom nav < 768px, checked at 390px and 1440px"
 Single admin login (local LAN),auth,must,yes,yes,"bcrypt, HttpOnly SameSite session, 10 attempts/min/IP"
 Albums (virtual; no file moves),organize,should,yes,no,
-Archive/hide from timeline,organize,should,yes,no,
+Archive/hide from timeline,organize,should,yes,yes,viewer button moves on to the next photo; S10 page; unarchive from there
 "Search by date range, folder path, filename, camera, media type, rating",search,should,yes,no,Immich searching.md filter list minus ML filters
 Multi-select in grid (shift-click / long-press),browse,should,yes,no,
 Live/motion photos (still + short video pair),view,should,yes,no,PhotoPrism plays live photos on hover and in slideshows

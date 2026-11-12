@@ -4,7 +4,7 @@ An alternative to simple file galleries for browsing the phone photos you back u
 a timeline by day, a fast fullscreen viewer, and photo details. It runs on a Pi 3, 4 or 5 with **1 GB RAM**
 and 64-bit Raspberry Pi OS, and only reads your photo folders, never changes them.
 
-Status: milestone 1 (setup, indexing, timeline, viewer). See `replica/build-log.md` and `replica/features.csv`.
+Status: milestone 2 (timeline with date scrubber, viewer, folders, favourites, archive, library settings). See `replica/build-log.md` and `replica/features.csv`.
 
 ## Run it
 
@@ -32,6 +32,7 @@ cd web && npm run dev                   # UI on :5173, proxies /api to a server 
 e2e/make-fixtures.sh /tmp/lib           # fake phone library
 ./raspicture --data-dir /tmp/d --listen 127.0.0.1:8090 &
 node e2e/slice.cjs /tmp/lib             # Playwright end-to-end (fresh data dir), screenshots to replica/clone-screens
+node e2e/milestone2.cjs /tmp/lib        # then this one, against the same server
 ```
 
 Planning docs: `replica/` (recon, architecture, design tokens, build log).
