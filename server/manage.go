@@ -288,6 +288,6 @@ func (a *App) patchLibrary(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	go a.scanAll()
+	a.startScan()
 	a.getLibraries(w, r)
 }
