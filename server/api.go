@@ -304,6 +304,7 @@ func (a *App) writeTiles(w http.ResponseWriter, q string, args ...any) {
 
 type assetRow struct {
 	tile
+	Archived    bool     `json:"archived"`
 	Path        string   `json:"path"`
 	Dir         string   `json:"dir"`
 	Name        string   `json:"name"`
@@ -324,10 +325,10 @@ func (a *App) loadAsset(userID, id int64) (*assetRow, error) {
 	var x assetRow
 	err := a.db.QueryRow(`select a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
 		a.thumb_error is not null, a.path, a.dir, a.size, a.mime, a.tz_offset_min, a.camera_make, a.camera_model, a.lens,
-		a.lat, a.lon, a.library_id
+		a.lat, a.lon, a.library_id, a.is_archived
 		from assets a join libraries l on l.id = a.library_id where a.id = ? and l.owner_id = ?`, id, userID).
 		Scan(&x.ID, &x.W, &x.H, &x.Type, &x.Taken, &x.Fav, &x.Duration, &x.V, &x.Err, &x.Path, &x.Dir, &x.Size, &x.Mime,
-			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID)
+			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived)
 	if err != nil {
 		return nil, err
 	}

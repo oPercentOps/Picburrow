@@ -89,8 +89,7 @@ func (a *App) getFolders(w http.ResponseWriter, r *http.Request) {
 					serverError(w, err)
 					return
 				}
-				f.Name = root
-				out = append(out, f)
+				out = append(out, f) // Name is the folder's own name; Path keeps the full root
 			}
 		}
 		writeJSON(w, map[string]any{"path": "", "dirs": out, "assets": []tile{}})
