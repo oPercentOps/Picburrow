@@ -2,7 +2,8 @@
   import '../../../replica/design/tokens.css';
   import '$lib/app.css';
   import { page } from '$app/state';
-  import { goto } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
+  import Viewer from '$lib/Viewer.svelte';
   import { api, type User } from '$lib/api';
   import { Image, Folder, BookImage, Heart, Archive, Search, Trash2, HardDrive, Activity, LogOut } from '@lucide/svelte';
 
@@ -62,6 +63,11 @@
       <button class="btn ghost signout" onclick={logout}><LogOut aria-hidden="true" />Sign out {user.username}</button>
     </nav>
     <main>{@render children()}</main>
+    {#if page.state.viewer}
+      <!-- overlay viewer opened from any grid (openViewer); closing goes back to the same scroll position -->
+      <Viewer id={page.state.viewer} seq={page.state.seq} onclose={() => history.back()}
+        onnavigate={(id) => replaceState(`/photos/${id}`, { viewer: id, seq: page.state.seq })} />
+    {/if}
     <nav class="bottom" aria-label="Main">
       {#each nav.filter((n) => !n.desktop) as item}
         <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}><item.icon aria-hidden="true" />{item.label}</a>
