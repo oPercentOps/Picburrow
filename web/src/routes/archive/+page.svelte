@@ -1,11 +1,9 @@
 <script lang="ts">
-  import { Archive as Icon } from '@lucide/svelte';
+  import ListPage from '$lib/ListPage.svelte';
+  import { overrides } from '$lib/state.svelte';
+  import { Archive } from '@lucide/svelte';
 </script>
 
-<svelte:head><title>Archive · Photos</title></svelte:head>
-
-<div class="empty">
-  <Icon aria-hidden="true" />
-  <h1>Archive</h1>
-  <span class="muted">The archive is coming soon.</span>
-</div>
+<ListPage title="Archive" query="/api/assets?archived=1" icon={Archive} empty="Nothing archived"
+  hint="Archived photos stay on disk but are hidden from the timeline. Archive one from the photo viewer."
+  keep={(t) => overrides[t.id]?.archived ?? true} />

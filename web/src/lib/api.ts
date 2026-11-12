@@ -13,6 +13,7 @@ export type Tile = {
   err?: boolean;
 };
 export type Asset = Tile & {
+  archived: boolean;
   path: string;
   dir: string;
   name: string;
@@ -35,6 +36,7 @@ export type Jobs = {
   thumbs_done: number;
   thumbs_todo: number;
   thumb_errors: number;
+  errors?: { path: string; error: string }[]; // admins only
 };
 
 export class ApiError extends Error {
@@ -84,3 +86,17 @@ export function formatDuration(ms?: number) {
   const s = Math.round(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+
+export type Library = {
+  id: number;
+  name: string;
+  import_paths: string[];
+  exclusion_globs: string[];
+  last_scan_at: number | null;
+  last_scan_error: string | null;
+  assets: number;
+  missing: number;
+};
+
+export const formatWhen = (unix: number | null) =>
+  unix ? new Date(unix * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'never';

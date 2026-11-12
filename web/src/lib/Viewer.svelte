@@ -1,8 +1,10 @@
 <script lang="ts">
   import { api, thumbURL, browserCanShow, formatDay, type Asset } from '$lib/api';
-  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff } from '@lucide/svelte';
+  import { overrides } from '$lib/state.svelte';
+  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore } from '@lucide/svelte';
 
-  let { id, onnavigate, onclose }: { id: number; onnavigate: (id: number) => void; onclose: () => void } = $props();
+  // seq: ids to step through (a folder, favourites); without it prev/next follow the timeline
+  let { id, seq, onnavigate, onclose }: { id: number; seq?: number[]; onnavigate: (id: number) => void; onclose: () => void } = $props();
 
   let asset = $state<Asset | null>(null);
   let error = $state('');
@@ -14,6 +16,26 @@
   let previewFailed = $state(false);
   let dialog: HTMLElement;
   let opener: Element | null = null;
+  let saveError = $state('');
+
+  const at = $derived(seq ? seq.indexOf(id) : -1);
+  const prevId = $derived(seq ? (at > 0 ? seq[at - 1] : null) : asset?.prev_id);
+  const nextId = $derived(seq ? (at >= 0 && at < seq.length - 1 ? seq[at + 1] : null) : asset?.next_id);
+  const fav = $derived(asset ? (overrides[asset.id]?.fav ?? asset.fav) : false);
+  const archived = $derived(asset ? (overrides[asset.id]?.archived ?? asset.archived) : false);
+
+  async function save(change: { favorite?: boolean; archived?: boolean }) {
+    if (!asset) return;
+    const target = asset.id;
+    saveError = '';
+    try {
+      await api('/api/assets', { method: 'PATCH', body: { ids: [target], ...change } });
+      overrides[target] = { ...overrides[target], ...('favorite' in change ? { fav: change.favorite } : { archived: change.archived }) };
+      if ('archived' in change) nextId ? go(nextId) : prevId ? go(prevId) : onclose(); // it leaves this view
+    } catch (e) {
+      saveError = (e as Error).message;
+    }
+  }
 
   $effect(() => {
     const ctl = new AbortController();
@@ -49,8 +71,9 @@
 
   function onkey(e: KeyboardEvent) {
     if (e.key === 'Escape') { showInfo ? (showInfo = false) : onclose(); }
-    else if (e.key === 'ArrowLeft') go(asset?.prev_id);
-    else if (e.key === 'ArrowRight') go(asset?.next_id);
+    else if (e.key === 'ArrowLeft') go(prevId);
+    else if (e.key === 'ArrowRight') go(nextId);
+    else if (e.key === 'f') save({ favorite: !fav });
     else if (e.key === 'i') showInfo = !showInfo;
     else if (e.key === '+' || e.key === '=') zoomTo(scale * 1.5);
     else if (e.key === '-') zoomTo(scale / 1.5);
@@ -84,7 +107,7 @@
   function up(e: PointerEvent) {
     if (!pointers.delete(e.pointerId) || pointers.size > 0 || scale > 1 || start.dist) return;
     const dx = e.clientX - start.x, dy = e.clientY - start.y;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? asset?.next_id : asset?.prev_id);
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? nextId : prevId);
     else if (dy > 100 && dy > Math.abs(dx)) onclose();
   }
 
@@ -120,12 +143,19 @@
   <div class="bar top">
     <button class="btn icon-btn" onclick={onclose} aria-label="Close"><X aria-hidden="true" /></button>
     <div class="actions">
+      {#if asset}
+        <button class="btn icon-btn" onclick={() => save({ favorite: !fav })} aria-label="Favourite" aria-pressed={fav}>
+          <Heart aria-hidden="true" fill={fav ? 'currentColor' : 'none'} /></button>
+        <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? 'Unarchive' : 'Archive'}>
+          {#if archived}<ArchiveRestore aria-hidden="true" />{:else}<Archive aria-hidden="true" />{/if}</button>
+      {/if}
       <button class="btn icon-btn" onclick={() => (showInfo = !showInfo)} aria-label="Details" aria-pressed={showInfo}><Info aria-hidden="true" /></button>
       {#if asset}<a class="btn icon-btn" href="/api/assets/{asset.id}/original?download=1" aria-label="Download original"><Download aria-hidden="true" /></a>{/if}
     </div>
   </div>
-  {#if asset?.prev_id}<button class="btn icon-btn nav prev" onclick={() => go(asset?.prev_id)} aria-label="Newer"><ChevronLeft aria-hidden="true" /></button>{/if}
-  {#if asset?.next_id}<button class="btn icon-btn nav next" onclick={() => go(asset?.next_id)} aria-label="Older"><ChevronRight aria-hidden="true" /></button>{/if}
+  {#if prevId}<button class="btn icon-btn nav prev" onclick={() => go(prevId)} aria-label="Previous"><ChevronLeft aria-hidden="true" /></button>{/if}
+  {#if nextId}<button class="btn icon-btn nav next" onclick={() => go(nextId)} aria-label="Next"><ChevronRight aria-hidden="true" /></button>{/if}
+  {#if saveError}<div class="save-error" role="alert">{saveError}</div>{/if}
   {#if asset}<div class="bar bottom" aria-live="polite">{formatDay(asset.taken)} · {time(asset.taken)}</div>{/if}
 
   {#if showInfo && asset}
@@ -158,6 +188,8 @@
   .bottom { bottom: 0; justify-content: center; padding: var(--space-6) 0 calc(var(--space-4) + env(safe-area-inset-bottom));
     background: linear-gradient(transparent, rgba(0, 0, 0, .55)); color: var(--viewer-text-muted); font: var(--text-sm) var(--font-sans); pointer-events: none; }
   .actions { display: flex; }
+  .save-error { position: absolute; top: 64px; left: 50%; translate: -50% 0; padding: var(--space-3) var(--space-5); border-radius: var(--radius-md);
+    background: var(--viewer-surface); color: var(--viewer-text); font: var(--text-sm) var(--font-sans); }
   .viewer .btn.icon-btn { color: var(--viewer-text); background: transparent; }
   .viewer .nav { position: absolute; top: 50%; translate: 0 -50%; background: var(--viewer-surface); }
   .prev { left: var(--space-3); }

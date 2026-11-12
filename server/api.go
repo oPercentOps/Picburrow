@@ -30,6 +30,11 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("GET /api/assets/{id}/original", a.auth(false, a.getOriginal))
 	m.HandleFunc("GET /api/jobs", a.auth(false, a.getJobs))
 	m.HandleFunc("POST /api/libraries/{id}/scan", a.auth(true, a.postScan))
+	m.HandleFunc("GET /api/assets", a.auth(false, a.getAssets))
+	m.HandleFunc("PATCH /api/assets", a.auth(false, a.patchAssets))
+	m.HandleFunc("GET /api/folders", a.auth(false, a.getFolders))
+	m.HandleFunc("GET /api/libraries", a.auth(true, a.getLibraries))
+	m.HandleFunc("PATCH /api/libraries/{id}", a.auth(true, a.patchLibrary))
 	m.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { httpError(w, http.StatusNotFound, "No such API route") })
 	m.Handle("/", a.spa())
 	return securityHeaders(m)
@@ -262,22 +267,35 @@ func (a *App) getTimeline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	next := t.AddDate(0, 1, 0).Format("2006-01")
-	rows, err := a.db.Query(`select a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
-		a.thumb_error is not null `+visible+` and a.taken_local >= ? and a.taken_local < ?
+	a.writeTiles(w, `select `+tileCols+` `+visible+` and a.taken_local >= ? and a.taken_local < ?
 		order by a.taken_local desc, a.id desc`, userFrom(r).ID, month, next)
+}
+
+const tileCols = `a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at, a.thumb_error is not null`
+
+func (a *App) queryTiles(q string, args ...any) ([]tile, error) {
+	rows, err := a.db.Query(q, args...)
 	if err != nil {
-		serverError(w, err)
-		return
+		return nil, err
 	}
 	defer rows.Close()
 	out := []tile{}
 	for rows.Next() {
 		var t tile
 		if err := rows.Scan(&t.ID, &t.W, &t.H, &t.Type, &t.Taken, &t.Fav, &t.Duration, &t.V, &t.Err); err != nil {
-			serverError(w, err)
-			return
+			return nil, err
 		}
 		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// writeTiles runs a query selecting tileCols and writes the tiles as JSON.
+func (a *App) writeTiles(w http.ResponseWriter, q string, args ...any) {
+	out, err := a.queryTiles(q, args...)
+	if err != nil {
+		serverError(w, err)
+		return
 	}
 	writeJSON(w, out)
 }
@@ -286,6 +304,7 @@ func (a *App) getTimeline(w http.ResponseWriter, r *http.Request) {
 
 type assetRow struct {
 	tile
+	Archived    bool     `json:"archived"`
 	Path        string   `json:"path"`
 	Dir         string   `json:"dir"`
 	Name        string   `json:"name"`
@@ -306,10 +325,10 @@ func (a *App) loadAsset(userID, id int64) (*assetRow, error) {
 	var x assetRow
 	err := a.db.QueryRow(`select a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
 		a.thumb_error is not null, a.path, a.dir, a.size, a.mime, a.tz_offset_min, a.camera_make, a.camera_model, a.lens,
-		a.lat, a.lon, a.library_id
+		a.lat, a.lon, a.library_id, a.is_archived
 		from assets a join libraries l on l.id = a.library_id where a.id = ? and l.owner_id = ?`, id, userID).
 		Scan(&x.ID, &x.W, &x.H, &x.Type, &x.Taken, &x.Fav, &x.Duration, &x.V, &x.Err, &x.Path, &x.Dir, &x.Size, &x.Mime,
-			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID)
+			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived)
 	if err != nil {
 		return nil, err
 	}
@@ -453,6 +472,24 @@ func (a *App) getJobs(w http.ResponseWriter, r *http.Request) {
 	res := map[string]any{"scanning": a.scan.running, "scan_found": a.scan.found, "scan_error": a.scan.lastErr,
 		"thumbs_done": done, "thumbs_todo": todo, "thumb_errors": errs}
 	a.scan.mu.Unlock()
+	if userFrom(r).IsAdmin { // file paths are admin-only detail
+		type fileErr struct {
+			Path  string `json:"path"`
+			Error string `json:"error"`
+		}
+		errs := []fileErr{}
+		rows, err := a.db.Query("select path, thumb_error from assets where thumb_error is not null and missing_at is null order by id desc limit 50")
+		if err == nil {
+			for rows.Next() {
+				var e fileErr
+				if rows.Scan(&e.Path, &e.Error) == nil {
+					errs = append(errs, e)
+				}
+			}
+			rows.Close()
+		}
+		res["errors"] = errs
+	}
 	writeJSON(w, res)
 }
 

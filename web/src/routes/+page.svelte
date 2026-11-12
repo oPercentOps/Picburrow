@@ -1,10 +1,8 @@
 <script lang="ts">
-  import { page } from '$app/state';
-  import { pushState, replaceState } from '$app/navigation';
   import { api, formatMonth, type Bucket } from '$lib/api';
   import MonthSection from '$lib/MonthSection.svelte';
   import IndexingBanner from '$lib/IndexingBanner.svelte';
-  import Viewer from '$lib/Viewer.svelte';
+  import Scrubber from '$lib/Scrubber.svelte';
   import { Images } from '@lucide/svelte';
 
   let buckets = $state<Bucket[] | null>(null);
@@ -27,13 +25,6 @@
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
   });
-
-  // the viewer opens as an overlay (shallow route) so the timeline keeps its scroll position
-  function open(id: number, e: MouseEvent) {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
-    pushState(`/photos/${id}`, { viewer: id });
-  }
 </script>
 
 <svelte:head><title>Photos</title></svelte:head>
@@ -53,21 +44,18 @@
     <div bind:clientWidth={width}>
       {#each buckets as b (b.month + generation)}
         <h2 class="sr-only">{formatMonth(b.month)}</h2>
-        <MonthSection month={b.month} count={b.count} {width} rowHeight={wide ? 220 : 120} onopen={open} />
+        <MonthSection month={b.month} count={b.count} {width} rowHeight={wide ? 220 : 120} />
       {/each}
     </div>
+    {#if buckets.length > 1}<Scrubber {buckets} />{/if}
   {/if}
 </div>
-
-{#if page.state.viewer}
-  <Viewer id={page.state.viewer} onnavigate={(id) => replaceState(`/photos/${id}`, { viewer: id })} onclose={() => history.back()} />
-{/if}
 
 <style>
   .page { padding: 0 var(--space-1) var(--space-6); }
   header { padding: var(--space-5) var(--space-4) 0; }
   @media (min-width: 768px) {
-    .page { padding: 0 var(--space-6) var(--space-7); }
+    .page { padding: 0 var(--space-8) var(--space-7) var(--space-6); } /* right padding = the scrubber's column */
     header { padding: var(--space-6) 0 0; }
   }
 </style>
