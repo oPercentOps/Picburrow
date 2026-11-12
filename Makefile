@@ -1,7 +1,8 @@
 # make        -> web UI + server binary for this machine
 # make pi     -> arm64 binary for 64-bit Raspberry Pi OS
+# make e2e    -> Playwright end-to-end against the real binary (builds first)
 # make test   -> server tests + layout self-check
-.PHONY: all web server pi test
+.PHONY: all web server pi test e2e
 
 all: web server
 
@@ -18,3 +19,6 @@ pi: web
 test:
 	cd server && go test ./...
 	cd web && node --experimental-strip-types --no-warnings src/lib/justify.test.ts && npm run check
+
+e2e: all
+	cd e2e && npm ci --no-audit --no-fund && npx playwright test
