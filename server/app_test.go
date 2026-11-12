@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestGlobs(t *testing.T) {
@@ -101,7 +102,8 @@ func TestFlow(t *testing.T) {
 	if code := post(t, client(t), srv.URL+"/api/setup", `{"username":"eve","password":"correct horse","path":"`+lib+`"}`); code != 409 {
 		t.Fatalf("second setup: %d", code)
 	}
-	a.scanAll() // setup also starts one in the background; scanAll drops concurrent runs, so run one to completion
+	a.scanAll() // setup also starts one in the background: either this runs it, or queues a rerun and the wait below covers it
+	waitScan(t, a)
 
 	var buckets []struct {
 		Month string
@@ -279,3 +281,139 @@ func mustRun(t *testing.T, name string, args ...string) {
 }
 
 func itoa(i int64) string { return strconv.FormatInt(i, 10) }
+
+func waitScan(t *testing.T, a *App) {
+	t.Helper()
+	for i := 0; i < 600; i++ {
+		a.scan.mu.Lock()
+		busy := a.scan.running
+		a.scan.mu.Unlock()
+		if !busy {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatal("scan did not finish in 30 s")
+}
+
+// TestScanRequestDuringScanIsNotLost: the bug where a library edited mid-scan was ignored until the nightly scan.
+func TestScanRequestDuringScanIsNotLost(t *testing.T) {
+	a, _ := newTestApp(t)
+	a.scan.running = true // pretend a scan is in progress
+	a.scanAll()           // must queue, not drop
+	if !a.scan.again {
+		t.Fatal("scan request during a running scan was dropped")
+	}
+}
+
+func TestManage(t *testing.T) {
+	for _, tool := range []string{"exiftool", "ffmpeg"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	lib, extra := t.TempDir(), t.TempDir()
+	for _, f := range []string{"top.jpg", "2024/trip/a.jpg", "2024/trip/b.jpg", "2024/c.jpg"} {
+		os.MkdirAll(filepath.Join(lib, filepath.Dir(f)), 0o755)
+		mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", filepath.Join(lib, f))
+	}
+	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", filepath.Join(extra, "x.jpg"))
+	a, srv := newTestApp(t)
+	c := client(t)
+	if code := post(t, c, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	a.scanAll()
+	waitScan(t, a)
+
+	// folders: root -> lib -> 2024 (subfolder trip + c.jpg)
+	var root, y struct {
+		Dirs   []folder
+		Assets []tile
+	}
+	get(t, c, srv.URL+"/api/folders", &root)
+	if len(root.Dirs) != 1 || root.Dirs[0].Count != 4 {
+		t.Fatalf("root folders = %+v", root.Dirs)
+	}
+	get(t, c, srv.URL+"/api/folders?path="+filepath.Join(lib, "2024"), &y)
+	if len(y.Dirs) != 1 || y.Dirs[0].Name != "trip" || y.Dirs[0].Count != 2 || y.Dirs[0].Cover == nil || len(y.Assets) != 1 {
+		t.Fatalf("2024 folder = %+v", y)
+	}
+	for _, p := range []string{"/etc", lib + "/../", extra} {
+		if r, _ := c.Get(srv.URL + "/api/folders?path=" + p); r.StatusCode != 404 {
+			t.Errorf("folders?path=%s = %d, want 404", p, r.StatusCode)
+		}
+	}
+
+	// favourite + archive, owner only
+	id := y.Assets[0].ID
+	if code := patch(t, c, srv.URL+"/api/assets", `{"ids":[`+itoa(id)+`],"favorite":true}`); code != 200 {
+		t.Fatalf("patch favourite: %d", code)
+	}
+	var favs []tile
+	get(t, c, srv.URL+"/api/assets?favorite=1", &favs)
+	if len(favs) != 1 || favs[0].ID != id || !favs[0].Fav {
+		t.Fatalf("favourites = %+v", favs)
+	}
+	patch(t, c, srv.URL+"/api/assets", `{"ids":[`+itoa(id)+`],"archived":true}`)
+	var arch, buckets []map[string]any
+	get(t, c, srv.URL+"/api/assets?archived=1", &arch)
+	get(t, c, srv.URL+"/api/timeline/buckets", &buckets)
+	if len(arch) != 1 || buckets[0]["count"].(float64) != 3 {
+		t.Fatalf("archive %v, buckets %v: archived photo must leave the timeline", arch, buckets)
+	}
+	hash, _ := hashPassword("another pass")
+	a.db.Exec("insert into users (username, password_hash) values ('bob', ?)", hash)
+	bob := client(t)
+	post(t, bob, srv.URL+"/api/login", `{"username":"bob","password":"another pass"}`)
+	patch(t, bob, srv.URL+"/api/assets", `{"ids":[`+itoa(id)+`],"favorite":false,"archived":false}`)
+	var fav, archived bool
+	a.db.QueryRow("select is_favorite, is_archived from assets where id = ?", id).Scan(&fav, &archived)
+	if !fav || !archived {
+		t.Fatal("another user changed ann's photo")
+	}
+	if r, _ := bob.Get(srv.URL + "/api/libraries"); r.StatusCode != 403 {
+		t.Errorf("non-admin libraries = %d", r.StatusCode)
+	}
+
+	// library settings: validation, then a new folder gets scanned
+	for body, want := range map[string]int{
+		`{"import_paths":["/does/not/exist"]}`:        400,
+		`{"import_paths":["relative/dir"]}`:           400,
+		`{"import_paths":[" "]}`:                      400,
+		`{"exclusion_globs":["**/{a"]}`:               400,
+		`{"name":"  "}`:                               400,
+		`{"name":"half","exclusion_globs":["**/{a"]}`: 400,
+	} {
+		if code := patch(t, c, srv.URL+"/api/libraries/1", body); code != want {
+			t.Errorf("PATCH library %s = %d, want %d", body, code, want)
+		}
+	}
+	var name string
+	a.db.QueryRow("select name from libraries where id = 1").Scan(&name)
+	if name == "half" {
+		t.Fatal("a rejected PATCH still saved its valid fields")
+	}
+	if code := patch(t, c, srv.URL+"/api/libraries/1", `{"name":"Family","import_paths":["`+lib+`","`+extra+`","`+lib+`/"]}`); code != 200 {
+		t.Fatalf("PATCH library: %d", code)
+	}
+	a.scanAll()
+	waitScan(t, a)
+	var libs []library
+	get(t, c, srv.URL+"/api/libraries", &libs)
+	if len(libs) != 1 || libs[0].Name != "Family" || len(libs[0].Paths) != 2 || libs[0].Assets != 5 {
+		t.Fatalf("libraries = %+v (want deduped paths and the extra folder scanned)", libs)
+	}
+}
+
+func patch(t *testing.T, c *http.Client, url, body string) int {
+	t.Helper()
+	req, _ := http.NewRequest("PATCH", url, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	r, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Body.Close()
+	return r.StatusCode
+}

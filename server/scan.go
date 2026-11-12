@@ -28,6 +28,7 @@ var mediaExt = map[string]bool{
 type scanState struct {
 	mu      sync.Mutex
 	running bool
+	again   bool // a scan was requested while one was running
 	found   int
 	lastErr string
 }
@@ -322,33 +323,39 @@ func mimeFromExt(p string) (string, string) {
 	return "application/octet-stream", "image"
 }
 
-// scanAll runs one scan over every library; concurrent calls are dropped, not queued.
+// scanAll scans every library. A call that arrives during a scan queues one more pass instead of being
+// dropped, so a library edited mid-scan is still picked up; the caller that started the scan returns after it.
 func (a *App) scanAll() {
 	a.scan.mu.Lock()
 	if a.scan.running {
+		a.scan.again = true
 		a.scan.mu.Unlock()
 		return
 	}
 	a.scan.running, a.scan.found, a.scan.lastErr = true, 0, ""
 	a.scan.mu.Unlock()
-	defer func() {
-		a.scan.mu.Lock()
-		a.scan.running = false
-		a.scan.mu.Unlock()
-		a.wakeThumbs()
-	}()
-	ids, err := queryIDs(a.db, "select id from libraries")
-	if err != nil {
-		log.Printf("scan: %v", err)
-		return
-	}
-	for _, id := range ids {
-		if err := a.scanLibrary(id); err != nil {
-			log.Printf("scan library %d: %v", id, err)
-			a.scan.mu.Lock()
-			a.scan.lastErr = err.Error()
-			a.scan.mu.Unlock()
+	defer a.wakeThumbs()
+	for {
+		ids, err := queryIDs(a.db, "select id from libraries")
+		if err != nil {
+			log.Printf("scan: %v", err)
 		}
+		for _, id := range ids {
+			if err := a.scanLibrary(id); err != nil {
+				log.Printf("scan library %d: %v", id, err)
+				a.scan.mu.Lock()
+				a.scan.lastErr = err.Error()
+				a.scan.mu.Unlock()
+			}
+		}
+		a.scan.mu.Lock()
+		if !a.scan.again {
+			a.scan.running = false
+			a.scan.mu.Unlock()
+			return
+		}
+		a.scan.again = false
+		a.scan.mu.Unlock()
 	}
 }
 
