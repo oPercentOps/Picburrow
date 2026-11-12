@@ -1,1 +1,7 @@
 __pycache__/
+server/dist/*
+!server/dist/.keep
+web/node_modules/
+web/.svelte-kit/
+/raspicture
+/raspicture-arm64
