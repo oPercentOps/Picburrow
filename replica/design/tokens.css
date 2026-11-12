@@ -1,0 +1,95 @@
+/* Generated from tokens.json by gen_css.py. Do not edit by hand. */
+/* Breakpoints (CSS vars can't be used in media queries): md 768px, lg 1200px */
+
+:root {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-xs: 12px/16px;
+  --weight-xs: 500;
+  --text-sm: 14px/20px;
+  --weight-sm: 400;
+  --text-base: 16px/24px;
+  --weight-base: 400;
+  --text-lg: 20px/28px;
+  --weight-lg: 600;
+  --text-xl: 28px/34px;
+  --weight-xl: 700;
+  --space-0: 0px;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow-pop: 0 12px 32px rgba(0,0,0,.24);
+  --shadow-on-photo: 0 1px 3px rgba(0,0,0,.6);
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-ease: cubic-bezier(.2,.8,.2,1);
+  --header: 56px;
+  --sidebar: 240px;
+  --bottom-nav: 64px;
+  --info-drawer: 360px;
+  --row-height-mobile: 120px;
+  --row-height-desktop: 220px;
+  --grid-gap: 2px;
+  --touch-target: 44px;
+  --viewer-bg: #000000;
+  --viewer-surface: #16181c;
+  --viewer-text: #ffffff;
+  --viewer-text-muted: #b4bac3;
+  --viewer-accent: #86a4ff;
+  --bg: #ffffff;
+  --surface: #f3f4f6;
+  --border: #e1e4e8;
+  --border-input: #7d8590;
+  --text: #15181d;
+  --text-muted: #59616c;
+  --accent: #2f5bea;
+  --on-accent: #ffffff;
+  --accent-tint: #edf1fe;
+  --danger: #c4302b;
+  --success: #1d7547;
+  --warning: #8a5300;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1014;
+    --surface: #181b21;
+    --border: #2a2f37;
+    --border-input: #6f7884;
+    --text: #eceef1;
+    --text-muted: #9ea6b1;
+    --accent: #86a4ff;
+    --on-accent: #0b1020;
+    --accent-tint: #1f2535;
+    --danger: #ff7b72;
+    --success: #4cc38a;
+    --warning: #f0b429;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e1014;
+  --surface: #181b21;
+  --border: #2a2f37;
+  --border-input: #6f7884;
+  --text: #eceef1;
+  --text-muted: #9ea6b1;
+  --accent: #86a4ff;
+  --on-accent: #0b1020;
+  --accent-tint: #1f2535;
+  --danger: #ff7b72;
+  --success: #4cc38a;
+  --warning: #f0b429;
+  color-scheme: dark;
+}
