@@ -19,18 +19,18 @@ Responsive mobile web layout,browse,must,yes,no,users open it from the phone the
 Single admin login (local LAN),auth,must,yes,no,
 Albums (virtual; no file moves),organize,should,yes,no,
 Archive/hide from timeline,organize,should,yes,no,
-Search by date range and folder/filename,search,should,yes,no,
+"Search by date range, folder path, filename, camera, media type, rating",search,should,yes,no,Immich searching.md filter list minus ML filters
 Multi-select in grid (shift-click / long-press),browse,should,yes,no,
-Live/motion photos (still + short video pair),view,should,yes,no,
-Public share link for an album (optional expiry/password),sharing,should,yes,no,
-Multiple users with own libraries,auth,should,yes,no,
+Live/motion photos (still + short video pair),view,should,yes,no,PhotoPrism plays live photos on hover and in slideshows
+Public share link for an album (optional expiry/password),sharing,should,yes,no,"Immich sharing.md: random token, expiry, password, allowed actions"
+Multiple users with own libraries,auth,should,yes,no,Immich: external library belongs to a single user
 Keep metadata stable when a file moves (content hash),library,should,no,no,improvement over Immich's documented known issue
-XMP sidecar read (ratings/descriptions),library,could,yes,no,
-Write favourites/albums back to XMP sidecars,library,could,yes,no,
+XMP sidecar read (description rating date GPS tags),library,could,yes,no,Immich xmp-sidecars.md; IMG.jpg.xmp preferred over IMG.xmp
+Write favourites/albums back to XMP sidecars,library,could,yes,no,"Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise"
 Map of geotagged photos,browse,could,yes,no,needs map tiles from an external provider
-Reverse geocoding (place names) from offline dataset,search,could,yes,no,
+Reverse geocoding (place names) from offline dataset,search,could,yes,no,Immich uses GeoNames loaded locally; a city-level extract keeps it small
 On this day / memories,browse,could,yes,no,
-Duplicate finder (exact hash),organize,could,yes,no,
+Duplicate finder (exact hash),organize,could,yes,no,Immich uses ML similarity; exact content hash is our 1 GB substitute
 Trash with 30-day restore,organize,could,yes,no,read-only mounts mean trash only affects the index
 RAW (DNG/CR2/ARW) previews,view,could,yes,no,use embedded JPEG preview only; full RAW decode is too heavy for 1 GB
 Basic edit (rotate),view,could,yes,no,
@@ -39,4 +39,12 @@ Face recognition / people,search,skip,yes,skip,needs ML container; Immich says M
 Smart (CLIP) search by content,search,skip,yes,skip,same ML limit
 Server-side video transcoding,view,skip,yes,skip,a Pi with 1 GB RAM can't transcode in reasonable time
 Native mobile apps,clients,skip,yes,skip,responsive web app first
-Paid tier features (PhotoPrism Plus/Pro),billing,skip,unverified,skip,PhotoPrism docs not read in this pass
+Paid-member features (PhotoPrism interactive world maps),billing,skip,yes,skip,PhotoPrism README: members get interactive world maps; free here via could-row map
+Installable PWA (add to home screen),clients,should,yes,no,PhotoPrism README: PWA with native-app feel; replaces native apps
+Hierarchical tags (read from XMP/IPTC),organize,could,yes,no,Immich tags.md
+Locked folder behind a PIN,organize,could,yes,no,Immich locked-folder.md: 15 min unlocked session
+Star rating,organize,could,yes,no,Immich search filter + xmp:Rating
+Partner sharing (whole library to another user),sharing,could,yes,no,Immich partner-sharing.md; one-way
+Blurred placeholder (thumbhash) while thumbnails load,browse,should,yes,no,Immich system-settings: 3 thumbnail kinds
+WebDAV access to the library,sync,skip,yes,skip,PhotoPrism feature; out of browse+view slice
+OCR text search,search,skip,yes,skip,Immich searching.md; needs ML

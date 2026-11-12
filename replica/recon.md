@@ -1,7 +1,7 @@
 # Recon map: Immich / PhotoPrism (self-hosted web)
 
 Scope: browse + view photos already on the NAS (no upload). Library scan, timeline, folders, viewer, favourites, albums.
-For: an open-source product for Raspberry Pi / NAS owners. Hard constraint: runs on Pi 3, 4 or 5 with **1 GB RAM**.
+For: an open-source product for Raspberry Pi / NAS owners. Hard constraints: runs on Pi 3, 4 or 5 with **1 GB RAM**, **64-bit OS only (arm64)**.
 Date: 2026-11-12
 
 ## Sources
@@ -11,11 +11,12 @@ Date: 2026-11-12
 | 1 | Immich docs home | https://docs.immich.app/ | read; feature list in sidebar |
 | 2 | Immich requirements | https://docs.immich.app/install/requirements | read; **RAM min 6 GB, rec. 8 GB; 4 GB only with ML disabled; Postgres alone ≥ 2 GB; 64-bit; Docker required; thumbnails +10-20% disk** |
 | 3 | Immich external libraries | https://docs.immich.app/features/libraries | read; import paths, exclusion globs, nightly scan, experimental inotify watch, deleted→trash, moved file = new asset |
-| 4 | Immich feature pages | https://docs.immich.app/features/{folder-view,searching,sharing,supported-formats,xmp-sidecars,tags,partner-sharing,locked-folder,duplicates-utility,…} | **not read** (fetch blocked in this session) |
-| 5 | PhotoPrism getting started / Raspberry Pi | https://docs.photoprism.app/getting-started/ | reachable, **not read** |
-| 6 | PhotoPrism user guide | https://docs.photoprism.app/user-guide/ | **not read** |
+| 4 | Immich feature docs (markdown in repo) | https://github.com/immich-app/immich/tree/main/docs/docs/features | read: folder-view, searching, sharing, supported-formats, xmp-sidecars, tags, partner-sharing, locked-folder, duplicates-utility, reverse-geocoding |
+| 5 | Immich admin docs + FAQ | https://github.com/immich-app/immich/tree/main/docs/docs | read: system-settings (3 thumbnails: thumbhash, small webp, large preview), jobs-workers, FAQ "slow on Raspberry Pi" |
+| 6 | PhotoPrism README | https://github.com/photoprism/photoprism | read: feature overview, PWA, live photos on hover, WebDAV, 64-bit ARM images, maps gated to paid members |
+| 7 | PhotoPrism getting started / Pi / user guide | https://docs.photoprism.app/ | **not read**; RAM numbers for PhotoPrism unverified |
 
-Anything not backed by rows 1-3 is marked `confidence: guess` below and needs checking against rows 4-6.
+Read as docs only: sparse git checkouts of `README.md` and `docs/**/*.md(x)`; no source files were checked out or read.
 
 ## Core loop
 
@@ -23,7 +24,9 @@ Open the gallery on your phone or laptop, scroll back through years of phone pho
 
 ## Why this product exists (the gap)
 
-Immich needs ≥ 4-6 GB RAM, Postgres, Docker and an ML container (source 2). PhotoPrism is also a multi-GB stack (guess, verify in source 5). Neither fits a 1 GB Pi 3. "Simple file gallery" tools fit but only show folders. The opening is: **Immich-style timeline + viewer, in a single process with SQLite, no ML, under ~150 MB RSS.**
+Immich needs ≥ 4-6 GB RAM, Postgres, Docker and an ML container (source 2); its own FAQ says it "can be too heavy to run on a Raspberry Pi" (source 5). PhotoPrism ships 64-bit ARM images (source 6) but its RAM needs are unverified, and maps are paid. Neither targets a 1 GB Pi. "Simple file gallery" tools fit but only show folders.
+
+Two documented Immich pain points to beat (source 4): editing metadata on a **read-only mount silently fails**, and **moving a file loses its albums/favourites** (source 3). Both hit exactly this user: a read-only NAS share that a phone-sync tool keeps reorganising. The opening is: **Immich-style timeline + viewer, in a single process with SQLite, no ML, under ~150 MB RSS.**
 
 ## Screens
 
@@ -34,13 +37,13 @@ Immich needs ≥ 4-6 GB RAM, Postgres, Docker and an ML container (source 2). Ph
 | S03 | Timeline | `/` | all photos, newest first, grouped by day | thumbnail grid, date headers, scrubber, top bar, select mode | empty (no library), loading (scan running), filled, mobile |
 | S04 | Viewer | `/photos/:id` | fullscreen photo/video | image w/ zoom, prev/next, toolbar (fav, info, download, add to album, archive), video player | loading, unsupported format, missing file |
 | S05 | Info panel | drawer on S04 | EXIF + file details | key/value list, mini map (could) | no EXIF |
-| S06 | Folders | `/folders/*path` | browse disk tree (Immich folder-view, guess on details) | breadcrumb, folder tiles, grid | empty folder |
+| S06 | Folders | `/folders/*path` | browse disk tree, like a file explorer (src 4 folder-view; opt-in feature there, default here) | breadcrumb, folder tiles, grid | empty folder |
 | S07 | Albums list | `/albums` | virtual albums | album cards, create button | empty, filled |
 | S08 | Album detail | `/albums/:id` | photos in album | grid, title edit, share button | empty, filled |
 | S09 | Favourites | `/favorites` | starred photos | grid | empty, filled |
 | S10 | Archive | `/archive` | hidden from timeline | grid, unarchive | empty, filled |
-| S11 | Search | `/search?…` | date range, folder, filename, camera | filter bar, grid | no results |
-| S12 | Shared album (public) | `/s/:token` | view-only album for guests | grid, viewer, download | expired, password prompt |
+| S11 | Search | `/search?…` | filters from src 4 minus ML: time frame, path/folder, filename/extension, camera/lens, media type, favourites/archive/not-in-album, rating, place | filter bar, grid | no results |
+| S12 | Shared link (public) | `/s/:token` | album or selection for guests; random token, expiry, password, allow download (src 4 sharing) | grid, viewer, download | expired, password prompt |
 | S13 | Libraries admin | `/admin/libraries` | import paths, exclusion globs, scan now (src 3) | path list, glob list, scan button, last-scan status | path unreadable, scan running |
 | S14 | Jobs / status | `/admin/jobs` | thumbnail + scan progress | progress bars, counts, errors | idle, running, errors |
 | S15 | Trash | `/trash` | missing-on-disk assets, 30-day restore (src 3) | grid, restore, empty trash | empty, filled |
@@ -116,8 +119,15 @@ Asset       id, library_id, path, size, mtime, content_hash, type (image|video),
             deleted_at (trash), live_pair_id
             evidence: src 3 (trash on missing file, assets on map/albums), S04/S05   confidence: high for path/trash, medium for fields
 
-Thumbnail   asset_id, size (grid|preview), path, generated_at
-            evidence: src 2 (+10-20% disk)   confidence: high (exists), guess (sizes)
+Thumbnail   asset_id, kind (thumbhash blur | small webp | large preview), path, generated_at
+            evidence: src 2 (+10-20% disk), src 5 system-settings   confidence: high
+
+Sidecar     asset_id, path (IMG.jpg.xmp preferred over IMG.xmp), read: description,
+            rating, datetime, GPS, tags (digiKam:TagsList > lr:HierarchicalSubject > IPTC:Keywords)
+            evidence: src 4 xmp-sidecars   confidence: high
+
+Tag         id, name, parent_id (hierarchical);  AssetTag(asset_id, tag_id)
+            evidence: src 4 tags   confidence: high
 
 Album       id, owner_id, name, cover_asset_id, created_at;  AlbumAsset(album_id, asset_id)
             evidence: src 3 "adding to albums"   confidence: high
@@ -125,17 +135,19 @@ Album       id, owner_id, name, cover_asset_id, created_at;  AlbumAsset(album_id
 User        id, name, password_hash, is_admin
             evidence: src 3 "library belongs to a single user"   confidence: high
 
-SharedLink  id, album_id, token, expires_at, password_hash, allow_download
-            evidence: guess (Immich sharing page not read)   confidence: guess
+SharedLink  id, album_id | asset_ids, token (random, long), expires_at, password_hash, allow_download
+            evidence: src 4 sharing   confidence: high
 
 Folder      derived from Asset.path, no table needed   confidence: guess
 ```
 
-Relationships: User 1-n Library, Library 1-n Asset, Asset 1-n Thumbnail, Album n-n Asset, Album 1-n SharedLink.
+Relationships: User 1-n Library, Library 1-n Asset, Asset 1-n Thumbnail, Asset 0-1 Sidecar, Asset n-n Tag, Album n-n Asset, Album 1-n SharedLink.
+
+Asset also gains `description`, `rating` (src 4 search filters, xmp-sidecars) and `city, state, country` from offline GeoNames reverse geocoding (src 4 reverse-geocoding).
 
 ## Feature matrix
 
-See `features.csv`. Must: 18, should: 8, could: 9, skip: 6.
+See `features.csv`. Must: 18, should: 10, could: 13, skip: 8.
 
 ## Out of scope (cannot or should not be cloned)
 
@@ -143,15 +155,17 @@ See `features.csv`. Must: 18, should: 8, could: 9, skip: 6.
 - Server-side video transcoding: not feasible on 1 GB Pi.
 - Phone backup/upload: out of the chosen slice; Syncthing/SMB already do it.
 - Native mobile apps: responsive web first.
-- Immich/PhotoPrism names, logos, UI art and code: not used. Both are open source, but this is a clean-room rebuild from docs.
+- ML-based duplicate detection (src 4 duplicates-utility relies on ML): exact-hash duplicates only.
+- Immich/PhotoPrism names, logos, UI art and code: not used. Both are open source, but this is a clean-room rebuild from docs. "PhotoPrism" is a registered trademark (src 6), so keep it out of the name and marketing.
 
 ## Size
 
-Screens 15, flows 8, entities 7. Hard parts:
+Screens 15, flows 8, entities 9. Hard parts:
 1. **1 GB RAM**: no Postgres, no Docker requirement, no Node/JVM heavyweight. Points to one Go/Rust binary or a lean Python process + SQLite, streaming thumbnail generation with libvips, one worker.
 2. **Thumbnailing 10k-100k photos on a Pi 3** (slow CPU, SD/USB I/O): resumable background queue, lazy generation on first view, embedded EXIF thumbnails as a fast first pass.
 3. **HEIC** (iPhone default): needs libheif on the server, the heaviest decode on the list.
-4. **Pi 3 32-bit OS**: Immich requires 64-bit (src 2); supporting armhf too is a differentiator but doubles the build matrix.
-5. Virtualised timeline grid that stays smooth on a phone with 50k items.
+4. Virtualised timeline grid that stays smooth on a phone with 50k items.
+
+Target: 64-bit Raspberry Pi OS (arm64) only, same as both originals; one build target plus amd64 for dev.
 
 Size: **M** (a few weeks) for the must + should rows.
