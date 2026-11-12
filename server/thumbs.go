@@ -56,7 +56,14 @@ func (a *App) ensureThumbs(ctx context.Context, id int64) error {
 	if done.Valid {
 		return nil
 	}
+	// one global limit for worker + on-demand: each decode can take 250 MB, the Pi has 1 GB
+	select {
+	case a.decodeSem <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 	err := a.makeThumbs(id, path, typ)
+	<-a.decodeSem
 	if err != nil {
 		msg := err.Error()
 		if len(msg) > 300 {
@@ -87,17 +94,20 @@ func (a *App) makeThumbs(id int64, src, typ string) error {
 		}
 		src = poster
 	}
-	for size, box := range thumbSizes {
+	for _, size := range []string{"l", "s"} { // large first: the small one is made from it, so the original is decoded once
+		box := thumbSizes[size]
 		final := a.thumbPath(id, size)
 		tmp := strings.TrimSuffix(final, ".webp") + ".tmp.webp"
-		// vipsthumbnail decodes with shrink-on-load and auto-rotates from EXIF; [strip] drops metadata (GPS) from thumbs
-		if err := a.run("vipsthumbnail", src, "--size", box, "-o", tmp+"[Q=75,strip]"); err != nil {
+		// vipsthumbnail decodes with shrink-on-load and auto-rotates from EXIF; strip drops metadata (GPS) from thumbs;
+		// effort=0 encodes WebP ~2x faster for ~30% bigger files: CPU is the scarce resource on a Pi
+		if err := a.run("vipsthumbnail", src, "--size", box, "-o", tmp+"[Q=75,strip,effort=0]"); err != nil {
 			os.Remove(tmp)
 			return err
 		}
 		if err := os.Rename(tmp, final); err != nil { // never serve a half-written file
 			return err
 		}
+		src = final
 	}
 	return nil
 }

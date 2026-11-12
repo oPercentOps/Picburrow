@@ -166,7 +166,8 @@ func parseExifDate(s string) (string, *int, bool) {
 		return "", nil, false
 	}
 	t, err := time.Parse("2006:01:02 15:04:05", s[:19])
-	if err != nil || t.Year() < 1900 { // "0000:00:00 00:00:00" is common junk
+	// "0000:00:00 00:00:00" is common junk; on videos QuickTimeUTC turns it into the 1904 QuickTime epoch
+	if err != nil || t.Year() <= 1904 {
 		return "", nil, false
 	}
 	rest := strings.TrimLeft(s[19:], ".0123456789")

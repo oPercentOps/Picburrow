@@ -49,6 +49,8 @@ func TestParseExifDate(t *testing.T) {
 		{"2024:05:01 10:00:00.123+02:00", "2024-05-01 10:00:00", ip(120), true},
 		{"2021:12:31 23:59:59-05:30", "2021-12-31 23:59:59", ip(-330), true},
 		{"0000:00:00 00:00:00", "", nil, false},
+		{"1904:01:01 00:00:00", "", nil, false}, // zero QuickTime date after UTC conversion
+		{"1955:07:01 12:00:00", "1955-07-01 12:00:00", nil, true},
 		{"garbage", "", nil, false},
 	}
 	for _, c := range cases {
@@ -114,6 +116,11 @@ func TestFlow(t *testing.T) {
 	}
 	if months["2024-05"] != 1 || months["2023-12"] != 1 || total != 3 {
 		t.Fatalf("buckets = %v (want a.jpg in 2024-05, b.jpg in 2023-12, c.mp4 by file date, @eaDir skipped)", buckets)
+	}
+	var videoTaken string
+	a.db.QueryRow("select taken_local from assets where type = 'video'").Scan(&videoTaken)
+	if strings.HasPrefix(videoTaken, "1904") || videoTaken == "" {
+		t.Fatalf("dateless video got taken_local %q, want its file date", videoTaken)
 	}
 	var tiles []tile
 	get(t, c, srv.URL+"/api/timeline?month=2023-12", &tiles)
@@ -231,7 +238,7 @@ func newTestApp(t *testing.T) (*App, *httptest.Server) {
 		t.Fatal(err)
 	}
 	a := &App{db: db, dataDir: dir, exif: et, thumbWake: make(chan struct{}, 1),
-		inflight: inflight{m: map[int64]chan struct{}{}}, loginLimit: newLimiter(100)}
+		inflight: inflight{m: map[int64]chan struct{}{}}, loginLimit: newLimiter(100), decodeSem: make(chan struct{}, 1)}
 	srv := httptest.NewServer(a.routes())
 	t.Cleanup(func() { srv.Close(); et.Close(); db.Close() })
 	return a, srv

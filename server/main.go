@@ -27,11 +27,13 @@ type App struct {
 	thumbWake  chan struct{}
 	loginLimit *limiter
 	ionice     []string
+	decodeSem  chan struct{}
 }
 
 func main() {
 	dataDir := flag.String("data-dir", envOr("RASPICTURE_DATA", "/var/lib/raspicture"), "database and thumbnails")
 	listen := flag.String("listen", envOr("RASPICTURE_LISTEN", ":8080"), "address to serve on")
+	workers := flag.Int("workers", 1, "parallel thumbnail decodes (1 for a 1 GB Pi; 2-4 with more RAM)")
 	flag.Parse()
 
 	if err := os.MkdirAll(filepath.Join(*dataDir, "thumbs"), 0o755); err != nil {
@@ -49,7 +51,7 @@ func main() {
 	defer et.Close()
 
 	a := &App{db: db, dataDir: *dataDir, exif: et, thumbWake: make(chan struct{}, 1),
-		inflight: inflight{m: map[int64]chan struct{}{}}, loginLimit: newLimiter(10)}
+		inflight: inflight{m: map[int64]chan struct{}{}}, loginLimit: newLimiter(10), decodeSem: make(chan struct{}, max(*workers, 1))}
 	if _, err := exec.LookPath("ionice"); err == nil {
 		a.ionice = []string{"ionice", "-c3"} // idle I/O class: never slow the NAS for other users
 	}

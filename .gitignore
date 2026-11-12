@@ -4,3 +4,4 @@ server/dist/*
 web/node_modules/
 web/.svelte-kit/
 /raspicture
+/raspicture-arm64
