@@ -121,7 +121,7 @@ test('N-1 BUG-011: on a phone, More reaches Favourites, Archive, Trash and the a
   await expect(page.getByRole('heading', { level: 1, name: 'More' })).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/S17-more-mobile.png` });
   await axe(page);
-  await expect(page.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/oPercentOps/RaspictureGalleryNas'); // AGPL section 13
+  await expect(page.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/oPercentOps/Picburrow'); // AGPL section 13
   const more = page.getByRole('navigation', { name: 'More' });
   for (const [name, heading] of [['Favourites', 'Favourites'], ['Archive', 'Archive'], ['Trash', 'Trash'], ['People', 'People']]) {
     await more.getByRole('link', { name }).tap();
@@ -152,5 +152,5 @@ test('R-2 rate several photos at once from the selection bar', async ({ page }) 
 test('L-1 AGPL: the sidebar offers the source code on desktop', async ({ page }) => {
   test.skip(page.viewportSize()!.width < 768, 'desktop layout');
   await page.goto('/');
-  await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Source code · AGPL-3.0' })).toHaveAttribute('href', 'https://github.com/oPercentOps/RaspictureGalleryNas');
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Source code · AGPL-3.0' })).toHaveAttribute('href', 'https://github.com/oPercentOps/Picburrow');
 });

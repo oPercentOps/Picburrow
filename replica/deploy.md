@@ -53,14 +53,14 @@ Either way the workflow builds and attaches the files. A tag that doesn't match 
 
 ## Live (2026-11-13)
 
-- **Repository**: public, https://github.com/oPercentOps/RaspictureGalleryNas (AGPL source offer in the app now resolves).
-- **Release** (marked pre-release until the real-Pi test): https://github.com/oPercentOps/RaspictureGalleryNas/releases/tag/0.1.1, built by release run 43426194169 (tests incl. HEIC, both packages):
+- **Repository**: public, https://github.com/oPercentOps/Picburrow (AGPL source offer in the app now resolves).
+- **Release** (marked pre-release until the real-Pi test): https://github.com/oPercentOps/Picburrow/releases/tag/0.1.1, built by release run 43426194169 (tests incl. HEIC, both packages):
   ```
   435c7948551e199692958b1cd24f4689a89a0d018a7551bb872ed33166bc0254  picburrow_0.1.1_amd64.deb
   a003a693b3a8ffb236dc282dce5c36036cb395959bea61b390799812fe8b47cb  picburrow_0.1.1_arm64.deb
   ```
   Checked from outside: the public download of the arm64 package matches `SHA256SUMS`, Version 0.1.1, Depends include the HEVC decoder.
-- **Landing page**: https://opercentops.github.io/RaspictureGalleryNas/ (deployment reported success; not opened from the build session, whose network doesn't reach github.io).
+- **Landing page**: https://opercentops.github.io/Picburrow/ (deployment reported success; not opened from the build session, whose network doesn't reach github.io). The repository was renamed to `Picburrow` on 2026-11-13, which moved the page here; GitHub doesn't redirect the old `/RaspictureGalleryNas/` Pages address.
 - **Not yet**: domain (picburrow.org unregistered as of the brand check), real Pi 3 and real iPhone library tests.
 - **Maintenance note**: the workflow's actions (checkout v4, setup-go v5, setup-node v4) run on GitHub's deprecated Node 20 runtime; bump them when GitHub removes it.
 

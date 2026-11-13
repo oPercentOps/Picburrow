@@ -1,4 +1,4 @@
-# Parity report: RaspictureGalleryNas vs Immich / PhotoPrism (browse + view slice)
+# Parity report: Picburrow vs Immich / PhotoPrism (browse + view slice)
 
 Build: + live photos, ratings, trash, family accounts, phone navigation. Date: 2026-11-13.
 

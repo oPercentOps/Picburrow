@@ -41,7 +41,7 @@ Run 2026-11-13 where a public, official lookup was reachable; the rest are **to 
 
 ### Why not Homeroll (first choice, dropped)
 
-App Store already had "Homeroll: Home Inventory" and "Homeroll: Shared Bill Calendar"; homeroll.com (since 2008) and homeroll.app (2026-07) were registered. Runners-up then: Picnook (no app, .app/.org free, .com taken) and Contactsheet (two photo apps, all domains taken). "Raspicture" stays the repository name only: it starts with "Rasp", next to the Raspberry Pi trademark.
+App Store already had "Homeroll: Home Inventory" and "Homeroll: Shared Bill Calendar"; homeroll.com (since 2008) and homeroll.app (2026-07) were registered. Runners-up then: Picnook (no app, .app/.org free, .com taken) and Contactsheet (two photo apps, all domains taken). "Raspicture" was the repository name until 2026-11-13 (now `Picburrow`); it starts with "Rasp", next to the Raspberry Pi trademark.
 
 ## Palette
 
@@ -98,7 +98,7 @@ Everything else (backgrounds, text, borders, danger, success, warning) is unchan
 
 - App name in the UI, page titles, manifest and README: **Picburrow**.
 - Binary `picburrow` (`make pi` → `picburrow-arm64`), default data dir `/var/lib/picburrow`, database `picburrow.db`, settings `PICBURROW_DATA` / `PICBURROW_LISTEN`.
-- The Go module path keeps the repository's name (`RaspictureGalleryNas`) until the repository itself is renamed.
+- The repository was renamed from `RaspictureGalleryNas` to `oPercentOps/Picburrow` on 2026-11-13; links, the Go module path (`github.com/oPercentOps/Picburrow/server`), the package homepage and the app's source link follow it.
 
 ## Sweep
 
