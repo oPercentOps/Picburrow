@@ -12,7 +12,7 @@ Fullscreen viewer: next/prev swipe + keyboard,view,must,yes,yes,"swipe, arrows, 
 Pinch/scroll zoom in viewer,view,must,yes,yes,"pinch, double-tap, ctrl+wheel, +/-; swaps in the original when the browser can decode it"
 Info panel (EXIF date camera lens size location),view,must,yes,yes,"drawer on desktop, bottom sheet on mobile; map is a could"
 Video playback of originals (no transcode),view,must,yes,yes,HTTP Range streaming; codec support is up to the browser
-HEIC/HEIF display,view,must,yes,partial,pipeline uses libheif via vips; not yet tested on a real iPhone HEIC (no encoder in the build box)
+HEIC/HEIF display,view,must,yes,yes,libheif via vips; tested with generated 12 MP and 48 MP HEIC (server/testdata + TestHEICThumbnail). 48 MP peaks at 341 MB in vipsthumbnail. Real iPhone files still to try
 Download original,view,must,yes,yes,
 Favourites,organize,must,yes,yes,heart / F key in the viewer; S09 page; viewer steps through favourites
 Responsive mobile web layout,browse,must,yes,yes,"bottom nav < 768px, checked at 390px and 1440px"

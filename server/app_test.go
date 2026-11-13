@@ -510,3 +510,31 @@ func TestLoginRateLimit(t *testing.T) {
 		t.Fatalf("11th attempt = %d, want 429", code)
 	}
 }
+
+// HEIC (iPhone default) goes through the same thumbnail pipeline. testdata/gradient.heic is a generated
+// 640x480 gradient (pillow-heif), not a camera file.
+func TestHEICThumbnail(t *testing.T) {
+	if out, err := exec.Command("vips", "-l").Output(); err != nil || !strings.Contains(string(out), "heifload") {
+		t.Skip("vips without HEIF support")
+	}
+	lib := t.TempDir()
+	src, _ := os.ReadFile("testdata/gradient.heic")
+	os.WriteFile(filepath.Join(lib, "IMG_0001.HEIC"), src, 0o644)
+	a, srv := newTestApp(t)
+	if code := post(t, client(t), srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	var w, h int
+	var mime string
+	a.db.QueryRow("select width, height, mime from assets").Scan(&w, &h, &mime)
+	if w != 640 || h != 480 || mime != "image/heic" {
+		t.Fatalf("HEIC metadata = %dx%d %s", w, h, mime)
+	}
+	if err := a.ensureThumbs(context.Background(), 1); err != nil {
+		t.Fatalf("HEIC thumbnail: %v", err)
+	}
+	if !fileExists(a.thumbPath(1, "l")) || !fileExists(a.thumbPath(1, "s")) {
+		t.Fatal("HEIC thumbnails not written")
+	}
+}

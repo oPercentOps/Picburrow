@@ -45,7 +45,7 @@ Result: ✅ pass · ⏭ not run (reason) · 🔲 manual, not done yet.
 | F03-E4 | | edge: first / last photo | newest, oldest | no Previous / no Next | e2e | ✅ |
 | F03-E5 | | edge: accents, emoji, HTML in names | open the 3 named files | names shown as text, no script runs | e2e | ✅ |
 | F03-E6 | | edge: phone gestures | swipe left, Details, swipe down | next photo, sheet opens, viewer closes | e2e (phone) | ✅ |
-| F03-E7 | | edge: HEIC from an iPhone | open a real .HEIC | preview shown | manual | 🔲 needs a real iPhone file |
+| F03-E7 | | edge: HEIC | generated 640×480, 12 MP and 48 MP HEIC | indexed with size and date, both previews made | go (`TestHEICThumbnail`), manual run | ✅ generated files; 🔲 a real iPhone file |
 | F04-H1 | browse by folder | happy ♿ | root → DCIM → Camera, breadcrumb back | counts, covers, plain grid, viewer stays in folder | e2e (desktop + phone) | ✅ |
 | F04-E2 | | negative: outside the library | /folders/etc, `..` | "isn't in your libraries" / 404 | e2e, go | ✅ |
 | F04-E3 | | edge: Synology / emoji folders | — | @eaDir hidden, "Vacances été 🏖️" listed | e2e | ✅ |
