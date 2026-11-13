@@ -39,7 +39,7 @@ jobs:
         run: test "${TAG#v}" = "$(cat VERSION)" || { echo "tag $TAG but VERSION says $(cat VERSION)"; exit 1; }
 
       - name: Image tools for the tests
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libvips-tools libimage-exiftool-perl ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libvips-tools libheif-plugin-libde265 libimage-exiftool-perl ffmpeg
 
       - name: Build and test
         run: make all test

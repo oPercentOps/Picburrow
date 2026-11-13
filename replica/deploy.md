@@ -33,7 +33,7 @@ Picburrow is self-hosted, free software: people run it on their own Pi. So "prod
 4. `make deb deb-pi` and `SHA256SUMS`;
 5. attaches both `.deb` files and `SHA256SUMS` to the tag's release: if you already made the release on GitHub's Releases page, the files are added to it; if not, a **draft** release is opened for you to publish.
 
-**0.1.0 (2026-11-13)**: the owner made tag `0.1.0` and published its release from the Releases page, before the workflow accepted tags without `v`, so it ran with no files. Once the workflow fix is merged: Actions → **release** → **Run workflow** → tag `0.1.0`. While the Pi 3 test is open, edit the release and tick **"Set as a pre-release"**.
+**0.1.0 → 0.1.1 (2026-11-13)**: tag `0.1.0` was made with its release on the Releases page before the workflow accepted tags without `v`, so it got no files. Running the workflow for it then failed in `TestHEICThumbnail`: "heif: Unsupported codec". On Ubuntu 24.04 and newer Debian, the HEVC decoder iPhone photos need is a separate package (`libheif-plugin-libde265`) that libheif only *suggests*, so a plain install can't preview HEIC. Fixed in 0.1.1: the `.deb` depends on `libheif-plugin-libde265 | libheif1 (<< 1.16)` (older libheif has the decoder built in), the workflow installs it, the README lists it. `0.1.0` can't be rebuilt with the fix (its tag points at the old code), so: delete the empty 0.1.0 release and its tag, then release **0.1.1**.
 
 Next versions: bump `VERSION`, merge, then either create the release on the Releases page with a new tag (e.g. `0.2.0`, target `main`), or from git:
 

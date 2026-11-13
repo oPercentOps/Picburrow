@@ -24,7 +24,7 @@ Package: picburrow
 Version: $VERSION
 Architecture: $ARCH
 Maintainer: Picburrow maintainers <noreply@picburrow.invalid>
-Depends: libvips-tools, libimage-exiftool-perl, adduser
+Depends: libvips-tools, libheif-plugin-libde265 | libheif1 (<< 1.16), libimage-exiftool-perl, adduser
 Recommends: ffmpeg
 Section: graphics
 Priority: optional

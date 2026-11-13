@@ -11,10 +11,10 @@ To hear about new versions: **Watch → Custom → Releases** on GitHub. The pro
 ## Install on a Raspberry Pi (64-bit Raspberry Pi OS)
 
 ```bash
-sudo apt install ./picburrow_0.1.0_arm64.deb
+sudo apt install ./picburrow_0.1.1_arm64.deb
 ```
 
-That one command pulls in libvips, exiftool and ffmpeg, creates a `picburrow` system user and starts the service.
+That one command pulls in libvips (with the HEVC decoder iPhone HEIC photos need), exiftool and ffmpeg, creates a `picburrow` system user and starts the service.
 Open `http://<pi-address>:8080`, create your account and enter the folder your phone backups land in.
 Build the package on any machine with `make deb-pi`.
 
@@ -29,10 +29,12 @@ Build the package on any machine with `make deb-pi`.
 ## Run it anywhere else
 
 ```bash
-sudo apt install libvips-tools libimage-exiftool-perl ffmpeg
+sudo apt install libvips-tools libheif-plugin-libde265 libimage-exiftool-perl ffmpeg
 make            # builds the web UI and ./picburrow (needs Go 1.26+ and Node 22)
 ./picburrow --data-dir ./data --listen :8080
 ```
+
+On Debian 12 or older, leave out `libheif-plugin-libde265`: the decoder is built into libheif there.
 
 | flag | default | |
 | --- | --- | --- |
