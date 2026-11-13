@@ -75,6 +75,7 @@ create table assets (
   thumbhash     blob,                                -- blur placeholder: a ~16 px WebP (~100-300 bytes), stretched + blurred by the UI
   thumbs_at     integer,                             -- null = small/large thumbnails not generated yet
   thumb_error   text,                                -- unreadable/unsupported file; shown, not retried forever
+  play_at       integer,                             -- videos: null = not yet checked for a playback copy (play/<id>.mp4)
   missing_at    integer,                             -- file gone on rescan = in trash; purged after 30 days
   created_at    integer not null default (unixepoch()),
   updated_at    integer not null default (unixepoch()),
@@ -84,6 +85,7 @@ create index assets_timeline on assets(library_id, taken_local desc) where missi
 create index assets_dir      on assets(library_id, dir);
 create index assets_hash     on assets(quick_hash);
 create index assets_todo     on assets(id) where thumbs_at is null and thumb_error is null and missing_at is null;
+create index assets_play     on assets(id) where type = 'video' and play_at is null;
 create index assets_live     on assets(live_video_id);
 create index assets_content  on assets(content_id) where content_id is not null;
 create index assets_missing  on assets(missing_at) where missing_at is not null;

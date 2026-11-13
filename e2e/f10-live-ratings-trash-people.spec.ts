@@ -15,7 +15,7 @@ test('L-1 a live photo shows as one item and plays its clip', async ({ page }) =
   const play = viewer(page).getByRole('button', { name: 'Play live photo' });
   await play.click();
   await expect(play).toHaveAttribute('aria-pressed', 'true');
-  await expect(viewer(page).locator('video')).toHaveAttribute('src', new RegExp(`/assets/${aug[0].live}/original$`));
+  await expect(viewer(page).locator('video')).toHaveAttribute('src', new RegExp(`/assets/${aug[0].live}/play$`));
   await page.screenshot({ path: `${SHOTS}/S04-live.png` });
   await expect(play).toHaveAttribute('aria-pressed', 'false', { timeout: 6_000 }); // back to the still when the clip ends
   await expect(viewer(page).locator('video')).toHaveCount(0);

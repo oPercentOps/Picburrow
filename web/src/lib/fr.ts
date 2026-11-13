@@ -153,6 +153,7 @@ export const fr: Record<string, string> = {
   "Preview not ready, try again": "Aperçu pas encore prêt, réessayez",
   "Previews": "Aperçus",
   "Previews made": "Aperçus créés",
+  "{n} videos still to check or convert for smooth playback. Until then they play from the original file.": "{n} vidéos restent à vérifier ou à convertir pour une lecture fluide. En attendant, elles sont lues depuis le fichier d'origine.",
   "Previews {done} of {total}": "Aperçus : {done} sur {total}",
   "Previous": "Précédente",
   "Rate": "Noter",

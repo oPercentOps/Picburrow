@@ -773,7 +773,9 @@ func TestMigrateFromV1(t *testing.T) {
 	dir := t.TempDir()
 	v1 := strings.NewReplacer(
 		"  content_id    text,                                -- Apple live-photo pairing id (still and clip share it)\n", "",
-		"create index assets_content  on assets(content_id) where content_id is not null;\n", "").Replace(schemaSQL)
+		"create index assets_content  on assets(content_id) where content_id is not null;\n", "",
+		"  play_at       integer,                             -- videos: null = not yet checked for a playback copy (play/<id>.mp4)\n", "",
+		"create index assets_play     on assets(id) where type = 'video' and play_at is null;\n", "").Replace(schemaSQL)
 	if v1 == schemaSQL {
 		t.Fatal("couldn't rebuild the v1 schema from schema.sql")
 	}
@@ -1232,5 +1234,58 @@ func TestSharedLibrary(t *testing.T) {
 	get(t, bob, srv.URL+"/api/assets?favorite=1", &favs)
 	if len(favs) != 1 {
 		t.Fatalf("bob lost the family favourite")
+	}
+}
+
+// A video browsers stutter on gets an H.264 playback copy, served by /play; a plain H.264 one is left alone.
+func TestPlaybackCopy(t *testing.T) {
+	asIs := probe{}
+	json.Unmarshal([]byte(`{"streams":[{"codec_name":"h264","pix_fmt":"yuv420p","width":1920,"height":1080}],
+		"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","bit_rate":"17000000"}}`), &asIs)
+	hevc, uhd, tenBit, heavy, avi := asIs, asIs, asIs, asIs, asIs
+	hevc.Streams = append(hevc.Streams[:0:0], hevc.Streams...)
+	hevc.Streams[0].Codec = "hevc"
+	uhd.Streams = append(uhd.Streams[:0:0], uhd.Streams...)
+	uhd.Streams[0].Width, uhd.Streams[0].Height = 2160, 3840
+	tenBit.Streams = append(tenBit.Streams[:0:0], tenBit.Streams...)
+	tenBit.Streams[0].PixFmt = "yuv420p10le"
+	heavy.Format.BitRate = "60000000"
+	avi.Format.Name = "avi"
+	if !asIs.playsAsIs() || hevc.playsAsIs() || uhd.playsAsIs() || tenBit.playsAsIs() || heavy.playsAsIs() || avi.playsAsIs() {
+		t.Fatal("playsAsIs picks the wrong videos")
+	}
+
+	for _, tool := range []string{"ffmpeg", "ffprobe"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	dir := t.TempDir()
+	db, err := openDB(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	a := &App{db: db, dataDir: dir}
+	old, plain := filepath.Join(dir, "old.avi"), filepath.Join(dir, "plain.mp4")
+	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=1920x1080:duration=1", "-c:v", "mpeg4", old)
+	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:duration=1", "-pix_fmt", "yuv420p", plain)
+	if err := a.makePlay(context.Background(), 1, old); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,width,height", "-of", "csv=p=0", a.playPath(1)).Output()
+	if err != nil || strings.TrimSpace(string(out)) != "h264,1280,720" {
+		t.Fatalf("playback copy is %q (%v), want h264,1280,720", out, err)
+	}
+	os.WriteFile(a.playPath(2), []byte("stale"), 0o644)
+	if err := a.makePlay(context.Background(), 2, plain); err != nil || fileExists(a.playPath(2)) {
+		t.Fatalf("plain H.264 video: err %v, copy exists %v", err, fileExists(a.playPath(2)))
+	}
+
+	// /play serves the copy once the row says it was checked, the original before that
+	w := httptest.NewRecorder()
+	a.servePlay(w, httptest.NewRequest("GET", "/x", nil), &assetRow{tile: tile{ID: 1}, playAt: sql.NullInt64{Int64: 1, Valid: true}})
+	if w.Code != 200 || w.Header().Get("Content-Type") != "video/mp4" || w.Body.Len() == 0 {
+		t.Fatalf("play: %d %s", w.Code, w.Header().Get("Content-Type"))
 	}
 }

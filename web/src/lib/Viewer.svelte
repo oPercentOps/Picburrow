@@ -46,7 +46,7 @@
   const nextId = $derived(seq ? stepIn(1) : asset?.next_id);
   // after next/prev, `asset` still holds the previous photo until the new one loads: act only when they match (BUG-005)
   const ready = $derived(asset?.id === id);
-  // a shared album can turn off downloads (and so video playback, which streams the original)
+  // a shared album can turn off downloads (and so video playback, which streams the file)
   const canDownload = $derived(!readonly || (asset as (Asset & { allow_download?: boolean }) | null)?.allow_download !== false);
   const fav = $derived(asset ? (overrides[asset.id]?.fav ?? asset.fav) : false);
   const archived = $derived(asset ? (overrides[asset.id]?.archived ?? asset.archived) : false);
@@ -179,7 +179,7 @@
       {#if asset.type === 'video'}
         <!-- svelte-ignore a11y_media_has_caption -->
         {#if canDownload}
-          <video src="{base}/assets/{asset.id}/original" poster={thumbURL(asset, 'l', base)} controls playsinline autoplay></video>
+          <video src="{base}/assets/{asset.id}/play" poster={thumbURL(asset, 'l', base)} controls playsinline autoplay></video>
         {:else}
           <div class="msg"><img src={thumbURL(asset, 'l', base)} alt="{asset.name}, {formatDay(asset.taken)}" /><p>{t('The owner turned off video playback and downloads for this album.')}</p></div>
         {/if}
@@ -192,7 +192,7 @@
           onerror={() => (original ? (original = false) : (previewFailed = true))} />
         {#if playingLive && asset.live && canDownload}
           <!-- the clip plays over the still, muted like a phone gallery, then the still comes back -->
-          <video class="live" src="{base}/assets/{asset.live}/original" muted playsinline autoplay
+          <video class="live" src="{base}/assets/{asset.live}/play" muted playsinline autoplay
             onended={() => (playingLive = false)} onerror={() => (playingLive = false)}></video>
         {/if}
       {/if}
