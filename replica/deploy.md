@@ -1,6 +1,6 @@
 # Deploy checklist: Picburrow
 
-Date: 2026-11-13  Commit: the merge of this PR on `main`  Go from user: **not yet** (asked in the session; the release is a draft until you press Publish)
+Date: 2026-11-13  Release: **0.1.1** (commit ed8652c)  Go from user: **yes** (owner published the release and made the repository public)
 
 Picburrow is self-hosted, free software: people run it on their own Pi. So "production" here is **a GitHub release with the `.deb` packages** plus **the landing page on GitHub Pages**. There is no hosted server, production database, payments, OAuth or email to set up, and no mobile build (the phone app is the web app, added to the home screen).
 
@@ -51,9 +51,22 @@ git push origin 0.2.0
 
 Either way the workflow builds and attaches the files. A tag that doesn't match `VERSION` fails at step 1, so nothing mismatched gets attached.
 
+## Live (2026-11-13)
+
+- **Repository**: public, https://github.com/oPercentOps/RaspictureGalleryNas (AGPL source offer in the app now resolves).
+- **Release**: https://github.com/oPercentOps/RaspictureGalleryNas/releases/tag/0.1.1, built by release run 43426194169 (tests incl. HEIC, both packages):
+  ```
+  435c7948551e199692958b1cd24f4689a89a0d018a7551bb872ed33166bc0254  picburrow_0.1.1_amd64.deb
+  a003a693b3a8ffb236dc282dce5c36036cb395959bea61b390799812fe8b47cb  picburrow_0.1.1_arm64.deb
+  ```
+  Checked from outside: the public download of the arm64 package matches `SHA256SUMS`, Version 0.1.1, Depends include the HEVC decoder.
+- **Landing page**: https://opercentops.github.io/RaspictureGalleryNas/ (deployment reported success; not opened from the build session, whose network doesn't reach github.io).
+- **Not yet**: domain (picburrow.org unregistered as of the brand check), pre-release flag (the release is marked full), real Pi 3 and real iPhone library tests.
+- **Maintenance note**: the workflow's actions (checkout v4, setup-go v5, setup-node v4) run on GitHub's deprecated Node 20 runtime; bump them when GitHub removes it.
+
 ## Landing page
 
-- [ ] Settings → Pages → Source: **Deploy from a branch** → `main` / `/docs` → Save. It appears at `https://opercentops.github.io/RaspictureGalleryNas/` within a minute or two.
+- [x] Settings → Pages → Source: **Deploy from a branch** → `main` / `/docs`. Deployed 2026-11-13 ("pages build and deployment" run 43428336752: success).
 
 ## Domain (once you register it; suggested: picburrow.org as the canonical host)
 
