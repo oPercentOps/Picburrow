@@ -87,7 +87,8 @@
   .dirs { list-style: none; margin: 0 0 var(--space-6); padding: 0; display: grid; gap: var(--space-5) var(--space-4);
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   .dirs a { display: grid; gap: var(--space-1); text-decoration: none; }
-  .cover { aspect-ratio: 1; border-radius: var(--radius-md); overflow: hidden; background: var(--surface); display: grid; place-items: center; color: var(--text-muted); }
+  .cover { aspect-ratio: 1; border-radius: var(--radius-lg); transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease); overflow: hidden; background: var(--surface); display: grid; place-items: center; color: var(--text-muted); }
+  a:hover .cover { transform: translateY(-2px); box-shadow: var(--shadow-pop); }
   .cover img { width: 100%; height: 100%; object-fit: cover; }
   .cover :global(svg) { width: 40px; height: 40px; }
   .name { font: 600 var(--text-sm) var(--font-sans); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }

@@ -13,7 +13,7 @@
     base?: string; onopen?: (id: number, e: MouseEvent) => void; selectable?: boolean;
   } = $props();
 
-  const GAP = 2;
+  const GAP = 3; // = --grid-gap; MonthSection's estimate uses it too
   let broken = $state<Record<number, boolean>>({});
   let loaded = $state<Record<number, boolean>>({});
 
@@ -94,11 +94,14 @@
 {/each}
 
 <style>
-  .day { font: 600 var(--text-sm) var(--font-sans); margin: 0; padding: var(--space-6) 0 var(--space-3); }
-  .row { display: flex; gap: 2px; margin-bottom: 2px; }
-  .cell { position: relative; flex: none; height: 100%; background: var(--surface); }
-  .tile { position: absolute; inset: 0; overflow: hidden; color: var(--viewer-text); display: block; -webkit-touch-callout: none;
-    transition: inset var(--motion-fast) var(--motion-ease); }
+  /* sticky day header on a glass strip, so the date stays visible while scrolling a long day */
+  .day { position: sticky; top: 0; z-index: 3; font: 700 var(--text-sm) var(--font-sans); margin: 0; padding: var(--space-6) 0 var(--space-3);
+    background: color-mix(in srgb, var(--bg) 90%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .row { display: flex; gap: var(--grid-gap); margin-bottom: var(--grid-gap); }
+  .cell { position: relative; flex: none; height: 100%; background: var(--surface); border-radius: var(--radius-sm); }
+  .tile { position: absolute; inset: 0; overflow: hidden; border-radius: var(--radius-sm); color: var(--viewer-text); display: block; -webkit-touch-callout: none;
+    transition: inset var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease); }
+  .tile:active { transform: scale(.98); }
   .tile img { position: relative; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity var(--motion-base) var(--motion-ease); }
   .tile img.in { opacity: 1; }
   .blur { position: absolute; inset: -8px; background-size: cover; background-position: center; filter: blur(8px); }
@@ -118,6 +121,7 @@
     color: transparent; filter: drop-shadow(var(--shadow-on-photo)); box-sizing: content-box; }
   .cell:hover .check, .check:focus-visible, .picking .check { opacity: 1; }
   .picked .check :global(svg) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); filter: none; }
-  .picked .tile { inset: 8px; border-radius: var(--radius-sm); outline: 3px solid var(--accent); }
+  .picked .tile { inset: 8px; outline: 3px solid var(--accent); }
+  @media (max-width: 767px) { .day { padding-inline: var(--space-4); } }
   @media (prefers-reduced-motion: reduce) { .tile img { transition: none; } }
 </style>

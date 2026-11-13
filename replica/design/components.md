@@ -7,6 +7,8 @@ Global rules:
 - Focus-visible ring is `2px solid var(--accent)` with a `2px` offset on every interactive element.
 - Touch targets are ≥ `--touch-target` (44 px).
 - `prefers-reduced-motion` drops all transitions to 0.
+- Glass (bottom bar, toast, selection bar, sticky date header): `color-mix(var(--bg) 90%, transparent)` + `backdrop-filter: blur`. Never below 90%, so muted text keeps 4.5:1 over any photo behind it.
+- Buttons and nav items are pills (`radius-pill`); pressing scales them to .97.
 - Text placed over a photo always sits on a scrim (`linear-gradient(rgba(0,0,0,.55), transparent)`), because contrast against an arbitrary photo cannot be checked.
 
 ```
@@ -29,7 +31,7 @@ Thumbnail tile
   variants  image, video (play badge + duration, bottom-right), live (live badge, top-left), favourite (heart, bottom-left)
   states    placeholder (thumbhash blur, or surface colour), loaded (fade-in base), error (broken-image icon + filename on surface),
             selectable (circle top-left on hover/select mode), selected (tile inset 8px, 3px accent ring, check filled), focus-visible
-  tokens    grid-gap 2px, no radius in grid (radius sm in album covers), badges on scrim
+  tokens    grid-gap 3px, radius sm in the grid (radius lg on album and folder covers, lift + shadow pop on hover), badges on scrim
   a11y      <a> to the viewer route with alt = filename + date; in select mode role=checkbox + aria-checked; Space toggles, Enter opens
   used on   S03 S06 S08 S09 S10 S11 S12 S15
 

@@ -55,7 +55,8 @@
   header :global(svg) { width: 18px; height: 18px; }
   .grid { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-5) var(--space-4); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .grid a { display: grid; gap: var(--space-1); text-decoration: none; }
-  .cover { aspect-ratio: 1; border-radius: var(--radius-md); overflow: hidden; background: var(--surface); display: grid; place-items: center; color: var(--text-muted); }
+  .cover { aspect-ratio: 1; border-radius: var(--radius-lg); transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease); overflow: hidden; background: var(--surface); display: grid; place-items: center; color: var(--text-muted); }
+  a:hover .cover { transform: translateY(-2px); box-shadow: var(--shadow-pop); }
   .cover img { width: 100%; height: 100%; object-fit: cover; }
   .cover :global(svg) { width: 40px; height: 40px; }
   .name { font: 600 var(--text-sm) var(--font-sans); overflow-wrap: anywhere; }

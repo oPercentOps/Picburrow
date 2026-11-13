@@ -87,7 +87,8 @@
 
 <style>
   .bar { position: fixed; z-index: 20; inset: 0 0 auto; display: flex; align-items: center; gap: var(--space-3); min-height: var(--header);
-    padding: var(--space-2) var(--space-3); padding-top: max(var(--space-2), env(safe-area-inset-top)); background: var(--surface);
+    padding: var(--space-2) var(--space-3); padding-top: max(var(--space-2), env(safe-area-inset-top));
+    background: color-mix(in srgb, var(--surface) 92%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
     border-bottom: 1px solid var(--border); box-shadow: var(--shadow-pop); }
   .count { font: 600 var(--text-base) var(--font-sans); flex: 1; }
   .actions { display: flex; gap: var(--space-1); }

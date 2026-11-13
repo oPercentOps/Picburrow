@@ -6,12 +6,13 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .muted { color: var(--text-muted); font: var(--weight-sm) var(--text-sm) var(--font-sans); }
-h1 { font: var(--weight-xl) var(--text-xl) var(--font-sans); margin: 0; }
-h2 { font: var(--weight-lg) var(--text-lg) var(--font-sans); margin: 0; }
+h1 { font: var(--weight-xl) var(--text-xl) var(--font-sans); letter-spacing: -.025em; margin: 0; }
+h2 { font: var(--weight-lg) var(--text-lg) var(--font-sans); letter-spacing: -.015em; margin: 0; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-3); height: 40px; padding: 0 var(--space-5);
-  border-radius: var(--radius-md); border: 1px solid transparent; font: 600 var(--text-sm) var(--font-sans); cursor: pointer;
-  text-decoration: none; transition: background var(--motion-fast) var(--motion-ease); }
+  border-radius: var(--radius-pill); border: 1px solid transparent; font: 600 var(--text-sm) var(--font-sans); cursor: pointer;
+  text-decoration: none; transition: background var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease); }
+.btn:active:not(:disabled) { transform: scale(.97); }
 .btn.primary { background: var(--accent); color: var(--on-accent); }
 .btn.primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--text)); }
 .btn.secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
@@ -22,12 +23,13 @@ h2 { font: var(--weight-lg) var(--text-lg) var(--font-sans); margin: 0; }
 
 .field { display: grid; gap: var(--space-2); }
 .field label { font: 600 var(--text-sm) var(--font-sans); }
-.field input { height: 40px; padding: 0 var(--space-4); border: 1px solid var(--border-input); border-radius: var(--radius-sm);
+.field input { height: 40px; padding: 0 var(--space-4); border: 1px solid var(--border-input); border-radius: var(--radius-md);
   background: var(--bg); color: var(--text); font: var(--text-base) var(--font-sans); width: 100%; }
-.field input:focus-visible { border-color: var(--accent); }
+.field input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
 .field input[aria-invalid="true"] { border-color: var(--danger); }
 .field .hint { color: var(--text-muted); font: var(--text-sm) var(--font-sans); }
 .error-msg { color: var(--danger); font: var(--text-sm) var(--font-sans); margin: 0; }
 
 .empty { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-8) var(--space-5); text-align: center; }
 .empty :global(svg) { width: 48px; height: 48px; color: var(--text-muted); }
+dialog::backdrop { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
