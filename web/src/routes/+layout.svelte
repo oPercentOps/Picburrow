@@ -8,7 +8,7 @@
   import AlbumPicker from '$lib/AlbumPicker.svelte';
   import { selection, toast } from '$lib/state.svelte';
   import { api, type User } from '$lib/api';
-  import { Image, Folder, BookImage, Heart, Archive, Search, Trash2, HardDrive, Activity, LogOut } from '@lucide/svelte';
+  import { Image, Folder, BookImage, Heart, Archive, Search, Trash2, HardDrive, Activity, LogOut, Users, Menu } from '@lucide/svelte';
 
   let { children } = $props();
   let user = $state<User | null>(null);
@@ -39,12 +39,13 @@
     { href: '/albums', label: 'Albums', icon: BookImage },
     { href: '/favorites', label: 'Favourites', icon: Heart, desktop: true },
     { href: '/archive', label: 'Archive', icon: Archive, desktop: true },
-    { href: '/search', label: 'Search', icon: Search }
+    { href: '/search', label: 'Search', icon: Search },
+    { href: '/trash', label: 'Trash', icon: Trash2, desktop: true }
   ];
   const admin = [
     { href: '/admin/libraries', label: 'Libraries', icon: HardDrive },
     { href: '/admin/jobs', label: 'Indexing', icon: Activity },
-    { href: '/trash', label: 'Trash', icon: Trash2 }
+    { href: '/admin/users', label: 'People', icon: Users }
   ];
   const current = (href: string) => (href === '/' ? page.url.pathname === '/' || page.url.pathname.startsWith('/photos/') : page.url.pathname.startsWith(href));
 
@@ -86,6 +87,8 @@
       {#each nav.filter((n) => !n.desktop) as item}
         <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}><item.icon aria-hidden="true" />{item.label}</a>
       {/each}
+      <!-- phones: everything that doesn't fit the bar (BUG-011: Favourites, Archive, Trash and admin had no way in) -->
+      <a href="/more" aria-current={['/more', ...nav.filter((n) => n.desktop).map((n) => n.href), ...admin.map((n) => n.href)].some((h) => page.url.pathname.startsWith(h)) ? 'page' : undefined}><Menu aria-hidden="true" />More</a>
     </nav>
   </div>
 {/if}

@@ -6,7 +6,7 @@ test('F04-H1 library root -> DCIM -> Camera, breadcrumb back, viewer stays in th
   await page.goto('/folders');
   const folders = page.getByRole('list').getByRole('link');
   await expect(folders).toHaveCount(1);
-  await expect(folders.first()).toHaveAccessibleName(/^\.fixtures, 136 items$/) // 137 files minus the skipped @eaDir one;
+  await expect(folders.first()).toHaveAccessibleName(/^\.fixtures, 137 items$/) // 139 files minus the skipped @eaDir one and the hidden live clip;
   await page.screenshot({ path: `${SHOTS}/S06-folders-root${mobile ? '-mobile' : ''}.png` });
   await axe(page);
   await folders.first().click();

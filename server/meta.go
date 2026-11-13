@@ -26,6 +26,8 @@ type Meta struct {
 	Model       string
 	Lens        string
 	Lat, Lon    *float64
+	ContentID   string // Apple live photo: the still and its clip share it
+	Rating      *int   // 1-5 from XMP/EXIF, nil if unrated
 }
 
 // exifTool keeps one exiftool process alive (-stay_open) instead of paying Perl start-up per file.
@@ -39,7 +41,7 @@ type exifTool struct {
 var exifTags = []string{
 	"-MIMEType", "-ImageWidth", "-ImageHeight", "-Orientation", "-Duration",
 	"-DateTimeOriginal", "-OffsetTimeOriginal", "-CreationDate", "-CreateDate",
-	"-Make", "-Model", "-LensModel", "-Composite:GPSLatitude", "-Composite:GPSLongitude",
+	"-Make", "-Model", "-LensModel", "-Composite:GPSLatitude", "-Composite:GPSLongitude", "-ContentIdentifier", "-Rating",
 }
 
 func startExifTool() (*exifTool, error) {
@@ -151,6 +153,11 @@ func parseMeta(r map[string]any) Meta {
 		if o, ok := parseOffset(str(r["OffsetTimeOriginal"])); ok {
 			m.TzOffsetMin = &o
 		}
+	}
+	m.ContentID = strings.TrimSpace(str(r["ContentIdentifier"]))
+	if rt, ok := r["Rating"].(float64); ok && rt >= 1 && rt <= 5 { // 0 = unrated, -1 = rejected
+		v := int(rt)
+		m.Rating = &v
 	}
 	lat, latOk := r["GPSLatitude"].(float64)
 	lon, lonOk := r["GPSLongitude"].(float64)

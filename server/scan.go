@@ -193,6 +193,11 @@ func (a *App) scanLibrary(libID int64) error {
 	}
 
 	now := time.Now().Unix()
+	defer func() {
+		if err := a.pairLive(libID); err != nil {
+			log.Printf("live photos, library %d: %v", libID, err)
+		}
+	}()
 	for _, id := range goneIDs {
 		if !relinked[id] {
 			a.db.Exec("update assets set missing_at = coalesce(missing_at, ?) where id = ?", now, id)
@@ -208,21 +213,23 @@ func (a *App) scanLibrary(libID int64) error {
 
 func (a *App) upsertAsset(libID int64, f newFile, h [32]byte, m Meta, relinkID int64) error {
 	args := []any{f.path, filepath.Dir(f.path), f.size, f.mtime, h[:], m.Type, m.Mime, nz(m.Width), nz(m.Height),
-		nz(m.Orientation), nz(m.DurationMs), m.TakenLocal, m.TzOffsetMin, ns(m.Make), ns(m.Model), ns(m.Lens), m.Lat, m.Lon}
+		nz(m.Orientation), nz(m.DurationMs), m.TakenLocal, m.TzOffsetMin, ns(m.Make), ns(m.Model), ns(m.Lens), m.Lat, m.Lon,
+		ns(m.ContentID), m.Rating}
 	if relinkID != 0 { // moved file: keep id, so favourites/albums/tags survive
 		_, err := a.db.Exec(`update assets set path=?, dir=?, size=?, mtime=?, quick_hash=?, type=?, mime=?, width=?, height=?,
 			orientation=?, duration_ms=?, taken_local=?, tz_offset_min=?, camera_make=?, camera_model=?, lens=?, lat=?, lon=?,
-			missing_at=null, updated_at=unixepoch() where id=?`, append(args, relinkID)...)
+			content_id=?, rating=coalesce(rating, ?), missing_at=null, updated_at=unixepoch() where id=?`, append(args, relinkID)...)
 		return err
 	}
 	_, err := a.db.Exec(`insert into assets (path, dir, size, mtime, quick_hash, type, mime, width, height, orientation,
-			duration_ms, taken_local, tz_offset_min, camera_make, camera_model, lens, lat, lon, library_id)
-		values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			duration_ms, taken_local, tz_offset_min, camera_make, camera_model, lens, lat, lon, content_id, rating, library_id)
+		values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		on conflict (library_id, path) do update set size=excluded.size, mtime=excluded.mtime, quick_hash=excluded.quick_hash,
 			type=excluded.type, mime=excluded.mime, width=excluded.width, height=excluded.height, orientation=excluded.orientation,
 			duration_ms=excluded.duration_ms, taken_local=excluded.taken_local, tz_offset_min=excluded.tz_offset_min,
 			camera_make=excluded.camera_make, camera_model=excluded.camera_model, lens=excluded.lens, lat=excluded.lat,
-			lon=excluded.lon, missing_at=null, thumbs_at=null, thumb_error=null, updated_at=unixepoch()`, append(args, libID)...)
+			lon=excluded.lon, content_id=excluded.content_id, rating=coalesce(assets.rating, excluded.rating),
+			missing_at=null, thumbs_at=null, thumb_error=null, updated_at=unixepoch()`, append(args, libID)...)
 	return err
 }
 
@@ -427,3 +434,76 @@ func underAny(p string, roots []string) bool {
 	}
 	return false
 }
+
+// pairLive links each still to its live-photo clip: same Apple content id, or else the same name in the same
+// folder (IMG_1234.HEIC + IMG_1234.MOV) with a clip of 5 s or less. Pairs whose clip went missing are undone.
+func (a *App) pairLive(libID int64) error {
+	if _, err := a.db.Exec(`update assets set live_video_id = null where library_id = ? and live_video_id in
+		(select id from assets where missing_at is not null)`, libID); err != nil {
+		return err
+	}
+	type clip struct {
+		id  int64
+		key string
+	}
+	byContent, byName := map[string]int64{}, map[string]int64{}
+	rows, err := a.db.Query(`select id, path, coalesce(content_id, ''), coalesce(duration_ms, 0) from assets
+		where library_id = ? and type = 'video' and missing_at is null`, libID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var id int64
+		var p, cid string
+		var dur int
+		if err := rows.Scan(&id, &p, &cid, &dur); err != nil {
+			rows.Close()
+			return err
+		}
+		if cid != "" {
+			byContent[cid] = id
+		}
+		if dur > 0 && dur <= 5000 {
+			byName[stemKey(p)] = id
+		}
+	}
+	rows.Close()
+	if len(byContent)+len(byName) == 0 {
+		return nil
+	}
+	type pair struct{ still, clip int64 }
+	var pairs []pair
+	rows, err = a.db.Query(`select id, path, coalesce(content_id, '') from assets
+		where library_id = ? and type = 'image' and missing_at is null and live_video_id is null`, libID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var id int64
+		var p, cid string
+		if err := rows.Scan(&id, &p, &cid); err != nil {
+			rows.Close()
+			return err
+		}
+		if v, ok := byContent[cid]; ok && cid != "" {
+			pairs = append(pairs, pair{id, v})
+		} else if v, ok := byName[stemKey(p)]; ok {
+			pairs = append(pairs, pair{id, v})
+		}
+	}
+	rows.Close()
+	for _, pr := range pairs {
+		if _, err := a.db.Exec("update assets set live_video_id = ? where id = ?", pr.clip, pr.still); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// stemKey: folder + file name without extension, case-insensitive (IMG_1234.HEIC and IMG_1234.mov match).
+func stemKey(p string) string {
+	return strings.ToLower(strings.TrimSuffix(p, filepath.Ext(p)))
+}
+
+// notLiveClip hides clips that belong to a live photo: they are played from their still.
+const notLiveClip = `a.id not in (select live_video_id from assets where live_video_id is not null)`

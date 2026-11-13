@@ -33,6 +33,7 @@
     `${t.type === 'video' ? 'Video' : 'Photo'} from ${formatDay(t.taken)}` +
     (t.type === 'video' && t.duration_ms ? `, ${formatDuration(t.duration_ms)}` : '') +
     (t.err || broken[t.id] ? ', No preview' : '') +
+    (t.live ? ', Live' : '') +
     (fav(t) ? ', favourite' : '');
 
   const toggle = (id: number) => (selection.has(id) ? selection.delete(id) : selection.add(id));
@@ -78,6 +79,7 @@
             {/if}
             {#if t.type === 'video'}<span class="badge br"><Play aria-hidden="true" />{formatDuration(t.duration_ms)}</span>{/if}
             {#if fav(t)}<span class="badge bl"><Heart aria-hidden="true" fill="currentColor" /></span>{/if}
+            {#if t.live}<span class="badge tr">Live</span>{/if}
           </a>
           {#if selectable}
             <button class="check" onclick={() => toggle(t.id)} aria-pressed={picked} aria-label="Select {label(t)}">
@@ -107,6 +109,7 @@
   .badge :global(svg), .ph :global(svg) { width: 16px; height: 16px; }
   .br { right: 6px; bottom: 6px; }
   .bl { left: 6px; bottom: 6px; }
+  .tr { right: 6px; top: 6px; letter-spacing: .04em; }
   /* select circle: on hover/focus, always while picking */
   .check { position: absolute; top: 2px; left: 2px; width: var(--touch-target); height: var(--touch-target); padding: 0; border: 0;
     background: none; cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity var(--motion-fast); }

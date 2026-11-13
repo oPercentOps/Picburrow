@@ -6,7 +6,7 @@ Bugs found earlier, while building, are in `replica/build-log.md`.
 | | open | fixed |
 | --- | --- | --- |
 | S1 | 0 | 2 |
-| S2 | 0 | 2 |
+| S2 | 0 | 3 |
 | S3 | 0 | 6 |
 | S4 | 0 | 0 |
 
@@ -165,6 +165,21 @@ Expected: the oldest month, announced as such.
 Actual: 1 run in 3: months around the target loaded and replaced their estimated heights, the page shifted and the tracker relabelled the slider with a neighbouring month.
 Evidence: `F02-H1` failed once in 3 full runs, after the albums work made the page longer.
 Status: fixed (re-anchors on the target while the layout settles; 3 full runs green after).
+
+### BUG-011: on a phone, Favourites, Archive, Trash and the admin pages can't be reached
+
+- Severity: S2 (whole features unreachable on the main device, no workaround but typing URLs)
+- Flow / case: N-1
+- Screen: bottom navigation (all screens < 768 px)
+- Build: 996f188  Browser / device: Chromium 390px
+
+Steps
+1. Open the gallery on a phone. Look for Favourites, Archive, Trash or Libraries.
+
+Expected: a way in (the design spec had a "More" item in the bottom bar).
+Actual: the bottom bar had Photos, Folders, Albums, Search, and nothing else; the sidebar with the rest is desktop-only. Present since milestone 2; found while screenshotting the new Trash page on a phone.
+Evidence: `N-1 BUG-011` (phone project).
+Status: fixed (a fifth "More" item opens a page with the rest and Sign out).
 
 ## To check (not reproduced as bugs)
 

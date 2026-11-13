@@ -23,7 +23,10 @@ Checked by `server/app_test.go` (Go, real files), `e2e/slice.cjs` and `e2e/miles
 | S12 | Shared album | 2026-11-13 | done | — | the API client's "401 = sign in again" rule must not apply to visitors (BUG-009) |
 | — | multi-select, album picker, toasts | 2026-11-13 | done | range select (shift-click picks one at a time) | long-press must not also open the photo; a nested button inside the link would be invalid HTML, so the select circle is a sibling |
 | — | PWA, blur placeholders | 2026-11-13 | done | offline service worker (not needed on a LAN) | a 16 px WebP is simpler than ThumbHash and needs no decoder |
-| S15 | Trash | — | stub | could feature | — |
+| S15 | Trash | 2026-11-13 | done | — | restore means "put the file back": the index can't undelete a file it never owned |
+| S16 | People | 2026-11-13 | done | sharing one library between accounts (partner sharing, a could) | a password reset must end that person's sessions |
+| S17 | More (phones) | 2026-11-13 | done | — | BUG-011: half the app was unreachable on phones since milestone 2 |
+| — | live photos, ratings | 2026-11-13 | done | Google/Samsung motion photos (video embedded in the JPEG) | first schema migration; clips must be hidden from every list, and still reachable through share links |
 
 ## Backend findings
 

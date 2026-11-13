@@ -60,6 +60,7 @@ create table assets (
   description   text,
   rating        integer check (rating between 0 and 5),
   live_video_id integer references assets(id) on delete set null,  -- still -> its motion clip
+  content_id    text,                                -- Apple live-photo pairing id (still and clip share it)
   is_favorite   integer not null default 0 check (is_favorite in (0,1)),
   is_archived   integer not null default 0 check (is_archived in (0,1)),
   thumbhash     blob,                                -- blur placeholder: a ~16 px WebP (~100-300 bytes), stretched + blurred by the UI
@@ -75,6 +76,7 @@ create index assets_dir      on assets(library_id, dir);
 create index assets_hash     on assets(quick_hash);
 create index assets_todo     on assets(id) where thumbs_at is null and thumb_error is null and missing_at is null;
 create index assets_live     on assets(live_video_id);
+create index assets_content  on assets(content_id) where content_id is not null;
 create index assets_missing  on assets(missing_at) where missing_at is not null;
 
 create table albums (

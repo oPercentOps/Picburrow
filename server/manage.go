@@ -13,7 +13,7 @@ import (
 func (a *App) getAssets(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	// shortcut: no paging, capped at 5000; page like the timeline if libraries get bigger favourites lists
-	const own = `from assets a join libraries l on l.id = a.library_id where l.owner_id = ? and a.missing_at is null`
+	const own = `from assets a join libraries l on l.id = a.library_id where l.owner_id = ? and a.missing_at is null and ` + notLiveClip
 	switch {
 	case q.Get("favorite") == "1":
 		a.writeTiles(w, `select `+tileCols+` `+own+` and a.is_favorite = 1 and a.is_archived = 0
@@ -30,11 +30,16 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 		IDs      []int64 `json:"ids"`
 		Favorite *bool   `json:"favorite"`
 		Archived *bool   `json:"archived"`
+		Rating   *int    `json:"rating"` // 0 clears
 	}
 	if !readJSON(w, r, &in) {
 		return
 	}
-	if len(in.IDs) == 0 || len(in.IDs) > 5000 || (in.Favorite == nil && in.Archived == nil) {
+	if in.Rating != nil && (*in.Rating < 0 || *in.Rating > 5) {
+		httpError(w, http.StatusBadRequest, "Rating is 0 to 5 stars")
+		return
+	}
+	if len(in.IDs) == 0 || len(in.IDs) > 5000 || (in.Favorite == nil && in.Archived == nil && in.Rating == nil) {
 		httpError(w, http.StatusBadRequest, "Send 1 to 5000 ids and a field to change")
 		return
 	}
@@ -45,6 +50,9 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Archived != nil {
 		set, args = append(set, "is_archived = ?"), append(args, *in.Archived)
+	}
+	if in.Rating != nil {
+		set, args = append(set, "rating = nullif(?, 0)"), append(args, *in.Rating)
 	}
 	for _, id := range in.IDs {
 		args = append(args, id)
@@ -111,8 +119,8 @@ func (a *App) getFolders(w http.ResponseWriter, r *http.Request) {
 	}
 	// all indexed dirs below p (range scan on the assets_dir index), folded into immediate children
 	prefix := strings.TrimSuffix(p, "/") + "/"
-	rows, err := a.db.Query(`select dir, count(*) from assets where library_id = ? and missing_at is null
-		and dir >= ? and dir < ? group by dir`, libID, prefix, strings.TrimSuffix(prefix, "/")+"0") // '0' sorts right after '/'
+	rows, err := a.db.Query(`select a.dir, count(*) from assets a where a.library_id = ? and a.missing_at is null
+		and a.dir >= ? and a.dir < ? and `+notLiveClip+` group by a.dir`, libID, prefix, strings.TrimSuffix(prefix, "/")+"0") // '0' sorts right after '/'
 	if err != nil {
 		serverError(w, err)
 		return
@@ -147,7 +155,7 @@ func (a *App) getFolders(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Slice(dirs, func(i, j int) bool { return strings.ToLower(dirs[i].Name) < strings.ToLower(dirs[j].Name) })
 	assets, err := a.queryTiles(`select `+tileCols+` from assets a where a.library_id = ? and a.dir = ? and a.missing_at is null
-		order by a.taken_local desc, a.id desc`, libID, p)
+		and `+notLiveClip+` order by a.taken_local desc, a.id desc`, libID, p)
 	if err != nil {
 		serverError(w, err)
 		return
@@ -157,8 +165,8 @@ func (a *App) getFolders(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) folderSummary(libID int64, dir string) (folder, error) {
 	f := folder{Path: dir, Name: filepath.Base(dir)}
-	if err := a.db.QueryRow(`select count(*) from assets where library_id = ? and missing_at is null
-		and (dir = ? or (dir >= ? and dir < ?))`, libID, dir, dir+"/", dir+"0").Scan(&f.Count); err != nil {
+	if err := a.db.QueryRow(`select count(*) from assets a where a.library_id = ? and a.missing_at is null
+		and (a.dir = ? or (a.dir >= ? and a.dir < ?)) and `+notLiveClip, libID, dir, dir+"/", dir+"0").Scan(&f.Count); err != nil {
 		return f, err
 	}
 	covers, err := a.queryTiles(`select `+tileCols+` from assets a where a.library_id = ? and a.missing_at is null

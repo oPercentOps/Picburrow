@@ -36,6 +36,12 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("GET /api/libraries", a.auth(true, a.getLibraries))
 	m.HandleFunc("PATCH /api/libraries/{id}", a.auth(true, a.patchLibrary))
 	m.HandleFunc("GET /api/search", a.auth(false, a.getSearch))
+	m.HandleFunc("GET /api/trash", a.auth(false, a.getTrash))
+	m.HandleFunc("DELETE /api/trash", a.auth(false, a.deleteTrash))
+	m.HandleFunc("GET /api/users", a.auth(true, a.getUsers))
+	m.HandleFunc("POST /api/users", a.auth(true, a.postUser))
+	m.HandleFunc("PATCH /api/users/{id}", a.auth(true, a.patchUser))
+	m.HandleFunc("DELETE /api/users/{id}", a.auth(true, a.deleteUser))
 	m.HandleFunc("GET /api/albums", a.auth(false, a.getAlbums))
 	m.HandleFunc("POST /api/albums", a.auth(false, a.postAlbum))
 	m.HandleFunc("GET /api/albums/{id}", a.auth(false, a.getAlbum))
@@ -238,7 +244,7 @@ func (a *App) postLogout(w http.ResponseWriter, r *http.Request) {
 
 // visible = assets the user owns that belong on the timeline.
 const visible = `from assets a join libraries l on l.id = a.library_id
-	where l.owner_id = ? and a.missing_at is null and a.is_archived = 0`
+	where l.owner_id = ? and a.missing_at is null and a.is_archived = 0 and ` + notLiveClip
 
 func (a *App) getBuckets(w http.ResponseWriter, r *http.Request) {
 	rows, err := a.db.Query(`select substr(a.taken_local, 1, 7) as m, count(*) `+visible+` group by m order by m desc`, userFrom(r).ID)
@@ -273,7 +279,8 @@ type tile struct {
 	Duration *int   `json:"duration_ms,omitempty"`
 	V        *int64 `json:"v"` // thumbs version for cache busting; null = not generated yet
 	Err      bool   `json:"err,omitempty"`
-	PH       []byte `json:"ph,omitempty"` // tiny WebP placeholder, base64 in JSON
+	PH       []byte `json:"ph,omitempty"`   // tiny WebP placeholder, base64 in JSON
+	Live     *int64 `json:"live,omitempty"` // id of the live-photo clip
 }
 
 func (a *App) getTimeline(w http.ResponseWriter, r *http.Request) {
@@ -288,7 +295,7 @@ func (a *App) getTimeline(w http.ResponseWriter, r *http.Request) {
 		order by a.taken_local desc, a.id desc`, userFrom(r).ID, month, next)
 }
 
-const tileCols = `a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at, a.thumb_error is not null, a.thumbhash`
+const tileCols = `a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at, a.thumb_error is not null, a.thumbhash, a.live_video_id`
 
 func (a *App) queryTiles(q string, args ...any) ([]tile, error) {
 	rows, err := a.db.Query(q, args...)
@@ -299,7 +306,7 @@ func (a *App) queryTiles(q string, args ...any) ([]tile, error) {
 	out := []tile{}
 	for rows.Next() {
 		var t tile
-		if err := rows.Scan(&t.ID, &t.W, &t.H, &t.Type, &t.Taken, &t.Fav, &t.Duration, &t.V, &t.Err, &t.PH); err != nil {
+		if err := rows.Scan(&t.ID, &t.W, &t.H, &t.Type, &t.Taken, &t.Fav, &t.Duration, &t.V, &t.Err, &t.PH, &t.Live); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -322,6 +329,7 @@ func (a *App) writeTiles(w http.ResponseWriter, q string, args ...any) {
 type assetRow struct {
 	tile
 	Archived    bool     `json:"archived"`
+	Rating      *int     `json:"rating"`
 	Path        string   `json:"path"`
 	Dir         string   `json:"dir"`
 	Name        string   `json:"name"`
@@ -342,10 +350,10 @@ func (a *App) loadAsset(userID, id int64) (*assetRow, error) {
 	var x assetRow
 	err := a.db.QueryRow(`select a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
 		a.thumb_error is not null, a.path, a.dir, a.size, a.mime, a.tz_offset_min, a.camera_make, a.camera_model, a.lens,
-		a.lat, a.lon, a.library_id, a.is_archived
+		a.lat, a.lon, a.library_id, a.is_archived, a.rating, a.live_video_id
 		from assets a join libraries l on l.id = a.library_id where a.id = ? and l.owner_id = ?`, id, userID).
 		Scan(&x.ID, &x.W, &x.H, &x.Type, &x.Taken, &x.Fav, &x.Duration, &x.V, &x.Err, &x.Path, &x.Dir, &x.Size, &x.Mime,
-			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived)
+			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived, &x.Rating, &x.Live)
 	if err != nil {
 		return nil, err
 	}

@@ -1,36 +1,33 @@
 # Parity report: RaspictureGalleryNas vs Immich / PhotoPrism (browse + view slice)
 
-Build: albums, multi-select, search, share links, PWA, placeholders. Date: 2026-11-13.
+Build: + live photos, ratings, trash, family accounts, phone navigation. Date: 2026-11-13.
 
 | | score |
 | --- | --- |
-| **Overall** | **80.0** (features only; layout not measured, see below) |
-| Features | 80.0 / 100, must-haves **18 of 18** |
+| **Overall** | **87.1** (features only; layout not measured, see below) |
+| Features | 87.1 / 100, must-haves **18 of 18**, should-haves **10 of 10** |
 | Layout | not measured |
 | Open bugs | 0 S1, 0 S2 (`replica/bugs.md`) |
 
 **Verdict: shippable** by this report's bar: every must-have works, the feature score reaches 80, and no S1 or S2 bug is open (`replica/bugs.md`). That is a family/LAN release; the real-hardware checks below still decide whether it is a *Raspberry Pi 3* release.
 
-Up from 67.1: albums, multi-select, share links, the installable app and blur placeholders are done; search is partial (no rating filter, because ratings are not built).
+Up from 80.0: live photos, star ratings (search by stars), Trash with restore-by-putting-back and a 30-day purge, family accounts, and phone navigation to every page. Everything left is a could-have.
 
 ## Feature parity (parity.py)
 
-features 80.0  (40 counted, must-haves 18 of 18 done)
+features 87.1  (40 counted, must-haves 18 of 18 done)
 
 ## By area, weakest first
-- search                        33.3  (2 features)
-- organize                      58.3  (8 features)
+- search                        66.7  (2 features)
 - sharing                       66.7  (2 features)
-- auth                          80.0  (2 features)
-- view                          81.8  (9 features)
+- organize                      75.0  (8 features)
 - browse                        88.9  (8 features)
 - library                       90.0  (8 features)
+- view                          90.9  (9 features)
+- auth                         100.0  (2 features)
 - clients                      100.0  (1 features)
 
 ## Missing, in build order
-- [should] view: Live/motion photos (still + short video pair), no  (PhotoPrism plays live photos on hover and in slideshows)
-- [should] auth: Multiple users with own libraries, partial  (ownership enforced on every query; no UI to add users yet)
-- [should] search: Search by date range, folder path, filename, camera, media type, rating, partial  (S11: words in file name/folder/camera/lens, date range, photos/videos, favourites; query in the URL. No rating filter (ratings not built))
 - [could] browse: Map of geotagged photos, no  (needs map tiles from an external provider)
 - [could] browse: On this day / memories, no
 - [could] library: Write favourites/albums back to XMP sidecars, no  (Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise)
@@ -38,8 +35,6 @@ features 80.0  (40 counted, must-haves 18 of 18 done)
 - [could] organize: Duplicate finder (exact hash), no  (Immich uses ML similarity; exact content hash is our 1 GB substitute)
 - [could] organize: Hierarchical tags (read from XMP/IPTC), no  (Immich tags.md)
 - [could] organize: Locked folder behind a PIN, no  (Immich locked-folder.md: 15 min unlocked session)
-- [could] organize: Star rating, no  (Immich search filter + xmp:Rating)
-- [could] organize: Trash with 30-day restore, no  (read-only mounts mean trash only affects the index)
 - [could] search: Reverse geocoding (place names) from offline dataset, no  (Immich uses GeoNames loaded locally; a city-level extract keeps it small)
 - [could] sharing: Partner sharing (whole library to another user), no  (Immich partner-sharing.md; one-way)
 - [could] view: Basic edit (rotate), no
@@ -85,10 +80,12 @@ Layout is 20% of the overall score; colour is ignored on purpose (the rebrand ch
 | F02 find a month | date scrubber | scrubber, keyboard slider, sized by photo count | parity |
 | F03 viewer | favourite, archive, info, download, plus edit, add to album, share, stacks | favourite, archive, info, download, zoom, swipe, add to album | gap: edit, stacks |
 | F05 albums | albums, shared with users as editor/viewer | albums from a selection or the viewer; share with anyone by link | gap: sharing with other accounts |
+| Accounts | users with their own libraries; partner sharing | family accounts with their own folder, admin resets and deletes | gap: partner sharing (a could) |
+| Trash | deleted-from-disk files go to trash, 30 days | same, and putting the file back restores albums and favourites | keep (better) |
 | Search | metadata filters + CLIP smart search + OCR + faces | words in name/folder/camera, date range, type, favourites | keep; ML search stays out (no RAM) |
 | F06 share | public link with expiry, password, allowed actions | link with password, expiry, view-only; visitors see nothing else | parity |
 | Loading | thumbhash blur, small, large | 16 px WebP blur, small, large | parity |
-| Live photos | PhotoPrism plays them on hover | shown as two items | build (should) |
+| Live photos | PhotoPrism plays them on hover | one item with a Live badge; Play shows the clip over the still | parity (Apple pairs; Google/Samsung embedded clips not read) |
 | Phone app | Immich native apps; PhotoPrism installable PWA | installable web app (manifest, icons) | parity with PhotoPrism |
 
 ## Measured on the build box (x86 container, not a Pi)
@@ -102,12 +99,12 @@ Layout is 20% of the overall score; colour is ignored on purpose (the rebrand ch
 
 The 48 MP case is over the 350 MB target set in `architecture.md`. It still fits a 1 GB Pi (about 750 MB usable) only because thumbnails are made one at a time (`--workers 1`). Keep that default. A real 1 GB Pi 3 with real iPhone files is still the deciding test.
 
-## Top five to build next
+## Top five to build next (all could-haves)
 
-1. **Live photos**: pair the still and its short video, play on press/hover. The last should-have.
-2. **Ratings + rating filter**: completes search, and reads `xmp:Rating` from sidecars.
-3. **Trash page** (S15) with restore and the 30-day purge the schema already supports.
-4. **User management UI**: the API enforces ownership; admins need a page to add family members.
-5. **The real-hardware pass**: a 1 GB Pi 3 with real iPhone HEICs, Safari on an iPhone, a screen reader.
+1. **The real-hardware pass**: a 1 GB Pi 3 with real iPhone HEICs and live photos, Safari on an iPhone, a screen reader. Not a feature, but it decides the release.
+2. **XMP sidecar read**: descriptions, ratings and tags that other tools wrote next to the photos.
+3. **Duplicate finder** by exact hash: cheap on a Pi, useful after years of phone backups.
+4. **On this day**: a small row on the timeline; families love it.
+5. **Rotate**: stored in the database (the files are read-only), applied to thumbnails.
 
-Then `/replica-entrepreneur`: the behaviour table already shows wins on install, moved files, unmounted shares and read-only mounts.
+Then `/replica-entrepreneur`: the behaviour table already shows wins on install, moved files, unmounted shares, read-only mounts and the trash.
