@@ -4,6 +4,7 @@
   import { api, ApiError, type Tile } from '$lib/api';
   import TileGrid from '$lib/TileGrid.svelte';
   import Viewer from '$lib/Viewer.svelte';
+  import { SOURCE_URL } from '$lib/source';
   import { Lock, Link as LinkIcon } from '@lucide/svelte';
 
   // A visitor's view of a shared album: no account, everything goes through the link token.
@@ -68,6 +69,7 @@
   {:else if error}
     <p class="error-msg" role="alert">{error}</p>
   {/if}
+  <footer class="muted">Shared with Picburrow, free software. <a href={SOURCE_URL} rel="noopener">Source code</a></footer>
 </div>
 
 {#if page.state.viewer && data && !data.locked}
@@ -79,6 +81,8 @@
   .page { min-height: 100dvh; padding: var(--space-5) var(--space-1) var(--space-7); }
   header { padding: 0 var(--space-3) var(--space-5); }
   h1 { overflow-wrap: anywhere; }
+  footer { padding: var(--space-6) var(--space-3) 0; font: var(--text-xs) var(--font-sans); text-align: center; }
+  footer a { color: inherit; }
   .gate { display: grid; gap: var(--space-5); width: min(100%, 380px); margin: 15dvh auto 0; padding: 0 var(--space-4); }
   .gate > :global(svg) { width: 40px; height: 40px; color: var(--text-muted); }
   @media (min-width: 768px) { .page { padding: var(--space-6) var(--space-6) var(--space-7); } header { padding: 0 0 var(--space-5); } }
