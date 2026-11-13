@@ -42,7 +42,9 @@
       if (dragging || raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        const i = buckets.findIndex((b) => (document.getElementById(`m-${b.month}`)?.getBoundingClientRect().bottom ?? 0) > 80);
+        // at the very bottom the oldest month can't reach the top of the screen, but it is the current one (BUG-006)
+        const atEnd = innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+        const i = atEnd ? buckets.length - 1 : buckets.findIndex((b) => (document.getElementById(`m-${b.month}`)?.getBoundingClientRect().bottom ?? 0) > 80);
         if (i >= 0) current = i;
       });
     };

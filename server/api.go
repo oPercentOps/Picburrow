@@ -158,7 +158,7 @@ func (a *App) postSetup(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	go a.scanAll()
+	a.startScan()
 	writeJSON(w, User{ID: uid, Username: in.Username, IsAdmin: true})
 }
 
@@ -500,7 +500,7 @@ func (a *App) postScan(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusNotFound, "No such library")
 		return
 	}
-	go a.scanAll()
+	a.startScan()
 	w.WriteHeader(http.StatusAccepted)
 }
 

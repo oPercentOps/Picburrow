@@ -21,11 +21,13 @@
   const at = $derived(seq ? seq.indexOf(id) : -1);
   const prevId = $derived(seq ? (at > 0 ? seq[at - 1] : null) : asset?.prev_id);
   const nextId = $derived(seq ? (at >= 0 && at < seq.length - 1 ? seq[at + 1] : null) : asset?.next_id);
+  // after next/prev, `asset` still holds the previous photo until the new one loads: act only when they match (BUG-005)
+  const ready = $derived(asset?.id === id);
   const fav = $derived(asset ? (overrides[asset.id]?.fav ?? asset.fav) : false);
   const archived = $derived(asset ? (overrides[asset.id]?.archived ?? asset.archived) : false);
 
   async function save(change: { favorite?: boolean; archived?: boolean }) {
-    if (!asset) return;
+    if (!asset || !ready) return;
     const target = asset.id;
     saveError = '';
     try {
@@ -144,13 +146,13 @@
     <button class="btn icon-btn" onclick={onclose} aria-label="Close"><X aria-hidden="true" /></button>
     <div class="actions">
       {#if asset}
-        <button class="btn icon-btn" onclick={() => save({ favorite: !fav })} aria-label="Favourite" aria-pressed={fav}>
+        <button class="btn icon-btn" onclick={() => save({ favorite: !fav })} aria-label="Favourite" aria-pressed={fav} disabled={!ready}>
           <Heart aria-hidden="true" fill={fav ? 'currentColor' : 'none'} /></button>
-        <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? 'Unarchive' : 'Archive'}>
+        <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? 'Unarchive' : 'Archive'} disabled={!ready}>
           {#if archived}<ArchiveRestore aria-hidden="true" />{:else}<Archive aria-hidden="true" />{/if}</button>
       {/if}
       <button class="btn icon-btn" onclick={() => (showInfo = !showInfo)} aria-label="Details" aria-pressed={showInfo}><Info aria-hidden="true" /></button>
-      {#if asset}<a class="btn icon-btn" href="/api/assets/{asset.id}/original?download=1" aria-label="Download original"><Download aria-hidden="true" /></a>{/if}
+      {#if asset}<a class="btn icon-btn" href="/api/assets/{id}/original?download=1" aria-label="Download original"><Download aria-hidden="true" /></a>{/if}
     </div>
   </div>
   {#if prevId}<button class="btn icon-btn nav prev" onclick={() => go(prevId)} aria-label="Previous"><ChevronLeft aria-hidden="true" /></button>{/if}

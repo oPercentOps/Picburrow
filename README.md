@@ -27,12 +27,13 @@ For a Pi, build on any machine with `make pi` and copy `raspicture-arm64` over: 
 ## Develop
 
 ```bash
-make test                               # Go tests + layout self-check + svelte-check
-cd web && npm run dev                   # UI on :5173, proxies /api to a server on :8080
-e2e/make-fixtures.sh /tmp/lib           # fake phone library
-./raspicture --data-dir /tmp/d --listen 127.0.0.1:8090 &
-node e2e/slice.cjs /tmp/lib             # Playwright end-to-end (fresh data dir), screenshots to replica/clone-screens
-node e2e/milestone2.cjs /tmp/lib        # then this one, against the same server
+make test        # Go tests + layout self-check + svelte-check
+make e2e         # Playwright: starts the real binary on a fresh data dir with a generated photo library
+cd web && npm run dev   # UI on :5173, proxies /api to a server on :8080
 ```
+
+The e2e suite (`e2e/*.spec.ts`) follows the flows in `replica/test-plan.md` on desktop (1440 px, light) and phone
+(390 px, dark, touch). Every test fails on console errors, 5xx responses or WCAG 2.1 AA violations (axe).
+Screenshots land in `replica/clone-screens/`.
 
 Planning docs: `replica/` (recon, architecture, design tokens, build log).

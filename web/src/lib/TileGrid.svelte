@@ -25,6 +25,12 @@
   });
   const ids = $derived(seq ? tiles.map((t) => t.id) : undefined);
   const fav = (t: Tile) => overrides[t.id]?.fav ?? t.fav;
+  // the name must contain the text the tile shows (WCAG 2.5.3, voice control): duration, "No preview"
+  const label = (t: Tile) =>
+    `${t.type === 'video' ? 'Video' : 'Photo'} from ${formatDay(t.taken)}` +
+    (t.type === 'video' && t.duration_ms ? `, ${formatDuration(t.duration_ms)}` : '') +
+    (t.err || broken[t.id] ? ', No preview' : '') +
+    (fav(t) ? ', favourite' : '');
 </script>
 
 {#each groups as g (g.day)}
@@ -34,7 +40,7 @@
       {#each row as box (g.items[box.index].id)}
         {@const t = g.items[box.index]}
         <a class="tile" href="/photos/{t.id}" style:width="{box.width}px" onclick={(e) => openViewer(t.id, e, ids)}
-          aria-label="{t.type === 'video' ? 'Video' : 'Photo'} from {formatDay(t.taken)}{fav(t) ? ', favourite' : ''}">
+          aria-label={label(t)}>
           {#if t.err || broken[t.id]}
             <span class="ph err"><ImageOff aria-hidden="true" /><span>No preview</span></span>
           {:else}

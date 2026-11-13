@@ -1,10 +1,12 @@
 #!/bin/bash
-# Builds a fake phone-backup library for e2e/slice.cjs: 128 dated photos in 8 months (landscape, portrait,
-# panorama, square), 3 dateless videos, a 48 MP JPEG, a corrupt file and a Synology @eaDir that must be skipped.
+# Builds a fake phone-backup library for the e2e specs: 128 dated photos in 8 months of 2026 (landscape, portrait,
+# panorama, square), 3 dateless videos, a 48 MP JPEG, a corrupt file, a Synology @eaDir that must be skipped,
+# and 3 photos with accented/emoji/HTML-looking/long names in an emoji folder dated 2025-12-31 23:30 +01:00.
 # Needs ffmpeg, exiftool and vips. Usage: e2e/make-fixtures.sh <empty-dir>
 set -euo pipefail
 L=${1:?usage: make-fixtures.sh <empty-dir>}
 mkdir -p "$L/DCIM/Camera" "$L/@eaDir"
+L=$(realpath "$L")
 cd "$L"
 srcs=(testsrc2 mandelbrot "gradients=n=3" "cellauto=rule=110" "life=mold=10:ratio=0.3" rgbtestsrc smptehdbars "gradients=n=5:speed=0.2")
 sizes=(1600x1200 1200x1600 1600x1200 1600x900 1200x1200 2400x800 1600x1200 1080x1920)
@@ -22,4 +24,10 @@ vips zone big.v 8000 6000 && vips jpegsave big.v DCIM/Camera/IMG_big_48mp.jpg --
 exiftool -q -overwrite_original "-DateTimeOriginal=2026:11:01 09:00:00" DCIM/Camera/IMG_big_48mp.jpg
 echo "not really a jpeg" > DCIM/Camera/IMG_broken.jpg
 cp DCIM/Camera/IMG_20260103_1.jpg @eaDir/should_be_skipped.jpg
+# hostile and international names, all on New Year's Eve 23:30 +01:00 (tests day grouping across browser time zones)
+mkdir -p "Vacances été 🏖️"
+cp DCIM/Camera/IMG_20260103_1.jpg "Vacances été 🏖️/Plage à Nice 😎.jpg"
+cp DCIM/Camera/IMG_20260111_2.jpg "Vacances été 🏖️/<img src=x onerror=alert(1)>.jpg"
+cp DCIM/Camera/IMG_20260118_3.jpg "Vacances été 🏖️/$(printf 'very_long_file_name_%.0s' 1 2 3 4)end.jpg"
+exiftool -q -overwrite_original "-DateTimeOriginal=2025:12:31 23:30:00" -OffsetTimeOriginal=+01:00 "Vacances été 🏖️"
 echo "fixtures: $(find "$L" -type f | wc -l) files in $L"

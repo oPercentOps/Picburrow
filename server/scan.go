@@ -99,7 +99,8 @@ func (a *App) scanLibrary(libID int64) error {
 				}
 				return nil
 			}
-			if excl(p) {
+			// patterns match the path inside the library folder, not the folders above it (BUG-002)
+			if rel, _ := filepath.Rel(root, p); rel != "." && excl(rel) {
 				if d.IsDir() {
 					return fs.SkipDir
 				}
@@ -250,7 +251,8 @@ func quickHash(path string, size int64) ([32]byte, error) {
 	return [32]byte(h.Sum(nil)), nil
 }
 
-// compileGlobs supports *, ?, ** and {a,b}, matched case-insensitively against the full path.
+// compileGlobs supports *, ?, ** and {a,b}, matched case-insensitively against a path relative to the
+// library folder (e.g. DCIM/.thumbnails/a.jpg).
 func compileGlobs(globs []string) (func(string) bool, error) {
 	var res []*regexp.Regexp
 	for _, g := range globs {
@@ -323,17 +325,35 @@ func mimeFromExt(p string) (string, string) {
 	return "application/octet-stream", "image"
 }
 
-// scanAll scans every library. A call that arrives during a scan queues one more pass instead of being
-// dropped, so a library edited mid-scan is still picked up; the caller that started the scan returns after it.
+// scanAll scans every library and returns when done. A call that arrives during a scan queues one more
+// pass instead of being dropped, so a library edited mid-scan is still picked up.
 func (a *App) scanAll() {
+	if a.claimScan() {
+		a.runScans()
+	}
+}
+
+// startScan is scanAll in the background. The scan is marked running before it returns, so the next
+// /api/jobs already reports it (BUG-001: the UI briefly showed an empty, idle library after setup).
+func (a *App) startScan() {
+	if a.claimScan() {
+		go a.runScans()
+	}
+}
+
+// claimScan marks a scan as running; if one already is, it queues another pass and returns false.
+func (a *App) claimScan() bool {
 	a.scan.mu.Lock()
+	defer a.scan.mu.Unlock()
 	if a.scan.running {
 		a.scan.again = true
-		a.scan.mu.Unlock()
-		return
+		return false
 	}
 	a.scan.running, a.scan.found, a.scan.lastErr = true, 0, ""
-	a.scan.mu.Unlock()
+	return true
+}
+
+func (a *App) runScans() {
 	defer a.wakeThumbs()
 	for {
 		ids, err := queryIDs(a.db, "select id from libraries")

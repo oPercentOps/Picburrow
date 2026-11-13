@@ -97,7 +97,11 @@ func (a *App) makeThumbs(id int64, src, typ string) error {
 	for _, size := range []string{"l", "s"} { // large first: the small one is made from it, so the original is decoded once
 		box := thumbSizes[size]
 		final := a.thumbPath(id, size)
-		tmp := strings.TrimSuffix(final, ".webp") + ".tmp.webp"
+		// absolute: vipsthumbnail resolves a relative -o against the input photo's folder (BUG-003)
+		tmp, err := filepath.Abs(strings.TrimSuffix(final, ".webp") + ".tmp.webp")
+		if err != nil {
+			return err
+		}
 		// vipsthumbnail decodes with shrink-on-load and auto-rotates from EXIF; strip drops metadata (GPS) from thumbs;
 		// effort=0 encodes WebP ~2x faster for ~30% bigger files: CPU is the scarce resource on a Pi
 		if err := a.run("vipsthumbnail", src, "--size", box, "-o", tmp+"[Q=75,strip,effort=0]"); err != nil {

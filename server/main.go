@@ -36,6 +36,9 @@ func main() {
 	workers := flag.Int("workers", 1, "parallel thumbnail decodes (1 for a 1 GB Pi; 2-4 with more RAM)")
 	flag.Parse()
 
+	if abs, err := filepath.Abs(*dataDir); err == nil {
+		*dataDir = abs // log and child processes see where data really is
+	}
 	if err := os.MkdirAll(filepath.Join(*dataDir, "thumbs"), 0o755); err != nil {
 		log.Fatal(err)
 	}

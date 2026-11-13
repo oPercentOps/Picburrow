@@ -417,3 +417,96 @@ func patch(t *testing.T, c *http.Client, url, body string) int {
 	r.Body.Close()
 	return r.StatusCode
 }
+
+// BUG-001: right after setup (or a library change) /api/jobs reported "idle, nothing to do" until the scan
+// goroutine got going, so the UI showed "No photos here yet" and no indexing banner. startScan must mark the
+// scan as running before it returns, so the very next /api/jobs sees it.
+func TestStartScanIsVisibleImmediately(t *testing.T) {
+	a, _ := newTestApp(t)
+	a.startScan()
+	a.scan.mu.Lock()
+	running := a.scan.running
+	a.scan.mu.Unlock()
+	if !running {
+		t.Fatal("startScan returned before the scan was marked running")
+	}
+	waitScan(t, a)
+}
+
+// BUG-002: exclusion patterns were matched against the full path, so the default "skip hidden folders"
+// pattern also matched a library that itself lives under a hidden folder, and every file was skipped.
+func TestLibraryUnderHiddenFolder(t *testing.T) {
+	if _, err := exec.LookPath("exiftool"); err != nil {
+		t.Skip("exiftool not installed")
+	}
+	lib := filepath.Join(t.TempDir(), ".local", "photos")
+	os.MkdirAll(filepath.Join(lib, ".thumbnails"), 0o755)
+	os.WriteFile(filepath.Join(lib, "a.jpg"), []byte("x"), 0o644)
+	os.WriteFile(filepath.Join(lib, ".thumbnails", "skip.jpg"), []byte("x"), 0o644)
+	a, srv := newTestApp(t)
+	if code := post(t, client(t), srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	var paths []string
+	rows, _ := a.db.Query("select path from assets")
+	for rows.Next() {
+		var p string
+		rows.Scan(&p)
+		paths = append(paths, p)
+	}
+	rows.Close()
+	if len(paths) != 1 || filepath.Base(paths[0]) != "a.jpg" {
+		t.Fatalf("indexed %v, want only a.jpg (hidden subfolder skipped, hidden parent of the library ignored)", paths)
+	}
+}
+
+// BUG-003: with a relative --data-dir (the README's own `--data-dir ./data`), every thumbnail failed:
+// vipsthumbnail resolves a relative -o path against the input photo's folder, not the working directory.
+func TestRelativeDataDir(t *testing.T) {
+	for _, tool := range []string{"vipsthumbnail", "ffmpeg", "exiftool"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	work, lib := t.TempDir(), t.TempDir()
+	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", filepath.Join(lib, "a.jpg"))
+	t.Chdir(work)
+	os.MkdirAll(filepath.Join("data", "thumbs"), 0o755)
+	db, err := openDB("data")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	a := &App{db: db, dataDir: "data", inflight: inflight{m: map[int64]chan struct{}{}}, decodeSem: make(chan struct{}, 1)}
+	db.Exec("insert into users (username, password_hash, is_admin) values ('ann', 'x', 1)")
+	db.Exec(`insert into libraries (owner_id, name, import_paths) values (1, 'l', ?)`, `["`+lib+`"]`)
+	db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime) values (1, ?, ?, 1, 1, x'00', 'image', 'image/jpeg')`,
+		filepath.Join(lib, "a.jpg"), lib)
+	if err := a.ensureThumbs(context.Background(), 1); err != nil {
+		t.Fatalf("thumbnail with a relative data dir: %v", err)
+	}
+	for _, s := range []string{"s", "l"} {
+		if !fileExists(a.thumbPath(1, s)) {
+			t.Errorf("%s thumbnail not in the data dir", s)
+		}
+	}
+	if entries, _ := os.ReadDir(lib); len(entries) != 1 {
+		t.Errorf("thumbnail files leaked into the photo folder: %d entries", len(entries))
+	}
+}
+
+// S01-N2: guessing passwords is limited to 10 tries per minute per address.
+func TestLoginRateLimit(t *testing.T) {
+	a, srv := newTestApp(t)
+	a.loginLimit = newLimiter(10)
+	c := client(t)
+	for i := 1; i <= 10; i++ {
+		if code := post(t, c, srv.URL+"/api/login", `{"username":"x","password":"y"}`); code != 401 {
+			t.Fatalf("attempt %d = %d, want 401", i, code)
+		}
+	}
+	if code := post(t, c, srv.URL+"/api/login", `{"username":"x","password":"y"}`); code != 429 {
+		t.Fatalf("11th attempt = %d, want 429", code)
+	}
+}
