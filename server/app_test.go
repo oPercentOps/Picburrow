@@ -1057,3 +1057,28 @@ func TestCaptureDetails(t *testing.T) {
 		t.Errorf("details without a session = %d", r.StatusCode)
 	}
 }
+
+func TestCheckFolderNamesTheBlockingFolder(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root passes through every folder")
+	}
+	home := filepath.Join(t.TempDir(), "home") // like Ubuntu's private /home/<user> (mode 750, another owner)
+	photos := filepath.Join(home, "Pictures", "Phone")
+	if err := os.MkdirAll(photos, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := checkFolder(photos); got != "" {
+		t.Fatalf("readable folder: %q", got)
+	}
+	if err := os.Chmod(home, 0o600); err != nil { // no x: can't pass through
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(home, 0o755) })
+	got := checkFolder(photos)
+	if !strings.Contains(got, "isn't allowed through "+home+" ") {
+		t.Fatalf("got %q, want it to name %s", got, home)
+	}
+	if got := checkFolder(filepath.Join(filepath.Dir(home), "nope")); !strings.Contains(got, "doesn't exist") {
+		t.Fatalf("missing folder: %q", got)
+	}
+}

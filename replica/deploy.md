@@ -54,14 +54,14 @@ Either way the workflow builds and attaches the files. A tag that doesn't match 
 ## Live (2026-11-13)
 
 - **Repository**: public, https://github.com/oPercentOps/RaspictureGalleryNas (AGPL source offer in the app now resolves).
-- **Release**: https://github.com/oPercentOps/RaspictureGalleryNas/releases/tag/0.1.1, built by release run 43426194169 (tests incl. HEIC, both packages):
+- **Release** (marked pre-release until the real-Pi test): https://github.com/oPercentOps/RaspictureGalleryNas/releases/tag/0.1.1, built by release run 43426194169 (tests incl. HEIC, both packages):
   ```
   435c7948551e199692958b1cd24f4689a89a0d018a7551bb872ed33166bc0254  picburrow_0.1.1_amd64.deb
   a003a693b3a8ffb236dc282dce5c36036cb395959bea61b390799812fe8b47cb  picburrow_0.1.1_arm64.deb
   ```
   Checked from outside: the public download of the arm64 package matches `SHA256SUMS`, Version 0.1.1, Depends include the HEVC decoder.
 - **Landing page**: https://opercentops.github.io/RaspictureGalleryNas/ (deployment reported success; not opened from the build session, whose network doesn't reach github.io).
-- **Not yet**: domain (picburrow.org unregistered as of the brand check), pre-release flag (the release is marked full), real Pi 3 and real iPhone library tests.
+- **Not yet**: domain (picburrow.org unregistered as of the brand check), real Pi 3 and real iPhone library tests.
 - **Maintenance note**: the workflow's actions (checkout v4, setup-go v5, setup-node v4) run on GitHub's deprecated Node 20 runtime; bump them when GitHub removes it.
 
 ## Landing page

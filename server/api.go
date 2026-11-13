@@ -191,6 +191,9 @@ func checkFolder(p string) string {
 		return "Use a full path that starts with /"
 	}
 	st, err := os.Stat(p)
+	if errors.Is(err, fs.ErrPermission) {
+		return "The server isn't allowed through " + blockingDir(p) + " to reach that folder. Give the picburrow user access to it (README: Photo folder permissions)"
+	}
 	if err != nil {
 		return "That folder doesn't exist or the server can't reach it"
 	}
@@ -203,6 +206,20 @@ func checkFolder(p string) string {
 	}
 	f.Close()
 	return ""
+}
+
+// blockingDir returns the first folder on the way to p that this process may not pass through
+// (e.g. a private /home/<user> or a /media/<user> that only its owner may enter).
+func blockingDir(p string) string {
+	cur := "/"
+	for _, part := range strings.Split(strings.Trim(filepath.Clean(p), "/"), "/") {
+		next := filepath.Join(cur, part)
+		if _, err := os.Stat(next); errors.Is(err, fs.ErrPermission) {
+			return cur
+		}
+		cur = next
+	}
+	return filepath.Dir(p)
 }
 
 func (a *App) postLogin(w http.ResponseWriter, r *http.Request) {
