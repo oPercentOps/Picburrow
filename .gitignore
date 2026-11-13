@@ -6,3 +6,4 @@ web/.svelte-kit/
 /picburrow
 /picburrow-arm64
 *.deb
+/SHA256SUMS

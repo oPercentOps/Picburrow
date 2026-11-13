@@ -1,0 +1,45 @@
+# Push a tag v<VERSION> (e.g. v0.1.0) to build both .deb packages and open a *draft* release.
+# Nothing is public until the owner reviews the draft on GitHub and presses Publish.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the draft release and upload its files
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Tag matches VERSION
+        run: test "$GITHUB_REF_NAME" = "v$(cat VERSION)" || { echo "tag $GITHUB_REF_NAME but VERSION says $(cat VERSION)"; exit 1; }
+
+      - name: Image tools for the tests
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libvips-tools libimage-exiftool-perl ffmpeg
+
+      - name: Build and test
+        run: make all test
+
+      - name: Packages
+        run: |
+          make deb deb-pi
+          sha256sum picburrow_*.deb > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" picburrow_*.deb SHA256SUMS --draft --title "Picburrow $(cat VERSION)" --generate-notes
