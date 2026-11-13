@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { SLEEP_CHOICES, sleepSeconds, setSleepSeconds } from '$lib/sleep';
@@ -22,7 +23,7 @@
   let sleep = $state(sleepSeconds());
   // started by sleep mode: the first touch, click, key or mouse move goes back to where the person was
   const idle = page.url.searchParams.has('idle');
-  const label = (s: number) => (s === 0 ? 'Sleep: off' : `Sleep: ${s < 60 ? s + ' s' : s / 60 + ' min'}`);
+  const label = (s: number) => (s === 0 ? t('Sleep: off') : t('Sleep: {time}', { time: s < 60 ? s + ' s' : s / 60 + ' min' }));
   const canFull = typeof document !== 'undefined' && !!document.fullscreenEnabled;
 
   let queue: Tile[] = [];
@@ -131,40 +132,40 @@
   });
 </script>
 
-<svelte:head><title>Slideshow · Picburrow</title></svelte:head>
+<svelte:head><title>{t('Slideshow')} · Picburrow</title></svelte:head>
 <svelte:window onkeydown={onkey} />
 
-<div class="show" class:idle={!controls || idle} role="region" aria-label="Slideshow" onpointermove={wake} onpointerdown={wake}
+<div class="show" class:idle={!controls || idle} role="region" aria-label={t('Slideshow')} onpointermove={wake} onpointerdown={wake}
   style:--drift="{seconds + FADE / 1000}s">
   {#each slides as s (s.key)}
     <div class="slide" class:out={s.out}><img src={s.src} alt="{formatDay(s.tile.taken)}" draggable="false" /></div>
   {/each}
 
   {#if empty}
-    <div class="msg"><Images aria-hidden="true" /><p>No photos to show yet. They appear here once their previews are made.</p>
-      <button class="btn secondary" onclick={exit}>Back to Photos</button></div>
+    <div class="msg"><Images aria-hidden="true" /><p>{t('No photos to show yet. They appear here once their previews are made.')}</p>
+      <button class="btn secondary" onclick={exit}>{t('Back to Photos')}</button></div>
   {:else if error}
-    <div class="msg"><p role="alert">{error}</p><button class="btn secondary" onclick={exit}>Back to Photos</button></div>
+    <div class="msg"><p role="alert">{error}</p><button class="btn secondary" onclick={exit}>{t('Back to Photos')}</button></div>
   {/if}
 
   <div class="bar" class:hidden={!controls || idle}>
-    <button class="btn icon-btn" onclick={exit} aria-label="Stop slideshow"><X aria-hidden="true" /></button>
+    <button class="btn icon-btn" onclick={exit} aria-label={t('Stop slideshow')}><X aria-hidden="true" /></button>
     <span class="spacer"></span>
-    <label class="every"><span class="sr-only">Change photo every</span>
+    <label class="every"><span class="sr-only">{t('Change photo every')}</span>
       <select value={seconds} onchange={(e) => setSeconds(Number(e.currentTarget.value))}>
         {#each CHOICES as c}<option value={c}>{c < 60 ? `${c} s` : '1 min'}</option>{/each}
       </select>
     </label>
-    <label><span class="sr-only">Start the slideshow by itself when the screen is left alone</span>
+    <label><span class="sr-only">{t('Start the slideshow by itself when the screen is left alone')}</span>
       <select value={sleep} onchange={(e) => setSleepSeconds((sleep = Number(e.currentTarget.value)))}>
         {#each SLEEP_CHOICES as c}<option value={c}>{label(c)}</option>{/each}
       </select>
     </label>
-    <button class="btn icon-btn" onclick={togglePause} aria-label={paused ? 'Play' : 'Pause'}>
+    <button class="btn icon-btn" onclick={togglePause} aria-label={paused ? t('Play') : t('Pause')}>
       {#if paused}<Play aria-hidden="true" />{:else}<Pause aria-hidden="true" />{/if}
     </button>
     {#if canFull}
-      <button class="btn icon-btn" onclick={toggleFull} aria-label={full ? 'Exit full screen' : 'Full screen'}>
+      <button class="btn icon-btn" onclick={toggleFull} aria-label={full ? t('Exit full screen') : t('Full screen')}>
         {#if full}<Minimize aria-hidden="true" />{:else}<Maximize aria-hidden="true" />{/if}
       </button>
     {/if}

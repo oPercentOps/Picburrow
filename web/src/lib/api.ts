@@ -1,4 +1,5 @@
 import { goto } from '$app/navigation';
+import { tServer } from './i18n';
 
 export type User = { id: number; username: string; is_admin: boolean };
 export type Tile = {
@@ -65,7 +66,7 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
     try {
       msg = (await res.json()).error ?? msg;
     } catch {}
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, tServer(msg));
   }
   return res.status === 204 || res.status === 202 ? (undefined as T) : res.json();
 }

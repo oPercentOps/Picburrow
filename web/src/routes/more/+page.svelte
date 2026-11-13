@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { api, type User } from '$lib/api';
   import { SOURCE_URL } from '$lib/source';
@@ -8,14 +9,14 @@
   let me = $state<User | null>(null);
   api<User>('/api/me').then((u) => (me = u));
   const links = [
-    { href: '/favorites', label: 'Favourites', icon: Heart },
-    { href: '/archive', label: 'Archive', icon: Archive },
-    { href: '/trash', label: 'Trash', icon: Trash2 }
+    { href: '/favorites', label: t('Favourites'), icon: Heart },
+    { href: '/archive', label: t('Archive'), icon: Archive },
+    { href: '/trash', label: t('Trash'), icon: Trash2 }
   ];
   const admin = [
-    { href: '/admin/libraries', label: 'Libraries', icon: HardDrive },
-    { href: '/admin/jobs', label: 'Indexing', icon: Activity },
-    { href: '/admin/users', label: 'People', icon: Users }
+    { href: '/admin/libraries', label: t('Libraries'), icon: HardDrive },
+    { href: '/admin/jobs', label: t('Indexing'), icon: Activity },
+    { href: '/admin/users', label: t('People'), icon: Users }
   ];
   async function logout() {
     await api('/api/logout', { method: 'POST', body: {} });
@@ -23,23 +24,23 @@
   }
 </script>
 
-<svelte:head><title>More · Picburrow</title></svelte:head>
+<svelte:head><title>{t('More')} · Picburrow</title></svelte:head>
 
 <div class="page">
-  <h1>More</h1>
-  <nav aria-label="More">
+  <h1>{t('More')}</h1>
+  <nav aria-label={t('More')}>
     <ul>
       {#each links as l}<li><a href={l.href}><l.icon aria-hidden="true" /><span>{l.label}</span><ChevronRight aria-hidden="true" /></a></li>{/each}
     </ul>
     {#if me?.is_admin}
-      <h2>Admin</h2>
+      <h2>{t('Admin')}</h2>
       <ul>
         {#each admin as l}<li><a href={l.href}><l.icon aria-hidden="true" /><span>{l.label}</span><ChevronRight aria-hidden="true" /></a></li>{/each}
       </ul>
     {/if}
   </nav>
-  {#if me}<button class="btn secondary out" onclick={logout}><LogOut aria-hidden="true" />Sign out {me.username}</button>{/if}
-  <p class="muted about">Picburrow is free software under the AGPL-3.0. <a class="inline" href={SOURCE_URL} rel="noopener">Source code</a></p>
+  {#if me}<button class="btn secondary out" onclick={logout}><LogOut aria-hidden="true" />{t('Sign out {name}', { name: me.username })}</button>{/if}
+  <p class="muted about">{t('Picburrow is free software under the AGPL-3.0.')} <a class="inline" href={SOURCE_URL} rel="noopener">{t('Source code')}</a></p>
 </div>
 
 <style>

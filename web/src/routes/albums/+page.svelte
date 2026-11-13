@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { api, thumbURL, type Album } from '$lib/api';
   import { BookImage, Plus, Link } from '@lucide/svelte';
@@ -8,7 +9,7 @@
   api<Album[]>('/api/albums').then((a) => (albums = a)).catch((e) => (error = e.message));
 
   async function create() {
-    const name = prompt('Name the new album');
+    const name = prompt(t('Name the new album'));
     if (!name?.trim()) return;
     try {
       const a = await api<Album>('/api/albums', { method: 'POST', body: { name } });
@@ -19,28 +20,28 @@
   }
 </script>
 
-<svelte:head><title>Albums · Picburrow</title></svelte:head>
+<svelte:head><title>{t('Albums')} · Picburrow</title></svelte:head>
 
 <div class="page">
   <header>
-    <h1>Albums</h1>
-    <button class="btn secondary" onclick={create}><Plus aria-hidden="true" />New album</button>
+    <h1>{t('Albums')}</h1>
+    <button class="btn secondary" onclick={create}><Plus aria-hidden="true" />{t('New album')}</button>
   </header>
   {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
   {#if albums && albums.length === 0}
     <div class="empty">
       <BookImage aria-hidden="true" />
-      <strong>No albums yet</strong>
-      <span class="muted">Select photos anywhere (long-press on a phone, or the circle on a photo), then choose Add to album.</span>
+      <strong>{t('No albums yet')}</strong>
+      <span class="muted">{t('Select photos anywhere (long-press on a phone, or the circle on a photo), then choose Add to album.')}</span>
     </div>
   {:else if albums}
     <ul class="grid">
       {#each albums as a (a.id)}
         <li>
-          <a href="/albums/{a.id}" aria-label="{a.name}, {a.count} {a.count === 1 ? 'item' : 'items'}{a.shared ? ', shared' : ''}">
+          <a href="/albums/{a.id}" aria-label="{a.name}, {t(a.count === 1 ? '1 item' : '{n} items', { n: a.count })}{a.shared ? ', ' + t('shared') : ''}">
             <span class="cover">{#if a.cover}<img src={thumbURL(a.cover, 's')} alt="" loading="lazy" />{:else}<BookImage aria-hidden="true" />{/if}</span>
             <span class="name">{a.name}</span>
-            <span class="muted">{a.count} {a.count === 1 ? 'item' : 'items'}{#if a.shared} · <Link aria-hidden="true" class="inline" /> shared{/if}</span>
+            <span class="muted">{t(a.count === 1 ? '1 item' : '{n} items', { n: a.count })}{#if a.shared} · <Link aria-hidden="true" class="inline" /> {t('shared')}{/if}</span>
           </a>
         </li>
       {/each}

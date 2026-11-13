@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { formatMonth, type Bucket } from '$lib/api';
 
   let { buckets }: { buckets: Bucket[] } = $props();
@@ -71,7 +72,7 @@
 </script>
 
 <div class="scrubber" bind:this={rail} bind:clientHeight={height} role="slider" tabindex="0"
-  aria-label="Jump to month" aria-orientation="vertical" aria-valuemin={0} aria-valuemax={buckets.length - 1}
+  aria-label={t('Jump to month')} aria-orientation="vertical" aria-valuemin={0} aria-valuemax={buckets.length - 1}
   aria-valuenow={current} aria-valuetext={formatMonth(buckets[current].month)}
   onpointerdown={(e) => { dragging = true; rail.setPointerCapture(e.pointerId); fromPointer(e); }}
   onpointermove={(e) => dragging && fromPointer(e)}

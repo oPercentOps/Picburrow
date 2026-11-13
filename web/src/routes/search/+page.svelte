@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { api, type Tile } from '$lib/api';
@@ -41,35 +42,35 @@
   const shown = $derived(tiles?.filter((t) => !overrides[t.id]?.archived) ?? []);
 </script>
 
-<svelte:head><title>Search · Picburrow</title></svelte:head>
+<svelte:head><title>{t('Search')} · Picburrow</title></svelte:head>
 
 <div class="page">
-  <h1>Search</h1>
-  <form onsubmit={submit} role="search" aria-label="Photos">
+  <h1>{t('Search')}</h1>
+  <form onsubmit={submit} role="search" aria-label={t('Photos')}>
     <div class="field grow">
-      <label for="sq">Words in the file name, folder or camera</label>
-      <input id="sq" type="search" bind:value={q} placeholder="beach, 2023, Pixel 8" />
+      <label for="sq">{t('Words in the file name, folder or camera')}</label>
+      <input id="sq" type="search" bind:value={q} placeholder={t('beach, 2023, Pixel 8')} />
     </div>
-    <div class="field"><label for="sf">From</label><input id="sf" type="date" bind:value={from} /></div>
-    <div class="field"><label for="st">To</label><input id="st" type="date" bind:value={to} /></div>
+    <div class="field"><label for="sf">{t('From')}</label><input id="sf" type="date" bind:value={from} /></div>
+    <div class="field"><label for="st">{t('To')}</label><input id="st" type="date" bind:value={to} /></div>
     <div class="field">
-      <label for="sy">Kind</label>
-      <select id="sy" bind:value={type}><option value="">Photos and videos</option><option value="image">Photos</option><option value="video">Videos</option></select>
+      <label for="sy">{t('Kind')}</label>
+      <select id="sy" bind:value={type}><option value="">{t('Photos and videos')}</option><option value="image">{t('Photos')}</option><option value="video">{t('Videos')}</option></select>
     </div>
     <div class="field">
-      <label for="sr">Stars</label>
-      <select id="sr" bind:value={rating}><option value="">Any</option>{#each [1, 2, 3, 4, 5] as n}<option value={String(n)}>{n}+ {n === 1 ? 'star' : 'stars'}</option>{/each}</select>
+      <label for="sr">{t('Stars')}</label>
+      <select id="sr" bind:value={rating}><option value="">{t('Any')}</option>{#each [1, 2, 3, 4, 5] as n}<option value={String(n)}>{t(n === 1 ? '1+ star' : '{n}+ stars', { n })}</option>{/each}</select>
     </div>
-    <label class="check"><input type="checkbox" bind:checked={favorite} /> Favourites only</label>
-    <button class="btn primary"><Search aria-hidden="true" />Search</button>
+    <label class="check"><input type="checkbox" bind:checked={favorite} /> {t('Favourites only')}</label>
+    <button class="btn primary"><Search aria-hidden="true" />{t('Search')}</button>
   </form>
 
   {#if error}
     <p class="error-msg" role="alert">{error}</p>
   {:else if tiles}
-    <p class="muted" role="status">{shown.length === 2000 ? 'Showing the first 2,000 results. Narrow the search to see the rest.' : `${shown.length.toLocaleString()} found`}</p>
+    <p class="muted" role="status">{shown.length === 2000 ? t('Showing the first 2,000 results. Narrow the search to see the rest.') : t('{n} found', { n: shown.length.toLocaleString() })}</p>
     {#if shown.length === 0}
-      <div class="empty"><Search aria-hidden="true" /><strong>Nothing matches</strong><span class="muted">Try fewer words or a wider date range.</span></div>
+      <div class="empty"><Search aria-hidden="true" /><strong>{t('Nothing matches')}</strong><span class="muted">{t('Try fewer words or a wider date range.')}</span></div>
     {:else}
       <div bind:clientWidth={width}><TileGrid tiles={shown} {width} rowHeight={wide ? 220 : 120} seq /></div>
     {/if}

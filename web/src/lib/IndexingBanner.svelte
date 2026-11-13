@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { api, type Jobs } from '$lib/api';
 
   let { onscandone }: { onscandone: () => void } = $props();
@@ -28,13 +29,13 @@
   <div class="banner" role="status">
     <div>
       {#if jobs.scanning}
-        <div>Looking for photos: {jobs.scan_found.toLocaleString()} new so far</div>
+        <div>{t('Looking for photos: {n} new so far', { n: jobs.scan_found.toLocaleString() })}</div>
       {:else}
-        <div>Still making previews. Photos appear as they're ready.</div>
+        <div>{t("Still making previews. Photos appear as they're ready.")}</div>
       {/if}
-      <div class="muted">Previews {jobs.thumbs_done.toLocaleString()} of {total.toLocaleString()}</div>
+      <div class="muted">{t('Previews {done} of {total}', { done: jobs.thumbs_done.toLocaleString(), total: total.toLocaleString() })}</div>
     </div>
-    <div class="progress" role="progressbar" aria-label="Previews made" aria-valuenow={jobs.thumbs_done} aria-valuemax={total}>
+    <div class="progress" role="progressbar" aria-label={t('Previews made')} aria-valuenow={jobs.thumbs_done} aria-valuemax={total}>
       <div style:width="{total ? (100 * jobs.thumbs_done) / total : 0}%"></div>
     </div>
   </div>

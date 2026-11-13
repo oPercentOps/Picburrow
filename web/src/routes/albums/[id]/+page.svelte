@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { api, formatWhen, type Album } from '$lib/api';
@@ -20,7 +21,7 @@
   });
 
   async function rename() {
-    const name = prompt('Rename the album', album!.name);
+    const name = prompt(t('Rename the album'), album!.name);
     if (!name?.trim() || name === album!.name) return;
     try {
       album = await api<Album>(`/api/albums/${album!.id}`, { method: 'PATCH', body: { name } });
@@ -29,14 +30,14 @@
     }
   }
   async function remove() {
-    if (!confirm(`Delete the album "${album!.name}"? The photos stay in your library and on disk.${album!.links?.length ? ' Its share links stop working.' : ''}`)) return;
+    if (!confirm(t('Delete the album "{name}"? The photos stay in your library and on disk.', { name: album!.name }) + (album!.links?.length ? ' ' + t('Its share links stop working.') : ''))) return;
     await api(`/api/albums/${album!.id}`, { method: 'DELETE' });
-    say(`Deleted the album ${album!.name}`);
+    say(t('Deleted the album {name}', { name: album!.name }));
     goto('/albums');
   }
 </script>
 
-<svelte:head><title>{album?.name ?? 'Album'} · Picburrow</title></svelte:head>
+<svelte:head><title>{album?.name ?? t('Album')} · Picburrow</title></svelte:head>
 
 <div class="page">
   {#if error}
@@ -44,21 +45,21 @@
   {:else if album}
     <header>
       <div>
-        <a href="/albums" class="muted back">Albums</a>
+        <a href="/albums" class="muted back">{t('Albums')}</a>
         <h1>{album.name}</h1>
-        <span class="muted">{album.count} {album.count === 1 ? 'item' : 'items'} · updated {formatWhen(album.updated_at)}</span>
+        <span class="muted">{t(album.count === 1 ? '1 item' : '{n} items', { n: album.count })} · {t('updated {date}', { date: formatWhen(album.updated_at) })}</span>
       </div>
       <div class="actions">
-        <button class="btn secondary" onclick={() => (sharing = true)}><Share2 aria-hidden="true" />Share{#if album.links?.length}{' '}({album.links.length}){/if}</button>
-        <button class="btn ghost icon-btn" onclick={rename} aria-label="Rename album"><Pencil aria-hidden="true" /></button>
-        <button class="btn ghost icon-btn" onclick={remove} aria-label="Delete album"><Trash2 aria-hidden="true" /></button>
+        <button class="btn secondary" onclick={() => (sharing = true)}><Share2 aria-hidden="true" />{t('Share')}{#if album.links?.length}{' '}({album.links.length}){/if}</button>
+        <button class="btn ghost icon-btn" onclick={rename} aria-label={t('Rename album')}><Pencil aria-hidden="true" /></button>
+        <button class="btn ghost icon-btn" onclick={remove} aria-label={t('Delete album')}><Trash2 aria-hidden="true" /></button>
       </div>
     </header>
     {#if album.assets?.length}
       <div bind:clientWidth={width}><TileGrid tiles={album.assets} {width} rowHeight={wide ? 220 : 120} seq /></div>
     {:else}
-      <div class="empty"><BookImage aria-hidden="true" /><strong>This album is empty</strong>
-        <span class="muted">Select photos in the timeline or a folder, then choose Add to album.</span></div>
+      <div class="empty"><BookImage aria-hidden="true" /><strong>{t('This album is empty')}</strong>
+        <span class="muted">{t('Select photos in the timeline or a folder, then choose Add to album.')}</span></div>
     {/if}
     {#if sharing}<ShareDialog {album} onchange={(a) => (album = a)} onclose={() => (sharing = false)} />{/if}
   {/if}

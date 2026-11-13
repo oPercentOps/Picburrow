@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { api, thumbURL, type Album } from '$lib/api';
   import { picker, selection, say } from '$lib/state.svelte';
   import { BookImage } from '@lucide/svelte';
@@ -24,7 +25,7 @@
     try {
       const ids = picker.ids!;
       await api(`/api/albums/${albumId}/assets`, { method: 'POST', body: { ids } });
-      say(`Added ${ids.length} to ${albumName}`);
+      say(t('Added {n} to {album}', { n: ids.length, album: albumName }));
       selection.clear();
       picker.ids = null;
     } catch (e) {
@@ -39,7 +40,7 @@
     try {
       const ids = picker.ids!;
       const a = await api<Album>('/api/albums', { method: 'POST', body: { name, ids } });
-      say(`Made the album ${a.name} with ${ids.length} ${ids.length === 1 ? 'photo' : 'photos'}`);
+      say(t(ids.length === 1 ? 'Made the album {album} with 1 photo' : 'Made the album {album} with {n} photos', { album: a.name, n: ids.length }));
       selection.clear();
       picker.ids = null;
     } catch (err) {
@@ -51,16 +52,16 @@
 </script>
 
 <dialog bind:this={dialog} aria-labelledby="picker-title" onclose={() => (picker.ids = null)}>
-  <h2 id="picker-title">Add {picker.ids?.length ?? 0} to an album</h2>
+  <h2 id="picker-title">{t('Add {n} to an album', { n: picker.ids?.length ?? 0 })}</h2>
   <form onsubmit={create} class="new">
     <div class="field">
-      <label for="new-album">New album</label>
-      <input id="new-album" bind:value={name} placeholder="Summer 2026" maxlength="200" required />
+      <label for="new-album">{t('New album')}</label>
+      <input id="new-album" bind:value={name} placeholder={t('Summer 2026')} maxlength="200" required />
     </div>
-    <button class="btn primary" disabled={busy}>Create</button>
+    <button class="btn primary" disabled={busy}>{t('Create')}</button>
   </form>
   {#if albums?.length}
-    <h3>Or add to</h3>
+    <h3>{t('Or add to')}</h3>
     <ul>
       {#each albums as a (a.id)}
         <li>
@@ -73,7 +74,7 @@
     </ul>
   {/if}
   {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
-  <div class="foot"><button class="btn secondary" onclick={() => (picker.ids = null)}>Cancel</button></div>
+  <div class="foot"><button class="btn secondary" onclick={() => (picker.ids = null)}>{t('Cancel')}</button></div>
 </dialog>
 
 <style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { api, thumbURL, browserCanShow, formatDay, type Asset } from '$lib/api';
   import { overrides, picker } from '$lib/state.svelte';
   import { SvelteSet } from 'svelte/reactivity';
@@ -24,7 +25,7 @@
   });
   const exposure = $derived(details ? [details.FNumber && `f/${details.FNumber}`, details.ExposureTime && `${details.ExposureTime} s`,
     details.ISO && `ISO ${details.ISO}`, details.ExposureCompensation && details.ExposureCompensation !== '0' && `${details.ExposureCompensation} EV`].filter(Boolean).join(' · ') : '');
-  const focal = $derived(details?.FocalLength ? details.FocalLength + (details.FocalLengthIn35mmFormat ? ` (${details.FocalLengthIn35mmFormat} equiv.)` : '') : '');
+  const focal = $derived(details?.FocalLength ? details.FocalLength + (details.FocalLengthIn35mmFormat ? ` (${t('{mm} equiv.', { mm: details.FocalLengthIn35mmFormat })})` : '') : '');
   let scale = $state(1);
   let tx = $state(0);
   let ty = $state(0);
@@ -168,7 +169,7 @@
 
 <svelte:window onkeydown={onkey} />
 
-<div class="viewer" role="dialog" aria-modal="true" aria-label="Photo viewer" tabindex="-1" bind:this={dialog}>
+<div class="viewer" role="dialog" aria-modal="true" aria-label={t('Photo viewer')} tabindex="-1" bind:this={dialog}>
   <div class="stage" class:with-info={showInfo} onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up}
     ondblclick={() => zoomTo(scale > 1 ? 1 : 2.5)} onwheel={(e) => { if (e.ctrlKey) { e.preventDefault(); zoomTo(scale * (e.deltaY < 0 ? 1.1 : 0.9)); } }}
     role="presentation">
@@ -180,11 +181,11 @@
         {#if canDownload}
           <video src="{base}/assets/{asset.id}/original" poster={thumbURL(asset, 'l', base)} controls playsinline autoplay></video>
         {:else}
-          <div class="msg"><img src={thumbURL(asset, 'l', base)} alt="{asset.name}, {formatDay(asset.taken)}" /><p>The owner turned off video playback and downloads for this album.</p></div>
+          <div class="msg"><img src={thumbURL(asset, 'l', base)} alt="{asset.name}, {formatDay(asset.taken)}" /><p>{t('The owner turned off video playback and downloads for this album.')}</p></div>
         {/if}
       {:else if previewFailed || asset.err}
-        <div class="msg"><ImageOff aria-hidden="true" /><p>This file can't be previewed here.</p>
-          {#if canDownload}<a class="btn secondary" href="{base}/assets/{asset.id}/original?download=1">Download original</a>{/if}</div>
+        <div class="msg"><ImageOff aria-hidden="true" /><p>{t("This file can't be previewed here.")}</p>
+          {#if canDownload}<a class="btn secondary" href="{base}/assets/{asset.id}/original?download=1">{t('Download original')}</a>{/if}</div>
       {:else}
         <img src={original ? `${base}/assets/${asset.id}/original` : thumbURL(asset, 'l', base)} alt="{asset.name}, {formatDay(asset.taken)}"
           style:transform="translate({tx}px, {ty}px) scale({scale})" draggable="false"
@@ -199,52 +200,52 @@
   </div>
 
   <div class="bar top">
-    <button class="btn icon-btn" onclick={onclose} aria-label="Close"><X aria-hidden="true" /></button>
+    <button class="btn icon-btn" onclick={onclose} aria-label={t('Close')}><X aria-hidden="true" /></button>
     <div class="actions">
       {#if asset && !readonly}
-        <button class="btn icon-btn" onclick={() => (picker.ids = [id])} aria-label="Add to album" disabled={!ready}><BookPlus aria-hidden="true" /></button>
-        <button class="btn icon-btn" onclick={() => save({ favorite: !fav })} aria-label="Favourite" aria-pressed={fav} disabled={!ready}>
+        <button class="btn icon-btn" onclick={() => (picker.ids = [id])} aria-label={t('Add to album')} disabled={!ready}><BookPlus aria-hidden="true" /></button>
+        <button class="btn icon-btn" onclick={() => save({ favorite: !fav })} aria-label={t('Favourite')} aria-pressed={fav} disabled={!ready}>
           <Heart aria-hidden="true" fill={fav ? 'currentColor' : 'none'} /></button>
-        <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? 'Unarchive' : 'Archive'} disabled={!ready}>
+        <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? t('Unarchive') : t('Archive|verb')} disabled={!ready}>
           {#if archived}<ArchiveRestore aria-hidden="true" />{:else}<Archive aria-hidden="true" />{/if}</button>
       {/if}
       {#if asset?.live && canDownload}
-        <button class="btn icon-btn" onclick={() => (playingLive = !playingLive)} aria-label="Play live photo" aria-pressed={playingLive}><CirclePlay aria-hidden="true" /></button>
+        <button class="btn icon-btn" onclick={() => (playingLive = !playingLive)} aria-label={t('Play live photo')} aria-pressed={playingLive}><CirclePlay aria-hidden="true" /></button>
       {/if}
-      <button class="btn icon-btn" onclick={() => (showInfo = !showInfo)} aria-label="Details" aria-pressed={showInfo}><Info aria-hidden="true" /></button>
-      {#if asset && canDownload}<a class="btn icon-btn" href="{base}/assets/{id}/original?download=1" aria-label="Download original"><Download aria-hidden="true" /></a>{/if}
+      <button class="btn icon-btn" onclick={() => (showInfo = !showInfo)} aria-label={t('Details')} aria-pressed={showInfo}><Info aria-hidden="true" /></button>
+      {#if asset && canDownload}<a class="btn icon-btn" href="{base}/assets/{id}/original?download=1" aria-label={t('Download original')}><Download aria-hidden="true" /></a>{/if}
     </div>
   </div>
-  {#if prevId}<button class="btn icon-btn nav prev" onclick={() => go(prevId)} aria-label="Previous"><ChevronLeft aria-hidden="true" /></button>{/if}
-  {#if nextId}<button class="btn icon-btn nav next" onclick={() => go(nextId)} aria-label="Next"><ChevronRight aria-hidden="true" /></button>{/if}
+  {#if prevId}<button class="btn icon-btn nav prev" onclick={() => go(prevId)} aria-label={t('Previous')}><ChevronLeft aria-hidden="true" /></button>{/if}
+  {#if nextId}<button class="btn icon-btn nav next" onclick={() => go(nextId)} aria-label={t('Next')}><ChevronRight aria-hidden="true" /></button>{/if}
   {#if saveError}<div class="save-error" role="alert">{saveError}</div>{/if}
   {#if asset}<div class="bar bottom" aria-live="polite">{formatDay(asset.taken)} · {time(asset.taken)}</div>{/if}
 
   {#if showInfo && asset}
-    <aside aria-label="Details">
-      <h2>Details</h2>
+    <aside aria-label={t('Details')}>
+      <h2>{t('Details')}</h2>
       <dl>
-        <dt>Taken</dt><dd>{formatDay(asset.taken)} {time(asset.taken)}{offset(asset.tz_offset_min)}</dd>
-        <dt>File</dt><dd class="wrap">{asset.name}</dd>
-        {#if asset.dir}<dt>Folder</dt><dd class="wrap">{asset.dir}</dd>{/if}
-        {#if asset.size}<dt>Size</dt><dd>{mb(asset.size)}{asset.w && asset.h ? ` · ${asset.w} × ${asset.h}` : ''}</dd>{/if}
-        {#if camera}<dt>Camera</dt><dd>{camera}</dd>{/if}
-        {#if asset.lens}<dt>Lens</dt><dd>{asset.lens}</dd>{/if}
-        {#if exposure}<dt>Exposure</dt><dd>{exposure}</dd>{/if}
-        {#if focal}<dt>Focal length</dt><dd>{focal}</dd>{/if}
-        {#if details?.Flash}<dt>Flash</dt><dd>{details.Flash}</dd>{/if}
+        <dt>{t('Taken')}</dt><dd>{formatDay(asset.taken)} {time(asset.taken)}{offset(asset.tz_offset_min)}</dd>
+        <dt>{t('File')}</dt><dd class="wrap">{asset.name}</dd>
+        {#if asset.dir}<dt>{t('Folder')}</dt><dd class="wrap">{asset.dir}</dd>{/if}
+        {#if asset.size}<dt>{t('Size')}</dt><dd>{mb(asset.size)}{asset.w && asset.h ? ` · ${asset.w} × ${asset.h}` : ''}</dd>{/if}
+        {#if camera}<dt>{t('Camera')}</dt><dd>{camera}</dd>{/if}
+        {#if asset.lens}<dt>{t('Lens')}</dt><dd>{asset.lens}</dd>{/if}
+        {#if exposure}<dt>{t('Exposure')}</dt><dd>{exposure}</dd>{/if}
+        {#if focal}<dt>{t('Focal length')}</dt><dd>{focal}</dd>{/if}
+        {#if details?.Flash}<dt>{t('Flash')}</dt><dd>{details.Flash}</dd>{/if}
         {#if !readonly}
-          <dt id="rating-label">Rating</dt>
+          <dt id="rating-label">{t('Rating')}</dt>
           <dd>
             <div class="stars" role="radiogroup" aria-labelledby="rating-label">
               {#each [1, 2, 3, 4, 5] as n}
-                <button role="radio" aria-checked={rating === n} aria-label="{n} {n === 1 ? 'star' : 'stars'}" disabled={!ready}
+                <button role="radio" aria-checked={rating === n} aria-label={t(n === 1 ? '1 star' : '{n} stars', { n })} disabled={!ready}
                   class:on={(rating ?? 0) >= n} onclick={() => rate(rating === n ? 0 : n)}><Star aria-hidden="true" /></button>
               {/each}
             </div>
           </dd>
         {/if}
-        {#if asset.lat != null && asset.lon != null}<dt>Location</dt><dd>{asset.lat.toFixed(5)}, {asset.lon.toFixed(5)}</dd>{/if}
+        {#if asset.lat != null && asset.lon != null}<dt>{t('Location')}</dt><dd>{asset.lat.toFixed(5)}, {asset.lon.toFixed(5)}</dd>{/if}
       </dl>
     </aside>
   {/if}

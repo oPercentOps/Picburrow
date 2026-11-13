@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tServer } from '$lib/i18n';
   import { api, formatWhen, type Library, type Jobs } from '$lib/api';
 
   let libs = $state<Library[] | null>(null);
@@ -23,7 +24,7 @@
     e.preventDefault();
     const f = forms[l.id];
     const removed = l.import_paths.filter((p) => !lines(f.paths).includes(p));
-    if (removed.length && !confirm(`Stop showing photos from:\n${removed.join('\n')}\n\nThe files stay on disk. Their photos move to Trash on the next scan.`)) return;
+    if (removed.length && !confirm(t('Stop showing photos from:') + '\n' + removed.join('\n') + '\n\n' + t('The files stay on disk. Their photos move to Trash on the next scan.'))) return;
     f.busy = true;
     f.error = '';
     try {
@@ -43,41 +44,41 @@
   }
 </script>
 
-<svelte:head><title>Libraries · Picburrow</title></svelte:head>
+<svelte:head><title>{t('Libraries')} · Picburrow</title></svelte:head>
 
 <div class="page">
-  <h1>Libraries</h1>
-  <p class="muted intro">The folders the gallery reads photos from. Files are only read, never moved or changed.</p>
+  <h1>{t('Libraries')}</h1>
+  <p class="muted intro">{t('The folders the gallery reads photos from. Files are only read, never moved or changed.')}</p>
   {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
-  {#if storageWarning}<p class="warn" role="alert">{storageWarning}</p>{/if}
+  {#if storageWarning}<p class="warn" role="alert">{tServer(storageWarning)}</p>{/if}
   {#each libs ?? [] as l (l.id)}
     {@const f = forms[l.id]}
     <form class="card" onsubmit={(e) => save(l, e)}>
       <div class="status">
-        <span><strong>{l.assets.toLocaleString()}</strong> photos and videos{#if l.missing}, <a href="/trash">{l.missing.toLocaleString()} missing from disk</a>{/if}</span>
-        <span class="muted">Last scan: {formatWhen(l.last_scan_at)}</span>
-        {#if l.last_scan_error}<span class="warn" role="status">{l.last_scan_error}</span>{/if}
+        <span><strong>{l.assets.toLocaleString()}</strong> {t('photos and videos')}{#if l.missing}, <a href="/trash">{t('{n} missing from disk', { n: l.missing.toLocaleString() })}</a>{/if}</span>
+        <span class="muted">{t('Last scan: {date}', { date: formatWhen(l.last_scan_at) })}</span>
+        {#if l.last_scan_error}<span class="warn" role="status">{tServer(l.last_scan_error)}</span>{/if}
       </div>
       <div class="field">
-        <label for="n{l.id}">Name</label>
+        <label for="n{l.id}">{t('Name')}</label>
         <input id="n{l.id}" bind:value={f.name} required maxlength="100" />
       </div>
       <div class="field">
-        <label for="p{l.id}">Folders</label>
+        <label for="p{l.id}">{t('Folders')}</label>
         <textarea id="p{l.id}" bind:value={f.paths} rows="3" spellcheck="false" autocapitalize="off" aria-describedby="ph{l.id}"></textarea>
-        <span class="hint" id="ph{l.id}">One full path per line, for example /mnt/nas/phone-backup. Subfolders are included.</span>
+        <span class="hint" id="ph{l.id}">{t('One full path per line, for example /mnt/nas/phone-backup. Subfolders are included.')}</span>
       </div>
       <div class="field">
-        <label for="g{l.id}">Skip files matching</label>
+        <label for="g{l.id}">{t('Skip files matching')}</label>
         <textarea id="g{l.id}" class="mono" bind:value={f.globs} rows="3" spellcheck="false" autocapitalize="off" aria-describedby="gh{l.id}"></textarea>
-        <span class="hint" id="gh{l.id}">One pattern per line. <code>**/@eaDir/**</code> skips Synology thumbnail folders, <code>**/*.png</code> skips screenshots.</span>
+        <span class="hint" id="gh{l.id}">{t('One pattern per line.')} <code>**/@eaDir/**</code> {t('skips Synology thumbnail folders,')} <code>**/*.png</code> {t('skips screenshots.')}</span>
       </div>
       {#if f.error}<p class="error-msg" role="alert">{f.error}</p>{/if}
-      {#if f.saved}<p class="ok" role="status">Saved. Scanning for changes now.</p>{/if}
+      {#if f.saved}<p class="ok" role="status">{t('Saved. Scanning for changes now.')}</p>{/if}
       <div class="actions">
-        <button class="btn primary" disabled={f.busy}>{f.busy ? 'Saving…' : 'Save'}</button>
-        <button type="button" class="btn secondary" onclick={() => rescan(l.id)} disabled={scanning}>{scanning ? 'Scan started' : 'Scan now'}</button>
-        <a class="btn ghost" href="/admin/jobs">See progress</a>
+        <button class="btn primary" disabled={f.busy}>{f.busy ? t('Saving…') : t('Save')}</button>
+        <button type="button" class="btn secondary" onclick={() => rescan(l.id)} disabled={scanning}>{scanning ? t('Scan started') : t('Scan now')}</button>
+        <a class="btn ghost" href="/admin/jobs">{t('See progress')}</a>
       </div>
     </form>
   {/each}

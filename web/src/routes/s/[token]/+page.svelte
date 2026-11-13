@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { page } from '$app/state';
   import { pushState, replaceState } from '$app/navigation';
   import { api, ApiError, type Tile } from '$lib/api';
@@ -44,32 +45,32 @@
   }
 </script>
 
-<svelte:head><title>{data?.name ?? 'Shared album'}</title><meta name="robots" content="noindex" /></svelte:head>
+<svelte:head><title>{data?.name ?? t('Shared album')}</title><meta name="robots" content="noindex" /></svelte:head>
 
 <div class="page">
   {#if gone}
-    <div class="empty"><LinkIcon aria-hidden="true" /><h1>This link no longer works</h1>
-      <span class="muted">It may have expired, or the owner turned it off. Ask them for a new one.</span></div>
+    <div class="empty"><LinkIcon aria-hidden="true" /><h1>{t('This link no longer works')}</h1>
+      <span class="muted">{t('It may have expired, or the owner turned it off. Ask them for a new one.')}</span></div>
   {:else if data?.locked}
     <form class="gate" onsubmit={unlock}>
       <Lock aria-hidden="true" />
       <h1>{data.name}</h1>
       <div class="field">
-        <label for="lp">Password</label>
+        <label for="lp">{t('Password')}</label>
         <input id="lp" type="password" bind:value={password} required aria-invalid={error ? 'true' : undefined} aria-describedby={error ? 'lpe' : undefined} />
       </div>
       {#if error}<p class="error-msg" id="lpe" role="alert">{error}</p>{/if}
-      <button class="btn primary">Open</button>
+      <button class="btn primary">{t('Open')}</button>
     </form>
   {:else if data}
-    <header><h1>{data.name}</h1><span class="muted">{data.assets?.length ?? 0} items · shared with you</span></header>
+    <header><h1>{data.name}</h1><span class="muted">{t('{n} items', { n: data.assets?.length ?? 0 })} · {t('shared with you')}</span></header>
     <div bind:clientWidth={width}>
       <TileGrid tiles={data.assets ?? []} {width} rowHeight={wide ? 220 : 120} {base} onopen={open} selectable={false} />
     </div>
   {:else if error}
     <p class="error-msg" role="alert">{error}</p>
   {/if}
-  <footer class="muted">Shared with Picburrow, free software. <a href={SOURCE_URL} rel="noopener">Source code</a></footer>
+  <footer class="muted">{t('Shared with Picburrow, free software.')} <a href={SOURCE_URL} rel="noopener">{t('Source code')}</a></footer>
 </div>
 
 {#if page.state.viewer && data && !data.locked}
