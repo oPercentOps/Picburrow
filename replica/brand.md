@@ -20,19 +20,29 @@ Not confusable with the apps it was modelled on: no shared sound, letters or mea
 
 ### Checks
 
-None of these could be run from the build environment (no network access to the registries). Every row is **to run**; nothing is assumed available. These are screening checks, not clearance: a trademark lawyer should search before money is spent on the name.
+Run 2026-11-13 from the build environment where a public, official lookup was reachable; the rest are marked **to run** with where to run them. These are screening checks, not clearance: a trademark lawyer should search before money is spent on the name.
 
-| check | where | result |
+| check | how | result (2026-11-13) |
 | --- | --- | --- |
-| US trademark, classes 9 and 42 | tmsearch.uspto.gov | to run |
-| EU trademark | euipo.europa.eu eSearch / TMview | to run |
+| **App Store** | Apple's iTunes Search API, term "homeroll" | ⚠️ **taken twice**: "Homeroll: Home Inventory" (Lifestyle) and "Homeroll: Shared Bill Calendar" (Finance). Different categories, but the same name in the same store |
+| homeroll.com | RDAP (Verisign) | registered since 2008-03-16 |
+| homeroll.app | RDAP (Google Registry) | registered 2026-07-28 (possibly by one of the apps above) |
+| homeroll.net / .dev / .org / .photos | RDAP | not registered (HTTP 404) |
+| US trademark, classes 9 and 42 | tmsearch.uspto.gov | **to run in a browser** (the search service can't be queried from here) |
+| EU trademark | tmdn.org/tmview | **to run in a browser** (its firewall rejects scripted requests, and that wasn't worked around) |
+| global | branddb.wipo.int | to run in a browser |
 | Canada | ised-isde.canada.ca | to run |
-| global | WIPO Global Brand Database | to run |
-| domains | homeroll.app, homeroll.org, homeroll.photos (`whois`) | to run |
-| App Store / Google Play | search "Homeroll" | to run |
-| GitHub | github.com/homeroll (org name) | to run |
-| handles | X, Instagram, Mastodon, Bluesky | to run |
-| the web | "Homeroll photo", "Homeroll gallery" | to run |
+| GitHub org "homeroll" | api.github.com | unknown: the request was refused from this environment |
+| Google Play, handles, the web | — | to run |
+
+**Runners-up, same checks:**
+
+| name | App Store | .com | .app | .org |
+| --- | --- | --- | --- | --- |
+| **Picnook** | no app with the name | registered 2013-05-30 | **not registered** | **not registered** |
+| Contactsheet | 2 photo apps ("Contact Sheet Generator", "Contact Sheet: AI Photo Review") | registered 1998 | registered 2025 | registered 2003 |
+
+**What this means:** Homeroll already names two App Store apps and its .com/.app are taken. That is not a legal conflict by itself (different categories), but it costs findability and invites confusion. Picnook is the cleaner of the shortlist on everything checked here. Switching is the owner's call; the rename is a sweep away (`sweep.py` + `brand.json`).
 
 ## Palette
 

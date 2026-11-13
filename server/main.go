@@ -72,6 +72,9 @@ func main() {
 		srv.Shutdown(sctx)
 	}()
 	log.Printf("serving on %s, data in %s", *listen, *dataDir)
+	if w := sdCardWarning(*dataDir); w != "" {
+		log.Print("warning: " + w)
+	}
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}

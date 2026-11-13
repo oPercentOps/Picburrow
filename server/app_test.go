@@ -795,6 +795,19 @@ func TestMigrateFromV1(t *testing.T) {
 		t.Fatalf("upgrade: %v", err)
 	}
 	defer db.Close()
+	// a backup of the old database was taken first, and it still opens at version 1 with the data
+	baks, _ := filepath.Glob(filepath.Join(dir, "homeroll.db.v1-*.bak"))
+	if len(baks) != 1 {
+		t.Fatalf("backups before upgrade = %v, want one v1 backup", baks)
+	}
+	bak, _ := sql.Open("sqlite", "file:"+baks[0])
+	var bv, bn int
+	bak.QueryRow("pragma user_version").Scan(&bv)
+	bak.QueryRow("select count(*) from assets").Scan(&bn)
+	bak.Close()
+	if bv != 1 || bn != 1 {
+		t.Fatalf("backup: version %d, %d assets", bv, bn)
+	}
 	var v int
 	var fav bool
 	var cid *string
@@ -1000,5 +1013,47 @@ func TestPairLiveByContentID(t *testing.T) {
 	a.db.QueryRow("select live_video_id from assets where path = '/p/other.jpg'").Scan(&live)
 	if live != nil {
 		t.Fatal("unrelated photo paired")
+	}
+}
+
+func TestMountSource(t *testing.T) {
+	mi := `22 1 0:21 / /proc rw - proc proc rw
+25 1 179:2 / / rw,noatime shared:1 - ext4 /dev/mmcblk0p2 rw
+31 25 8:1 / /mnt/ssd rw,relatime shared:9 - ext4 /dev/sda1 rw
+40 25 0:45 / /mnt/nas rw - cifs //nas/photos rw`
+	for _, c := range []struct {
+		maj, min uint32
+		want     string
+	}{{179, 2, "/dev/mmcblk0p2"}, {8, 1, "/dev/sda1"}, {0, 45, "//nas/photos"}, {9, 9, ""}} {
+		if got := mountSource(mi, c.maj, c.min); got != c.want {
+			t.Errorf("mountSource(%d:%d) = %q, want %q", c.maj, c.min, got, c.want)
+		}
+	}
+	if w := sdCardWarning(t.TempDir()); w != "" { // the build machine has no SD card
+		t.Errorf("unexpected warning on this machine: %s", w)
+	}
+}
+
+func TestCaptureDetails(t *testing.T) {
+	for _, tool := range []string{"exiftool", "ffmpeg"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	lib := t.TempDir()
+	p := filepath.Join(lib, "shot.jpg")
+	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", p)
+	mustRun(t, "exiftool", "-q", "-overwrite_original", "-FNumber=1.8", "-ExposureTime=1/120", "-ISO=100", "-FocalLength=6.9", "-Flash#=16", p) // # = numeric code (16: off, did not fire)
+	a, srv := newTestApp(t)
+	ann := client(t)
+	post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`)
+	waitScan(t, a)
+	var d map[string]string
+	get(t, ann, srv.URL+"/api/assets/1/details", &d)
+	if d["FNumber"] != "1.8" || d["ExposureTime"] != "1/120" || d["ISO"] != "100" || !strings.HasPrefix(d["FocalLength"], "6.9") || d["Flash"] == "" {
+		t.Fatalf("details = %v", d)
+	}
+	if r, _ := client(t).Get(srv.URL + "/api/assets/1/details"); r.StatusCode != 401 {
+		t.Errorf("details without a session = %d", r.StatusCode)
 	}
 }

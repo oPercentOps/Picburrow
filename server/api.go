@@ -28,6 +28,7 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("GET /api/assets/{id}", a.auth(false, a.getAsset))
 	m.HandleFunc("GET /api/assets/{id}/thumb/{size}", a.auth(false, a.getThumb))
 	m.HandleFunc("GET /api/assets/{id}/original", a.auth(false, a.getOriginal))
+	m.HandleFunc("GET /api/assets/{id}/details", a.auth(false, a.getDetails))
 	m.HandleFunc("GET /api/jobs", a.auth(false, a.getJobs))
 	m.HandleFunc("POST /api/libraries/{id}/scan", a.auth(true, a.postScan))
 	m.HandleFunc("GET /api/assets", a.auth(false, a.getAssets))
@@ -523,6 +524,9 @@ func (a *App) getJobs(w http.ResponseWriter, r *http.Request) {
 			rows.Close()
 		}
 		res["errors"] = errs
+		if w := sdCardWarning(a.dataDir); w != "" {
+			res["storage_warning"] = w
+		}
 	}
 	writeJSON(w, res)
 }
@@ -565,4 +569,25 @@ func (a *App) spa() http.Handler {
 		}
 		files.ServeHTTP(w, r)
 	})
+}
+
+// getDetails: capture settings (aperture, shutter, ISO, focal length, flash) read from the file on demand.
+func (a *App) getDetails(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r)
+	if !ok {
+		httpError(w, http.StatusNotFound, "No such photo")
+		return
+	}
+	x, err := a.loadAsset(userFrom(r).ID, id)
+	if err != nil {
+		httpError(w, http.StatusNotFound, "No such photo")
+		return
+	}
+	d, err := a.exif.Details(x.Path)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	json.NewEncoder(w).Encode(d)
 }
