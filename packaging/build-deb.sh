@@ -17,14 +17,15 @@ install -D -m 0644 "$HERE/../LICENSE" "$ROOT/usr/share/doc/picburrow/copyright"
 "$HERE/notices.sh" "$ARCH" > "$ROOT/usr/share/doc/picburrow/THIRD_PARTY_NOTICES"
 chmod 0644 "$ROOT/usr/share/doc/picburrow/THIRD_PARTY_NOTICES"
 install -d "$ROOT/DEBIAN"
-for f in postinst prerm postrm; do install -m 0755 "$HERE/$f" "$ROOT/DEBIAN/$f"; done
+for f in config postinst prerm postrm; do install -m 0755 "$HERE/$f" "$ROOT/DEBIAN/$f"; done
+install -m 0644 "$HERE/templates" "$ROOT/DEBIAN/templates"
 echo /etc/default/picburrow > "$ROOT/DEBIAN/conffiles"
 cat > "$ROOT/DEBIAN/control" <<CONTROL
 Package: picburrow
 Version: $VERSION
 Architecture: $ARCH
 Maintainer: Picburrow maintainers <noreply@picburrow.invalid>
-Depends: libvips-tools, libheif-plugin-libde265 | libheif1 (<< 1.16), libimage-exiftool-perl, adduser
+Depends: libvips-tools, libheif-plugin-libde265 | libheif1 (<< 1.16), libimage-exiftool-perl, adduser, debconf (>= 0.5) | debconf-2.0
 Recommends: ffmpeg
 Section: graphics
 Priority: optional

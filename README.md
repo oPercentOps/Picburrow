@@ -19,7 +19,9 @@ Open `http://<pi-address>:8080`, create your account and enter the folder your p
 Build the package on any machine with `make deb-pi`.
 
 - **Settings**: `/etc/default/picburrow` (`PICBURROW_DATA`, `PICBURROW_LISTEN`), then `sudo systemctl restart picburrow`.
-- **Put the data on an SSD or USB drive, not the SD card.** Picburrow warns on the Indexing page when it isn't.
+- **Put the data on an SSD or USB drive, not the SD card.** The install asks where to keep it (a folder on a disk plugged
+  into the Pi, not a network share); change it later with `sudo dpkg-reconfigure picburrow`, which copies the existing data
+  over and makes Picburrow wait for that disk at boot. Picburrow warns on the Indexing page while it's on the SD card.
 - **Photo folder permissions**: the `picburrow` user must read your photos *and pass through every folder above them*.
   Test with `sudo -u picburrow ls /path/to/photos`; `namei -l /path/to/photos` shows who may enter each folder on the way.
   - Folder shared through a group: `sudo usermod -aG <folder group> picburrow`, then `sudo systemctl restart picburrow`.

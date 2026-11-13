@@ -1,20 +1,51 @@
 #!/bin/sh
 set -e
+. /usr/share/debconf/confmodule
+DROPIN=/etc/systemd/system/picburrow.service.d/data-dir.conf
+
 if [ "$1" = configure ]; then
   if ! getent passwd picburrow >/dev/null; then
     adduser --system --group --home /var/lib/picburrow --no-create-home --quiet picburrow
   fi
   mkdir -p /var/lib/picburrow
   chown picburrow:picburrow /var/lib/picburrow
+
+  # the data folder chosen at install (debconf); the previous one is in the drop-in, if any
+  db_get picburrow/data-dir
+  DATA=${RET:-/var/lib/picburrow}
+  db_stop # debconf owns stdout until here; the messages below are for the person installing
+  OLD=/var/lib/picburrow
+  if [ -f "$DROPIN" ]; then OLD=$(sed -n 's/^Environment=PICBURROW_DATA=//p' "$DROPIN"); fi
+  mkdir -p "$DATA"
+  chown picburrow:picburrow "$DATA"
+  if [ "$DATA" != "$OLD" ] && [ -f "$OLD/picburrow.db" ] && [ ! -e "$DATA/picburrow.db" ]; then
+    # copy while stopped, so the database is consistent; the old copy is never deleted
+    if [ -d /run/systemd/system ]; then systemctl stop picburrow.service || true; fi
+    cp -a "$OLD/." "$DATA/"
+    chown -R picburrow:picburrow "$DATA"
+    echo "Copied Picburrow's data from $OLD to $DATA. Once everything looks right, you can delete $OLD."
+  elif [ "$DATA" != "$OLD" ] && [ -f "$OLD/picburrow.db" ]; then
+    echo "Both $OLD and $DATA hold Picburrow data. Using $DATA as it is; if $OLD is the newer one, stop Picburrow and copy it over yourself."
+  fi
+  if [ "$DATA" = /var/lib/picburrow ]; then
+    rm -f "$DROPIN"
+  else
+    mkdir -p "$(dirname "$DROPIN")"
+    # RequiresMountsFor: start only once that disk is mounted, never on an empty folder of the SD card
+    printf '# Written by the picburrow package (sudo dpkg-reconfigure picburrow).\n[Unit]\nRequiresMountsFor=%s\n\n[Service]\nEnvironment=PICBURROW_DATA=%s\n' "$DATA" "$DATA" > "$DROPIN"
+  fi
+
   if [ -d /run/systemd/system ]; then
     systemctl daemon-reload
-    systemctl enable --now picburrow.service >/dev/null 2>&1 || systemctl enable --now picburrow.service
+    systemctl enable picburrow.service >/dev/null 2>&1 || systemctl enable picburrow.service
+    systemctl restart picburrow.service # a restart, so an upgrade runs the new version straight away
     ip=$(hostname -I 2>/dev/null | cut -d' ' -f1)
     echo
     echo "Picburrow is running. Open http://${ip:-this-device}:8080 to set it up."
   else
-    echo "Picburrow is installed. Start it with: sudo -u picburrow /usr/bin/picburrow"
+    echo "Picburrow is installed. Start it with: sudo -u picburrow PICBURROW_DATA=$DATA /usr/bin/picburrow"
   fi
+  echo "Its data folder is $DATA (change it with: sudo dpkg-reconfigure picburrow)."
   echo "If it can't read your photo folder, give the picburrow user read access, for example:"
   echo "  sudo usermod -aG <the folder's group> picburrow && sudo systemctl restart picburrow"
 fi
