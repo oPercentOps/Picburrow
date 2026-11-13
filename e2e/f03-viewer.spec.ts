@@ -22,6 +22,11 @@ test('F03-H1 arrows step through photos, info shows the details', async ({ page 
   await expect(info).toContainText('Off, Did not fire');
   await page.screenshot({ path: `${SHOTS}/S05-info.png` });
   await axe(page);
+  // a click on the photo closes the details; the viewer stays open on the same photo
+  const here = page.url();
+  await viewer(page).getByRole('img').click();
+  await expect(info).toHaveCount(0);
+  await expect(page).toHaveURL(here);
 });
 
 test('F03-E1 double-click zooms and swaps in the original', async ({ page }) => {
@@ -102,7 +107,13 @@ test('F03-E6 swipe left moves to the next photo, swipe down closes @mobile', asy
   await page.getByRole('button', { name: 'Details' }).tap();
   await expect(page.getByRole('complementary', { name: 'Details' })).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/S05-info-mobile.png` });
-  await page.getByRole('button', { name: 'Details' }).tap();
+  // a tap on the photo above the sheet closes it (no Escape key on a phone)
+  const here = page.url();
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 150, id: 1 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect(page.getByRole('complementary', { name: 'Details' })).toHaveCount(0);
+  await expect(page).toHaveURL(here);
+  await page.waitForTimeout(600); // a second touch right away would count as a double-tap zoom
   await swipe(0, 200);
   await expect(page).toHaveURL(/\/$/);
 });
