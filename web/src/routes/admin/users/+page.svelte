@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { api, formatWhen, type User } from '$lib/api';
   import { say } from '$lib/state.svelte';
   import { UserPlus, KeyRound, Trash2 } from '@lucide/svelte';
@@ -21,7 +22,7 @@
     formError = '';
     try {
       users = await api<Row[]>('/api/users', { method: 'POST', body: form });
-      say(`Added ${form.username}. Their photos are being indexed.`);
+      say(t('Added {name}. Their photos are being indexed.', { name: form.username }));
       form = { username: '', password: '', path: '', is_admin: false };
     } catch (err) {
       formError = (err as Error).message;
@@ -30,38 +31,38 @@
     }
   }
   async function reset(u: Row) {
-    const pw = prompt(`New password for ${u.username} (at least 8 characters). They'll be signed out everywhere.`);
+    const pw = prompt(t("New password for {name} (at least 8 characters). They'll be signed out everywhere.", { name: u.username }));
     if (!pw) return;
     try {
       await api(`/api/users/${u.id}`, { method: 'PATCH', body: { password: pw } });
-      say(`New password set for ${u.username}`);
+      say(t('New password set for {name}', { name: u.username }));
     } catch (err) {
       say((err as Error).message);
     }
   }
   async function remove(u: Row) {
-    if (!confirm(`Delete ${u.username}? Their albums and share links go too. Their photo files stay on disk.`)) return;
+    if (!confirm(t('Delete {name}? Their albums and share links go too. Their photo files stay on disk.', { name: u.username }))) return;
     await api(`/api/users/${u.id}`, { method: 'DELETE' });
-    say(`Deleted ${u.username}`);
+    say(t('Deleted {name}', { name: u.username }));
     load();
   }
 </script>
 
-<svelte:head><title>People · Picburrow</title></svelte:head>
+<svelte:head><title>{t('People')} · Picburrow</title></svelte:head>
 
 <div class="page">
-  <h1>People</h1>
-  <p class="muted intro">Everyone gets their own sign-in and their own photo folder. Nobody sees another person's photos unless they share an album.</p>
+  <h1>{t('People')}</h1>
+  <p class="muted intro">{t("Everyone gets their own sign-in and their own photo folder. Nobody sees another person's photos unless they share an album.")}</p>
   {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
   {#if users}
     <ul class="people">
       {#each users as u (u.id)}
         <li>
-          <div><strong>{u.username}</strong>{#if u.is_admin}{' '}<span class="tag">admin</span>{/if}
+          <div><strong>{u.username}</strong>{#if u.is_admin}{' '}<span class="tag">{t('admin')}</span>{/if}
             <div class="muted">{u.assets.toLocaleString()} photos · since {formatWhen(u.created_at)}</div></div>
           <div class="actions">
-            <button class="btn ghost" onclick={() => reset(u)}><KeyRound aria-hidden="true" />New password</button>
-            {#if u.id !== me?.id}<button class="btn ghost" onclick={() => remove(u)} aria-label="Delete {u.username}"><Trash2 aria-hidden="true" /></button>{/if}
+            <button class="btn ghost" onclick={() => reset(u)}><KeyRound aria-hidden="true" />{t('New password')}</button>
+            {#if u.id !== me?.id}<button class="btn ghost" onclick={() => remove(u)} aria-label={t('Delete {name}', { name: u.username })}><Trash2 aria-hidden="true" /></button>{/if}
           </div>
         </li>
       {/each}
@@ -69,14 +70,14 @@
   {/if}
 
   <form class="card" onsubmit={add}>
-    <h2>Add someone</h2>
-    <div class="field"><label for="nu">Username</label><input id="nu" bind:value={form.username} required autocomplete="off" /></div>
-    <div class="field"><label for="np">Password</label><input id="np" type="password" bind:value={form.password} required minlength="8" autocomplete="new-password" aria-describedby="nph" />
-      <span class="hint" id="nph">At least 8 characters. Tell them in person.</span></div>
-    <div class="field"><label for="nf">Their photo folder</label><input id="nf" bind:value={form.path} required placeholder="/mnt/nas/backup-ann" autocapitalize="off" spellcheck="false" /></div>
-    <label class="check"><input type="checkbox" bind:checked={form.is_admin} /> Can manage libraries and people</label>
+    <h2>{t('Add someone')}</h2>
+    <div class="field"><label for="nu">{t('Username')}</label><input id="nu" bind:value={form.username} required autocomplete="off" /></div>
+    <div class="field"><label for="np">{t('Password')}</label><input id="np" type="password" bind:value={form.password} required minlength="8" autocomplete="new-password" aria-describedby="nph" />
+      <span class="hint" id="nph">{t('At least 8 characters. Tell them in person.')}</span></div>
+    <div class="field"><label for="nf">{t('Their photo folder')}</label><input id="nf" bind:value={form.path} required placeholder="/mnt/nas/backup-ann" autocapitalize="off" spellcheck="false" /></div>
+    <label class="check"><input type="checkbox" bind:checked={form.is_admin} /> {t('Can manage libraries and people')}</label>
     {#if formError}<p class="error-msg" role="alert">{formError}</p>{/if}
-    <button class="btn primary" disabled={busy}><UserPlus aria-hidden="true" />Add</button>
+    <button class="btn primary" disabled={busy}><UserPlus aria-hidden="true" />{t('Add')}</button>
   </form>
 </div>
 

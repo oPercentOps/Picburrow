@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import '../../../replica/design/tokens.css';
   import '$lib/app.css';
   import { page } from '$app/state';
@@ -36,18 +37,18 @@
   });
 
   const nav = [
-    { href: '/', label: 'Photos', icon: Image },
-    { href: '/folders', label: 'Folders', icon: Folder },
-    { href: '/albums', label: 'Albums', icon: BookImage },
-    { href: '/favorites', label: 'Favourites', icon: Heart, desktop: true },
-    { href: '/archive', label: 'Archive', icon: Archive, desktop: true },
-    { href: '/search', label: 'Search', icon: Search },
-    { href: '/trash', label: 'Trash', icon: Trash2, desktop: true }
+    { href: '/', label: t('Photos'), icon: Image },
+    { href: '/folders', label: t('Folders'), icon: Folder },
+    { href: '/albums', label: t('Albums'), icon: BookImage },
+    { href: '/favorites', label: t('Favourites'), icon: Heart, desktop: true },
+    { href: '/archive', label: t('Archive'), icon: Archive, desktop: true },
+    { href: '/search', label: t('Search'), icon: Search },
+    { href: '/trash', label: t('Trash'), icon: Trash2, desktop: true }
   ];
   const admin = [
-    { href: '/admin/libraries', label: 'Libraries', icon: HardDrive },
-    { href: '/admin/jobs', label: 'Indexing', icon: Activity },
-    { href: '/admin/users', label: 'People', icon: Users }
+    { href: '/admin/libraries', label: t('Libraries'), icon: HardDrive },
+    { href: '/admin/jobs', label: t('Indexing'), icon: Activity },
+    { href: '/admin/users', label: t('People'), icon: Users }
   ];
   const current = (href: string) => (href === '/' ? page.url.pathname === '/' || page.url.pathname.startsWith('/photos/') : page.url.pathname.startsWith(href));
 
@@ -80,19 +81,19 @@
   {@render children()}
 {:else if ready && user}
   <div class="shell">
-    <nav class="side" aria-label="Main">
+    <nav class="side" aria-label={t('Main')}>
       <div class="brand">Picburrow</div>
       {#each nav as item}
         <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}><item.icon aria-hidden="true" />{item.label}</a>
       {/each}
       {#if user.is_admin}
-        <div class="section">Admin</div>
+        <div class="section">{t('Admin')}</div>
         {#each admin as item}
           <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}><item.icon aria-hidden="true" />{item.label}</a>
         {/each}
       {/if}
-      <button class="btn ghost signout" onclick={logout}><LogOut aria-hidden="true" />Sign out {user.username}</button>
-      <a class="source" href={SOURCE_URL} rel="noopener">Source code · AGPL-3.0</a>
+      <button class="btn ghost signout" onclick={logout}><LogOut aria-hidden="true" />{t('Sign out {name}', { name: user.username })}</button>
+      <a class="source" href={SOURCE_URL} rel="noopener">{t('Source code')} · AGPL-3.0</a>
     </nav>
     <main>{@render children()}</main>
     {#if selection.size > 0}<SelectionBar />{/if}
@@ -102,12 +103,12 @@
       <Viewer id={page.state.viewer} seq={page.state.seq} onclose={() => history.back()}
         onnavigate={(id) => replaceState(`/photos/${id}`, { viewer: id, seq: page.state.seq })} />
     {/if}
-    <nav class="bottom" aria-label="Main">
+    <nav class="bottom" aria-label={t('Main')}>
       {#each nav.filter((n) => !n.desktop) as item}
         <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}><item.icon aria-hidden="true" />{item.label}</a>
       {/each}
       <!-- phones: everything that doesn't fit the bar (BUG-011: Favourites, Archive, Trash and admin had no way in) -->
-      <a href="/more" aria-current={['/more', ...nav.filter((n) => n.desktop).map((n) => n.href), ...admin.map((n) => n.href)].some((h) => page.url.pathname.startsWith(h)) ? 'page' : undefined}><Menu aria-hidden="true" />More</a>
+      <a href="/more" aria-current={['/more', ...nav.filter((n) => n.desktop).map((n) => n.href), ...admin.map((n) => n.href)].some((h) => page.url.pathname.startsWith(h)) ? 'page' : undefined}><Menu aria-hidden="true" />{t('More')}</a>
     </nav>
   </div>
 {/if}

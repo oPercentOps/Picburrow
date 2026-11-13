@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { page } from '$app/state';
   import { api, thumbURL, type Tile } from '$lib/api';
   import TileGrid from '$lib/TileGrid.svelte';
@@ -34,14 +35,14 @@
     for (const seg of data.path.slice(data.root.length).split('/').filter(Boolean)) out.push({ name: seg, path: (acc += '/' + seg) });
     return out;
   });
-  const title = $derived(crumbs.at(-1)?.name || 'Folders');
+  const title = $derived(crumbs.at(-1)?.name || t('Folders'));
 </script>
 
 <svelte:head><title>{title} · Picburrow</title></svelte:head>
 
 <div class="page">
-  <nav aria-label="Breadcrumb" class="crumbs">
-    <a href="/folders" aria-current={path ? undefined : 'page'}>Folders</a>
+  <nav aria-label={t('Breadcrumb')} class="crumbs">
+    <a href="/folders" aria-current={path ? undefined : 'page'}>{t('Folders')}</a>
     {#each crumbs as c, i}
       <ChevronRight aria-hidden="true" />
       <a href={href(c.path)} title={c.path} aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c.name}</a>
@@ -56,12 +57,12 @@
       <ul class="dirs">
         {#each data.dirs as d (d.path)}
           <li>
-            <a href={href(d.path)} title={d.path} aria-label="{d.name}, {d.count.toLocaleString()} items">
+            <a href={href(d.path)} title={d.path} aria-label="{d.name}, {t('{n} items', { n: d.count.toLocaleString() })}">
               <span class="cover">
                 {#if d.cover}<img src={thumbURL(d.cover, 's')} alt="" loading="lazy" />{:else}<Folder aria-hidden="true" />{/if}
               </span>
               <span class="name">{d.name}</span>
-              <span class="muted">{d.count.toLocaleString()} items</span>
+              <span class="muted">{t('{n} items', { n: d.count.toLocaleString() })}</span>
             </a>
           </li>
         {/each}
@@ -70,7 +71,7 @@
     {#if data.assets.length}
       <div bind:clientWidth={width} class="files"><TileGrid tiles={data.assets} {width} rowHeight={wide ? 220 : 120} byDay={false} seq /></div>
     {:else if !data.dirs.length}
-      <div class="empty"><FolderOpen aria-hidden="true" /><strong>This folder is empty</strong><span class="muted">No photos or videos were found here.</span></div>
+      <div class="empty"><FolderOpen aria-hidden="true" /><strong>{t('This folder is empty')}</strong><span class="muted">{t('No photos or videos were found here.')}</span></div>
     {/if}
   {/if}
 </div>

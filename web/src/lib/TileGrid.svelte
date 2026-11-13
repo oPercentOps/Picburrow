@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from '$lib/i18n';
   import { thumbURL, formatDay, formatDuration, type Tile } from '$lib/api';
   import { justify, aspectOf } from '$lib/justify';
   import { overrides, openViewer, selection } from '$lib/state.svelte';
@@ -30,11 +31,11 @@
   const fav = (t: Tile) => overrides[t.id]?.fav ?? t.fav;
   // the name must contain the text the tile shows (WCAG 2.5.3, voice control): duration, "No preview"
   const label = (t: Tile) =>
-    `${t.type === 'video' ? 'Video' : 'Photo'} from ${formatDay(t.taken)}` +
+    tr(t.type === 'video' ? 'Video from {date}' : 'Photo from {date}', { date: formatDay(t.taken) }) +
     (t.type === 'video' && t.duration_ms ? `, ${formatDuration(t.duration_ms)}` : '') +
-    (t.err || broken[t.id] ? ', No preview' : '') +
-    (t.live ? ', Live' : '') +
-    (fav(t) ? ', favourite' : '');
+    (t.err || broken[t.id] ? ', ' + tr('No preview') : '') +
+    (t.live ? ', ' + tr('Live') : '') +
+    (fav(t) ? ', ' + tr('favourite') : '');
 
   const toggle = (id: number) => (selection.has(id) ? selection.delete(id) : selection.add(id));
 
@@ -71,7 +72,7 @@
             onpointerdown={(e) => down(t, e)} onpointerup={cancel} onpointercancel={cancel} onpointermove={cancel}
             oncontextmenu={(e) => selectable && e.preventDefault()}>
             {#if t.err || broken[t.id]}
-              <span class="ph err"><ImageOff aria-hidden="true" /><span>No preview</span></span>
+              <span class="ph err"><ImageOff aria-hidden="true" /><span>{tr('No preview')}</span></span>
             {:else}
               {#if t.ph && !loaded[t.id]}<span class="blur" style:background-image="url(data:image/webp;base64,{t.ph})" aria-hidden="true"></span>{/if}
               <img src={thumbURL(t, 's', base)} alt="" loading="lazy" decoding="async" class:in={loaded[t.id]}
@@ -79,10 +80,10 @@
             {/if}
             {#if t.type === 'video'}<span class="badge br"><Play aria-hidden="true" />{formatDuration(t.duration_ms)}</span>{/if}
             {#if fav(t)}<span class="badge bl"><Heart aria-hidden="true" fill="currentColor" /></span>{/if}
-            {#if t.live}<span class="badge tr">Live</span>{/if}
+            {#if t.live}<span class="badge tr">{tr('Live')}</span>{/if}
           </a>
           {#if selectable}
-            <button class="check" onclick={() => toggle(t.id)} aria-pressed={picked} aria-label="Select {label(t)}">
+            <button class="check" onclick={() => toggle(t.id)} aria-pressed={picked} aria-label={tr('Select {name}', { name: label(t) })}>
               <Check aria-hidden="true" />
             </button>
           {/if}

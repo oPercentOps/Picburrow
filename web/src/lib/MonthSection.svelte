@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { api, type Tile } from '$lib/api';
   import { overrides } from '$lib/state.svelte';
   import TileGrid from '$lib/TileGrid.svelte';
@@ -33,7 +34,7 @@
   {#if near && tiles}
     <div bind:offsetHeight={measured}><TileGrid tiles={shown} {width} {rowHeight} /></div>
   {:else if failed}
-    <p class="muted pad">This month didn't load. <button class="btn ghost" onclick={() => (failed = false)}>Try again</button></p>
+    <p class="muted pad">{t("This month didn't load.")} <button class="btn ghost" onclick={() => (failed = false)}>{t('Try again')}</button></p>
   {/if}
 </section>
 

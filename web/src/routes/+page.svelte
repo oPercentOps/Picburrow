@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { api, formatMonth, type Bucket } from '$lib/api';
   import MonthSection from '$lib/MonthSection.svelte';
   import IndexingBanner from '$lib/IndexingBanner.svelte';
@@ -27,12 +28,12 @@
   });
 </script>
 
-<svelte:head><title>Photos · Picburrow</title></svelte:head>
+<svelte:head><title>{t('Photos')} · Picburrow</title></svelte:head>
 
 <div class="page">
   <header>
-    <h1>Photos</h1>
-    {#if buckets?.length}<a class="btn secondary" href="/slideshow"><MonitorPlay aria-hidden="true" />Slideshow</a>{/if}
+    <h1>{t('Photos')}</h1>
+    {#if buckets?.length}<a class="btn secondary" href="/slideshow"><MonitorPlay aria-hidden="true" />{t('Slideshow')}</a>{/if}
   </header>
   <IndexingBanner onscandone={load} />
   {#if error}
@@ -40,8 +41,8 @@
   {:else if buckets && buckets.length === 0}
     <div class="empty">
       <Images aria-hidden="true" />
-      <strong>No photos yet</strong>
-      <span class="muted">They appear here as soon as the first scan finds them. If nothing shows up, check the folder under Libraries.</span>
+      <strong>{t('No photos yet')}</strong>
+      <span class="muted">{t('They appear here as soon as the first scan finds them. If nothing shows up, check the folder under Libraries.')}</span>
     </div>
   {:else if buckets}
     <div bind:clientWidth={width}>

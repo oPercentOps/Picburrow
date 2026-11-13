@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { api, type Tile } from '$lib/api';
   import TileGrid from '$lib/TileGrid.svelte';
   import type { Component } from 'svelte';
@@ -24,7 +25,7 @@
 <svelte:head><title>{title} · Picburrow</title></svelte:head>
 
 <div class="page">
-  <header><h1>{title}</h1>{#if tiles}<span class="muted">{shown.length.toLocaleString()} items</span>{/if}</header>
+  <header><h1>{title}</h1>{#if tiles}<span class="muted">{t('{n} items', { n: shown.length.toLocaleString() })}</span>{/if}</header>
   {#if error}
     <p class="error-msg" role="alert">{error}</p>
   {:else if tiles && shown.length === 0}

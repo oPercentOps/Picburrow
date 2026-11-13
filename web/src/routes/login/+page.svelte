@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
 
@@ -22,22 +23,22 @@
   }
 </script>
 
-<svelte:head><title>Sign in · Picburrow</title></svelte:head>
+<svelte:head><title>{t('Sign in')} · Picburrow</title></svelte:head>
 
 <div class="center">
   <form class="card" onsubmit={submit}>
-    <h1>Sign in</h1>
+    <h1>{t('Sign in')}</h1>
     <div class="field">
-      <label for="u">Username</label>
+      <label for="u">{t('Username')}</label>
       <input id="u" autocomplete="username" bind:value={username} required />
     </div>
     <div class="field">
-      <label for="p">Password</label>
+      <label for="p">{t('Password')}</label>
       <input id="p" type="password" autocomplete="current-password" bind:value={password} required
         aria-invalid={error ? 'true' : undefined} aria-describedby={error ? 'err' : undefined} />
     </div>
     {#if error}<p class="error-msg" id="err" role="alert">{error}</p>{/if}
-    <button class="btn primary" disabled={busy} aria-busy={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+    <button class="btn primary" disabled={busy} aria-busy={busy}>{busy ? t('Signing in…') : t('Sign in')}</button>
   </form>
 </div>
 

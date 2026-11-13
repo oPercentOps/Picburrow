@@ -19,7 +19,7 @@ pi: web
 
 test:
 	cd server && go test ./...
-	cd web && node --experimental-strip-types --no-warnings src/lib/justify.test.ts && npm run check
+	cd web && node --experimental-strip-types --no-warnings src/lib/justify.test.ts && node --experimental-strip-types --no-warnings src/lib/fr.test.ts && npm run check
 
 e2e: all
 	cd e2e && npm ci --no-audit --no-fund && npx playwright test

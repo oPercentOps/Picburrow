@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { page } from '$app/state';
   import { api } from '$lib/api';
   import { selection, overrides, picker, say, refresh } from '$lib/state.svelte';
@@ -30,7 +31,7 @@
       await api(`/api/albums/${page.params.id}/assets`, { method: 'DELETE', body: { ids: ids() } });
       selection.clear();
       refresh.n++;
-      say(`Removed ${n} from this album. The files stay on disk.`);
+      say(t('Removed {n} from this album. The files stay on disk.', { n }));
     } catch (e) {
       say((e as Error).message);
     } finally {
@@ -44,7 +45,7 @@
       const count = selection.size;
       await api('/api/assets', { method: 'PATCH', body: { ids: ids(), rating: n } });
       selection.clear();
-      say(n ? `Rated ${count} with ${n} ${n === 1 ? 'star' : 'stars'}` : `Cleared the rating of ${count}`);
+      say(n ? t(n === 1 ? 'Rated {count} with 1 star' : 'Rated {count} with {n} stars', { count, n }) : t('Cleared the rating of {count}', { count }));
     } catch (e) {
       say((e as Error).message);
     } finally {
@@ -57,29 +58,29 @@
 
 <svelte:window onkeydown={(e) => { if (e.key !== 'Escape' || page.state.viewer) return; rating ? (rating = false) : selection.clear(); }} />
 
-<div class="bar" role="toolbar" aria-label="Selected photos">
-  <button class="btn icon-btn ghost" onclick={() => selection.clear()} aria-label="Clear selection"><X aria-hidden="true" /></button>
-  <span class="count" aria-live="polite">{n} selected</span>
+<div class="bar" role="toolbar" aria-label={t('Selected photos')}>
+  <button class="btn icon-btn ghost" onclick={() => selection.clear()} aria-label={t('Clear selection')}><X aria-hidden="true" /></button>
+  <span class="count" aria-live="polite">{t('{n} selected', { n })}</span>
   <div class="actions">
-    <button class="btn ghost" disabled={busy} onclick={() => patch({ favorite: !allFav() }, allFav() ? `Removed ${n} from favourites` : `Added ${n} to favourites`)}>
-      <Heart aria-hidden="true" /><span class="lbl">Favourite</span></button>
+    <button class="btn ghost" disabled={busy} onclick={() => patch({ favorite: !allFav() }, allFav() ? t('Removed {n} from favourites', { n }) : t('Added {n} to favourites', { n }))}>
+      <Heart aria-hidden="true" /><span class="lbl">{t('Favourite')}</span></button>
     <div class="rate">
       <button class="btn ghost" disabled={busy} aria-expanded={rating} aria-controls="rate-menu" onclick={() => (rating = !rating)}>
-        <Star aria-hidden="true" /><span class="lbl">Rate</span></button>
+        <Star aria-hidden="true" /><span class="lbl">{t('Rate')}</span></button>
       {#if rating}
-        <div class="menu" id="rate-menu" role="group" aria-label="Rate the selected photos">
-          {#each [1, 2, 3, 4, 5] as n}<button class="btn ghost" onclick={() => rate(n)}>{'★'.repeat(n)}<span class="sr-only"> {n} {n === 1 ? 'star' : 'stars'}</span></button>{/each}
-          <button class="btn ghost" onclick={() => rate(0)}>No rating</button>
+        <div class="menu" id="rate-menu" role="group" aria-label={t('Rate the selected photos')}>
+          {#each [1, 2, 3, 4, 5] as n}<button class="btn ghost" onclick={() => rate(n)}>{'★'.repeat(n)}<span class="sr-only"> {t(n === 1 ? '1 star' : '{n} stars', { n })}</span></button>{/each}
+          <button class="btn ghost" onclick={() => rate(0)}>{t('No rating')}</button>
         </div>
       {/if}
     </div>
     <button class="btn ghost" disabled={busy} onclick={() => { picker.ids = ids(); }}>
-      <BookPlus aria-hidden="true" /><span class="lbl">Add to album</span></button>
+      <BookPlus aria-hidden="true" /><span class="lbl">{t('Add to album')}</span></button>
     {#if inAlbum}
-      <button class="btn ghost" disabled={busy} onclick={removeFromAlbum}><BookMinus aria-hidden="true" /><span class="lbl">Remove from album</span></button>
+      <button class="btn ghost" disabled={busy} onclick={removeFromAlbum}><BookMinus aria-hidden="true" /><span class="lbl">{t('Remove from album')}</span></button>
     {:else}
-      <button class="btn ghost" disabled={busy} onclick={() => patch({ archived: true }, `Archived ${n}. Find them under Archive.`)}>
-        <Archive aria-hidden="true" /><span class="lbl">Archive</span></button>
+      <button class="btn ghost" disabled={busy} onclick={() => patch({ archived: true }, t('Archived {n}. Find them under Archive.', { n }))}>
+        <Archive aria-hidden="true" /><span class="lbl">{t('Archive|verb')}</span></button>
     {/if}
   </div>
 </div>
