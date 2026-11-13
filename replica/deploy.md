@@ -25,29 +25,31 @@ Picburrow is self-hosted, free software: people run it on their own Pi. So "prod
 
 ## Release (replaces "production services")
 
-`.github/workflows/release.yml`, on a tag `v<VERSION>`:
+`.github/workflows/release.yml` runs on a version tag, `0.1.0` or `v0.1.0`:
 
-1. checks the tag equals `v$(cat VERSION)`;
+1. checks the tag (without a leading `v`) equals `VERSION`;
 2. installs libvips-tools, exiftool and ffmpeg so the image tests really run;
 3. `make all test`;
 4. `make deb deb-pi` and `SHA256SUMS`;
-5. creates a **draft** release with both `.deb` files and `SHA256SUMS`, notes generated from merged PRs.
+5. attaches both `.deb` files and `SHA256SUMS` to the tag's release: if you already made the release on GitHub's Releases page, the files are added to it; if not, a **draft** release is opened for you to publish.
 
-To release, after this PR is merged:
+**0.1.0 (2026-11-13)**: the owner made tag `0.1.0` and published its release from the Releases page, before the workflow accepted tags without `v`, so it ran with no files. Once the workflow fix is merged: Actions → **release** → **Run workflow** → tag `0.1.0`. While the Pi 3 test is open, edit the release and tick **"Set as a pre-release"**.
+
+Next versions: bump `VERSION`, merge, then either create the release on the Releases page with a new tag (e.g. `0.2.0`, target `main`), or from git:
 
 ```bash
 git checkout main && git pull
 ```
 
 ```bash
-git tag -a v0.1.0 -m "Picburrow 0.1.0"
+git tag -a 0.2.0 -m "Picburrow 0.2.0"
 ```
 
 ```bash
-git push origin v0.1.0
+git push origin 0.2.0
 ```
 
-Then, on GitHub → Releases: read the draft, tick **"Set as a pre-release"** while the Pi 3 test is open, and press **Publish**. Next versions: bump `VERSION`, merge, tag the same way.
+Either way the workflow builds and attaches the files. A tag that doesn't match `VERSION` fails at step 1, so nothing mismatched gets attached.
 
 ## Landing page
 
