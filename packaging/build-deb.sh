@@ -28,7 +28,7 @@ Depends: libvips-tools, libheif-plugin-libde265 | libheif1 (<< 1.16), libimage-e
 Recommends: ffmpeg
 Section: graphics
 Priority: optional
-Homepage: https://github.com/oPercentOps/RaspictureGalleryNas
+Homepage: https://github.com/oPercentOps/Picburrow
 Description: photo gallery for the folders you already have
  Picburrow turns the photo folders on a Raspberry Pi or small NAS into a
  phone-friendly timeline: viewer, folders, albums, search and share links.

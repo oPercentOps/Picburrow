@@ -9,6 +9,7 @@
   import { selection, toast } from '$lib/state.svelte';
   import { api, type User } from '$lib/api';
   import { SOURCE_URL } from '$lib/source';
+  import { sleepSeconds } from '$lib/sleep';
   import { Image, Folder, BookImage, Heart, Archive, Search, Trash2, HardDrive, Activity, LogOut, Users, Menu } from '@lucide/svelte';
 
   let { children } = $props();
@@ -49,6 +50,22 @@
     { href: '/admin/users', label: 'People', icon: Users }
   ];
   const current = (href: string) => (href === '/' ? page.url.pathname === '/' || page.url.pathname.startsWith('/photos/') : page.url.pathname.startsWith(href));
+
+  // sleep mode: after the chosen time without input, the slideshow starts by itself (like a tablet's photo frame)
+  $effect(() => {
+    if (!user || publicRoute) return;
+    let last = Date.now();
+    const active = () => (last = Date.now());
+    const events = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'] as const;
+    for (const e of events) window.addEventListener(e, active, { capture: true, passive: true });
+    const tick = setInterval(() => {
+      const n = sleepSeconds();
+      const watching = [...document.querySelectorAll('video')].some((v) => !v.paused && !v.ended);
+      if (page.url.pathname === '/slideshow' || watching || document.visibilityState !== 'visible') return active();
+      if (n > 0 && Date.now() - last >= n * 1000) { active(); goto('/slideshow?idle=1'); }
+    }, 1000);
+    return () => { clearInterval(tick); for (const e of events) window.removeEventListener(e, active, { capture: true }); };
+  });
 
   async function logout() {
     await api('/api/logout', { method: 'POST', body: {} });

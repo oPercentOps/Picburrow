@@ -1,6 +1,6 @@
 [Unit]
 Description=Picburrow photo gallery
-Documentation=https://github.com/oPercentOps/RaspictureGalleryNas
+Documentation=https://github.com/oPercentOps/Picburrow
 # photo folders are often network or USB mounts
 After=network-online.target local-fs.target remote-fs.target
 Wants=network-online.target

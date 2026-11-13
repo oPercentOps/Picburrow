@@ -1,4 +1,4 @@
-# Test plan: RaspictureGalleryNas
+# Test plan: Picburrow
 
 Build: d513470  Date: 2026-11-12  Env: local binary on a fresh data dir, generated fixture library (`e2e/make-fixtures.sh`: 128 dated photos, 3 dateless videos, a 48 MP JPEG, a corrupt file, a Synology `@eaDir`, and 3 photos with accented/emoji/HTML-looking/80-character names in an emoji folder dated 31 Dec 23:30 +01:00).
 

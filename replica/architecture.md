@@ -1,4 +1,4 @@
-# Architecture: RaspictureGalleryNas (a rebuild of Immich / PhotoPrism's browse + view features)
+# Architecture: Picburrow (a rebuild of Immich / PhotoPrism's browse + view features)
 
 Constraint that drives every choice: **Raspberry Pi 3/4/5, 1 GB RAM, 64-bit Raspberry Pi OS (arm64)**, self-hosted, published as an open-source product. The skill's default stack (Next.js, Supabase, Vercel) is cloud-hosted and multi-GB, so it is replaced wholesale.
 

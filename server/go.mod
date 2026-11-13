@@ -1,4 +1,4 @@
-module github.com/oPercentOps/RaspictureGalleryNas/server
+module github.com/oPercentOps/Picburrow/server
 
 go 1.26.0
 

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
+  import { SLEEP_CHOICES, sleepSeconds, setSleepSeconds } from '$lib/sleep';
   import { api, thumbURL, formatDay, type Tile } from '$lib/api';
   import { X, Play, Pause, Maximize, Minimize, Images } from '@lucide/svelte';
 
@@ -17,6 +19,10 @@
   let empty = $state(false);
   let error = $state('');
   let full = $state(false);
+  let sleep = $state(sleepSeconds());
+  // started by sleep mode: the first touch, click, key or mouse move goes back to where the person was
+  const idle = page.url.searchParams.has('idle');
+  const label = (s: number) => (s === 0 ? 'Sleep: off' : `Sleep: ${s < 60 ? s + ' s' : s / 60 + ' min'}`);
   const canFull = typeof document !== 'undefined' && !!document.fullscreenEnabled;
 
   let queue: Tile[] = [];
@@ -66,10 +72,25 @@
     schedule();
   }
 
-  function wake() {
+  let origin: { x: number; y: number } | null = null;
+  function wake(e?: PointerEvent) {
+    if (idle) {
+      // a resting mouse can get a synthetic move when the page changes under it: only a real movement wakes
+      if (e?.type === 'pointermove') {
+        if (!origin) origin = { x: e.clientX, y: e.clientY };
+        if (Math.hypot(e.clientX - origin.x, e.clientY - origin.y) < 10) return;
+      }
+      if (e) leave();
+      return;
+    }
     controls = true;
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => (controls = false), 3000);
+  }
+
+  function leave() {
+    if (history.length > 1) history.back();
+    else goto('/');
   }
 
   function exit() {
@@ -85,6 +106,7 @@
   }
 
   function onkey(e: KeyboardEvent) {
+    if (idle) return leave();
     wake();
     if (e.key === 'Escape' && !document.fullscreenElement) exit();
     else if (e.key === ' ' && !(e.target as HTMLElement).closest('button, select')) { e.preventDefault(); togglePause(); }
@@ -104,7 +126,7 @@
     const onfs = () => (full = !!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onfs);
     show();
-    wake();
+    if (!idle) wake();
     return () => { clearTimeout(timer); clearTimeout(hideTimer); document.removeEventListener('fullscreenchange', onfs); };
   });
 </script>
@@ -112,7 +134,7 @@
 <svelte:head><title>Slideshow · Picburrow</title></svelte:head>
 <svelte:window onkeydown={onkey} />
 
-<div class="show" class:idle={!controls} role="region" aria-label="Slideshow" onpointermove={wake} onpointerdown={wake}
+<div class="show" class:idle={!controls || idle} role="region" aria-label="Slideshow" onpointermove={wake} onpointerdown={wake}
   style:--drift="{seconds + FADE / 1000}s">
   {#each slides as s (s.key)}
     <div class="slide" class:out={s.out}><img src={s.src} alt="{formatDay(s.tile.taken)}" draggable="false" /></div>
@@ -125,12 +147,17 @@
     <div class="msg"><p role="alert">{error}</p><button class="btn secondary" onclick={exit}>Back to Photos</button></div>
   {/if}
 
-  <div class="bar" class:hidden={!controls}>
+  <div class="bar" class:hidden={!controls || idle}>
     <button class="btn icon-btn" onclick={exit} aria-label="Stop slideshow"><X aria-hidden="true" /></button>
     <span class="spacer"></span>
     <label class="every"><span class="sr-only">Change photo every</span>
       <select value={seconds} onchange={(e) => setSeconds(Number(e.currentTarget.value))}>
         {#each CHOICES as c}<option value={c}>{c < 60 ? `${c} s` : '1 min'}</option>{/each}
+      </select>
+    </label>
+    <label><span class="sr-only">Start the slideshow by itself when the screen is left alone</span>
+      <select value={sleep} onchange={(e) => setSleepSeconds((sleep = Number(e.currentTarget.value)))}>
+        {#each SLEEP_CHOICES as c}<option value={c}>{label(c)}</option>{/each}
       </select>
     </label>
     <button class="btn icon-btn" onclick={togglePause} aria-label={paused ? 'Play' : 'Pause'}>
@@ -142,12 +169,13 @@
       </button>
     {/if}
   </div>
-  {#if controls && slides.length}<p class="date" aria-hidden="true">{formatDay(slides.at(-1)!.tile.taken)}</p>{/if}
+  {#if controls && !idle && slides.length}<p class="date" aria-hidden="true">{formatDay(slides.at(-1)!.tile.taken)}</p>{/if}
 </div>
 
 <style>
   .show { position: fixed; inset: 0; z-index: 100; background: #000; color: #fff; overflow: hidden; }
   .show.idle { cursor: none; }
+  .bar label { display: contents; }
   .slide { position: absolute; inset: 0; animation: fade-in 1.5s ease forwards; }
   .slide.out { animation: fade-out 1.5s ease forwards; }
   .slide img { width: 100%; height: 100%; object-fit: contain; animation: drift var(--drift) linear forwards; }
