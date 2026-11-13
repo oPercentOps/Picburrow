@@ -16,13 +16,13 @@ const trashDays = 30
 
 func (a *App) getTrash(w http.ResponseWriter, r *http.Request) {
 	a.writeTiles(w, `select `+tileCols+` from assets a join libraries l on l.id = a.library_id
-		where l.owner_id = ? and a.missing_at is not null order by a.missing_at desc, a.id desc limit 5000`, userFrom(r).ID)
+		where l.id in `+mine+` and a.missing_at is not null order by a.missing_at desc, a.id desc limit 5000`, userFrom(r).ID)
 }
 
 // deleteTrash forgets missing photos now instead of after 30 days (their albums and favourites go with them).
 func (a *App) deleteTrash(w http.ResponseWriter, r *http.Request) {
 	ids, err := queryIDs(a.db, `select a.id from assets a join libraries l on l.id = a.library_id
-		where l.owner_id = ? and a.missing_at is not null`, userFrom(r).ID)
+		where l.id in `+mine+` and a.missing_at is not null`, userFrom(r).ID)
 	if err != nil {
 		serverError(w, err)
 		return
@@ -76,7 +76,7 @@ type userRow struct {
 
 func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := a.db.Query(`select u.id, u.username, u.is_admin, u.created_at,
-		(select count(*) from assets x join libraries l on l.id = x.library_id where l.owner_id = u.id and x.missing_at is null)
+		(select count(*) from assets x where x.library_id in (select library_id from library_members where user_id = u.id) and x.missing_at is null)
 		from users u order by u.id`)
 	if err != nil {
 		serverError(w, err)
@@ -95,13 +95,15 @@ func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, out)
 }
 
-// postUser adds a family member with their own photo folder.
+// postUser adds a family member with their own photo folder, or sharing one of the admin's libraries (library_id):
+// same photos, favourites, ratings and archive, nothing indexed twice.
 func (a *App) postUser(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 		IsAdmin  bool   `json:"is_admin"`
 		Path     string `json:"path"`
+		Library  int64  `json:"library_id"`
 	}
 	if !readJSON(w, r, &in) {
 		return
@@ -115,7 +117,14 @@ func (a *App) postUser(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusBadRequest, "Use at least 8 characters for the password")
 		return
 	}
-	if msg := checkFolder(in.Path); msg != "" {
+	if in.Library != 0 {
+		var n int
+		a.db.QueryRow("select count(*) from library_members where library_id = ? and user_id = ?", in.Library, userFrom(r).ID).Scan(&n)
+		if n == 0 {
+			httpError(w, http.StatusNotFound, "No such library")
+			return
+		}
+	} else if msg := checkFolder(in.Path); msg != "" {
 		httpError(w, http.StatusBadRequest, msg)
 		return
 	}
@@ -140,8 +149,17 @@ func (a *App) postUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uid, _ := res.LastInsertId()
-	paths, _ := json.Marshal([]string{filepath.Clean(in.Path)})
-	if _, err := tx.Exec("insert into libraries (owner_id, name, import_paths) values (?, ?, ?)", uid, filepath.Base(filepath.Clean(in.Path)), string(paths)); err != nil {
+	lib := in.Library
+	if lib == 0 {
+		paths, _ := json.Marshal([]string{filepath.Clean(in.Path)})
+		res, err := tx.Exec("insert into libraries (owner_id, name, import_paths) values (?, ?, ?)", uid, filepath.Base(filepath.Clean(in.Path)), string(paths))
+		if err != nil {
+			serverError(w, err)
+			return
+		}
+		lib, _ = res.LastInsertId()
+	}
+	if _, err := tx.Exec("insert into library_members (library_id, user_id) values (?, ?)", lib, uid); err != nil {
 		serverError(w, err)
 		return
 	}
@@ -149,7 +167,9 @@ func (a *App) postUser(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	a.startScan()
+	if in.Library == 0 {
+		a.startScan() // a shared library is already indexed
+	}
 	a.getUsers(w, r)
 }
 
@@ -182,7 +202,8 @@ func (a *App) patchUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// deleteUser removes an account, its libraries' index, albums and links. Photo files stay on disk.
+// deleteUser removes an account, its albums and links, and the index of libraries nobody else shares; a library shared
+// with others passes to one of them, so the family keeps its photos, favourites and ratings. Photo files stay on disk.
 func (a *App) deleteUser(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(r)
 	if !ok {
@@ -191,6 +212,12 @@ func (a *App) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if id == userFrom(r).ID {
 		httpError(w, http.StatusBadRequest, "You can't delete your own account")
+		return
+	}
+	if _, err := a.db.Exec(`update libraries set owner_id = (select min(m.user_id) from library_members m
+		where m.library_id = libraries.id and m.user_id != ?1) where owner_id = ?1
+		and exists (select 1 from library_members m where m.library_id = libraries.id and m.user_id != ?1)`, id); err != nil {
+		serverError(w, err)
 		return
 	}
 	ids, _ := queryIDs(a.db, "select x.id from assets x join libraries l on l.id = x.library_id where l.owner_id = ?", id)

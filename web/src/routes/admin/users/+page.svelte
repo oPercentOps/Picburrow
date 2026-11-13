@@ -8,13 +8,16 @@
   let users = $state<Row[] | null>(null);
   let me = $state<User | null>(null);
   let error = $state('');
-  let form = $state({ username: '', password: '', path: '', is_admin: false });
+  const empty = () => ({ username: '', password: '', path: '', is_admin: false, library_id: 0 });
+  let form = $state(empty());
+  let libs = $state<{ id: number; name: string }[]>([]); // the admin's own libraries, which a new person can share
   let formError = $state('');
   let busy = $state(false);
 
   const load = () => api<Row[]>('/api/users').then((u) => (users = u)).catch((e) => (error = e.message));
   load();
   api<User>('/api/me').then((u) => (me = u));
+  api<{ id: number; name: string }[]>('/api/libraries').then((l) => (libs = l)).catch(() => {});
 
   async function add(e: SubmitEvent) {
     e.preventDefault();
@@ -22,8 +25,9 @@
     formError = '';
     try {
       users = await api<Row[]>('/api/users', { method: 'POST', body: form });
-      say(t('Added {name}. Their photos are being indexed.', { name: form.username }));
-      form = { username: '', password: '', path: '', is_admin: false };
+      say(form.library_id ? t('Added {name}. They see the same photos as you.', { name: form.username })
+        : t('Added {name}. Their photos are being indexed.', { name: form.username }));
+      form = empty();
     } catch (err) {
       formError = (err as Error).message;
     } finally {
@@ -74,7 +78,17 @@
     <div class="field"><label for="nu">{t('Username')}</label><input id="nu" bind:value={form.username} required autocomplete="off" /></div>
     <div class="field"><label for="np">{t('Password')}</label><input id="np" type="password" bind:value={form.password} required minlength="8" autocomplete="new-password" aria-describedby="nph" />
       <span class="hint" id="nph">{t('At least 8 characters. Tell them in person.')}</span></div>
-    <div class="field"><label for="nf">{t('Their photo folder')}</label><input id="nf" bind:value={form.path} required placeholder="/mnt/nas/backup-ann" autocapitalize="off" spellcheck="false" /></div>
+    {#if libs.length}
+      <div class="field"><label for="nl">{t('Their photos')}</label>
+        <select id="nl" bind:value={form.library_id} aria-describedby="nlh">
+          <option value={0}>{t('A folder of their own')}</option>
+          {#each libs as l (l.id)}<option value={l.id}>{t('Share my photos ({name})', { name: l.name })}</option>{/each}
+        </select>
+        <span class="hint" id="nlh">{t('Sharing: the same photos, favourites, ratings and archive, with nothing indexed twice. Albums stay personal.')}</span></div>
+    {/if}
+    {#if !form.library_id}
+      <div class="field"><label for="nf">{t('Their photo folder')}</label><input id="nf" bind:value={form.path} required placeholder="/mnt/nas/backup-ann" autocapitalize="off" spellcheck="false" /></div>
+    {/if}
     <label class="check"><input type="checkbox" bind:checked={form.is_admin} /> {t('Can manage libraries and people')}</label>
     {#if formError}<p class="error-msg" role="alert">{formError}</p>{/if}
     <button class="btn primary" disabled={busy}><UserPlus aria-hidden="true" />{t('Add')}</button>

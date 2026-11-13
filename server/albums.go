@@ -132,7 +132,7 @@ func (a *App) addToAlbum(uid, albumID int64, ids []int64) (int64, error) {
 	args = append(args, uid)
 	res, err := a.db.Exec(`insert or ignore into album_assets (album_id, asset_id)
 		select ?, a.id from assets a join libraries l on l.id = a.library_id
-		where a.id in (?`+strings.Repeat(",?", len(ids)-1)+`) and l.owner_id = ?`, args...)
+		where a.id in (?`+strings.Repeat(",?", len(ids)-1)+`) and l.id in `+mine, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -467,7 +467,7 @@ func (a *App) getSharedOriginal(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) getSearch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	where := []string{"l.owner_id = ?", "a.missing_at is null", "a.is_archived = 0", notLiveClip}
+	where := []string{"l.id in " + mine, "a.missing_at is null", "a.is_archived = 0", notLiveClip}
 	args := []any{userFrom(r).ID}
 	if text := strings.TrimSpace(q.Get("q")); text != "" {
 		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(text) + "%"

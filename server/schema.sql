@@ -32,6 +32,15 @@ create table libraries (
   created_at       integer not null default (unixepoch()),
   updated_at       integer not null default (unixepoch())
 );
+
+-- who sees a library's photos: its owner, plus family members sharing it (one folder, one index, one set of
+-- favourites, ratings and archive). The owner is also a row here; only the owner edits the library.
+create table library_members (
+  library_id integer not null references libraries(id) on delete cascade,
+  user_id    integer not null references users(id) on delete cascade,
+  primary key (library_id, user_id)
+);
+create index library_members_user on library_members(user_id);
 create index libraries_owner on libraries(owner_id);
 
 create table assets (
