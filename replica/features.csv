@@ -48,3 +48,8 @@ Partner sharing (whole library to another user),sharing,could,yes,no,Immich part
 Blurred placeholder (thumbhash) while thumbnails load,browse,should,yes,yes,"a ~16 px WebP stored with each photo, blurred behind the tile until the thumbnail loads (not the ThumbHash algorithm)"
 WebDAV access to the library,sync,skip,yes,skip,PhotoPrism feature; out of browse+view slice
 OCR text search,search,skip,yes,skip,Immich searching.md; needs ML
+One-command install on Raspberry Pi OS (.deb + systemd),install,should,no,no,"fixes.md #2: H1 ""Immich wants a Postgres and a redis instance."" / ""Using Immich without Docker also seems complicated."""
+Warn when the database or thumbnails are on the SD card,library,should,no,no,"fixes.md #4: H2 ""a mini pc with an ssd runs circles around a raspberry pi running off a microsd card"""
+Automatic database backup before every upgrade,library,should,no,no,"fixes.md #5: H3 ""Immich constantly breaks."" (thin)"
+"Full capture details (aperture, shutter, ISO, focal length, flash)",view,could,no,no,"fixes.md #7: M2 Apple-style capture metadata (thin, one comment)"
+Batch rating from the selection bar,organize,could,no,no,"fixes.md #8: M3 batch edit (thin, one comment)"
