@@ -6,6 +6,8 @@ and 64-bit Raspberry Pi OS, and only reads your photo folders, never changes the
 
 Status: timeline with date scrubber, viewer, live photos, star ratings, folders, favourites, archive, trash, albums, multi-select, search, share links, family accounts, library settings; installable on a phone's home screen. Feature parity 87/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
 
+To hear about new versions: **Watch → Custom → Releases** on GitHub. The project page is `docs/index.html`.
+
 ## Install on a Raspberry Pi (64-bit Raspberry Pi OS)
 
 ```bash

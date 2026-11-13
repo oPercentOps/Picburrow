@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Picburrow: your phone photos on a 1 GB Raspberry Pi</title>
+<meta name="description" content="One small program that turns the photo folders you already have into a timeline you can scroll on your phone. No Docker, no database server. Free and open source (AGPL-3.0).">
+<link rel="icon" href="img/icon.svg" type="image/svg+xml">
+<meta property="og:title" content="Picburrow">
+<meta property="og:description" content="Your phone photos, as a timeline, on a 1 GB Raspberry Pi.">
+<meta property="og:image" content="img/timeline.webp">
+<style>
+  /* colours and sizes from replica/design/tokens.css (contrast-checked: 35 pairs pass AA) */
+  :root {
+    --bg: #ffffff; --surface: #f3f4f6; --border: #e1e4e8; --text: #15181d; --text-muted: #59616c;
+    --accent: #b4470f; --on-accent: #ffffff; --accent-tint: #fdeee6;
+    --radius-md: 10px; --radius-lg: 16px; --shadow: 0 12px 32px rgba(0,0,0,.18);
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1014; --surface: #181b21; --border: #2a2f37; --text: #eceef1; --text-muted: #9ea6b1;
+      --accent: #ff9a5c; --on-accent: #1a0d05; --accent-tint: #2b1a10; --shadow: 0 12px 32px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1014; --surface: #181b21; --border: #2a2f37; --text: #eceef1; --text-muted: #9ea6b1;
+    --accent: #ff9a5c; --on-accent: #1a0d05; --accent-tint: #2b1a10; --shadow: 0 12px 32px rgba(0,0,0,.5);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 var(--font); }
+  a { color: var(--accent); }
+  a:focus-visible, .btn:focus-visible, summary:focus-visible, pre:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  img { max-width: 100%; height: auto; display: block; }
+  code { font: .9em var(--mono); background: var(--surface); padding: .15em .4em; border-radius: 6px; overflow-wrap: anywhere; }
+  .wrap { width: min(1100px, 100% - 32px); margin-inline: auto; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 20px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; color: var(--text); text-decoration: none; }
+  .logo img { width: 32px; height: 32px; border-radius: 8px; }
+  nav.top a { color: var(--text); text-decoration: none; margin-left: 20px; font-size: 15px; }
+  nav.top a:hover { color: var(--accent); }
+  section { padding-block: 64px; }
+  h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.08; letter-spacing: -.02em; margin: 0 0 20px; max-width: 16ch; }
+  h2 { font-size: clamp(26px, 4vw, 36px); line-height: 1.2; letter-spacing: -.01em; margin: 0 0 24px; }
+  h3 { font-size: 19px; margin: 0 0 6px; }
+  .lede { font-size: 20px; color: var(--text-muted); max-width: 46ch; margin: 0 0 28px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; }
+  .btn.primary { background: var(--accent); color: var(--on-accent); }
+  .btn.secondary { border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+  .hero { padding-top: 32px; }
+  .shots { position: relative; margin-top: 48px; }
+  .shots .desk { border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow); width: 88%; }
+  .shots .phone { position: absolute; right: 0; bottom: -32px; width: 22%; min-width: 120px; border-radius: 22px; border: 6px solid #15181d; box-shadow: var(--shadow); }
+  .muted { color: var(--text-muted); }
+  .problem { background: var(--surface); }
+  .grid2 { display: grid; gap: 32px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 32px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); counter-reset: s; }
+  .steps li { counter-increment: s; }
+  .steps li::before { content: counter(s); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); font-weight: 700; margin-bottom: 12px; }
+  .features { display: grid; gap: 28px 40px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 0; }
+  .features dt { font-weight: 700; }
+  .features dd { margin: 4px 0 0; color: var(--text-muted); }
+  .also { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-muted); }
+  .gallery { display: grid; gap: 24px; grid-template-columns: 2fr 1fr; align-items: start; margin-top: 40px; }
+  .gallery img { border-radius: var(--radius-md); border: 1px solid var(--border); }
+  .gallery figcaption { font-size: 15px; color: var(--text-muted); margin-top: 8px; }
+  figure { margin: 0; }
+  .price { border: 2px solid var(--accent); border-radius: var(--radius-lg); padding: 32px; max-width: 560px; }
+  .price .amount { font-size: 48px; font-weight: 800; line-height: 1; margin: 0 0 12px; }
+  .price ul { padding-left: 20px; margin: 16px 0 0; }
+  .install pre { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; overflow-x: auto; font: 15px/1.5 var(--mono); margin: 12px 0 20px; }
+  details { border-bottom: 1px solid var(--border); padding: 16px 0; }
+  summary { cursor: pointer; font-weight: 600; font-size: 18px; }
+  details p { margin: 10px 0 0; color: var(--text-muted); max-width: 70ch; }
+  .final { text-align: center; background: var(--accent-tint); }
+  .final h2 { margin-bottom: 24px; }
+  .final .actions { justify-content: center; }
+  footer { padding-block: 32px; font-size: 15px; color: var(--text-muted); }
+  @media (max-width: 640px) {
+    nav.top a:not(:last-child) { display: none; }
+    section { padding-block: 48px; }
+    .shots .desk { display: none; }
+    .shots .phone { position: static; display: block; width: 72%; margin: 0 auto; }
+    .gallery { grid-template-columns: 1fr; }
+    .price { padding: 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="wrap top">
+  <a class="logo" href="#"><img src="img/icon.svg" alt="" width="32" height="32">Picburrow</a>
+  <nav class="top" aria-label="Page">
+    <a href="#how">How it works</a><a href="#features">Features</a><a href="#faq">FAQ</a><a href="https://github.com/oPercentOps/RaspictureGalleryNas">Source code</a>
+  </nav>
+</header>
+
+<main>
+<section class="wrap hero">
+  <h1>Your phone photos, as a timeline, on a 1&nbsp;GB Raspberry&nbsp;Pi.</h1>
+  <p class="lede">Picburrow is one small program that turns the photo folders you already have into a timeline you can scroll on your phone. No Docker, no database server. It only reads your photos.</p>
+  <div class="actions">
+    <a class="btn primary" href="#install">Install on your Pi</a>
+    <a class="btn secondary" href="https://github.com/oPercentOps/RaspictureGalleryNas">Source code</a>
+  </div>
+  <div class="shots">
+    <img class="desk" src="img/timeline.webp" width="1440" height="900" alt="Picburrow on a computer: photos grouped by day, newest first, with the menu on the left.">
+    <img class="phone" src="img/timeline-phone.webp" width="585" height="996" alt="The same timeline on a phone, in dark mode.">
+  </div>
+</section>
+
+<section class="problem">
+  <div class="wrap">
+    <h2>Looking at your own photos shouldn't take a server farm.</h2>
+    <div class="grid2">
+      <div><h3>Too many moving parts</h3><p class="muted">A photo gallery at home usually means containers, a database server and a cache to install, update and repair, just to look at pictures.</p></div>
+      <div><h3>Too heavy for a small board</h3><p class="muted">Those setups want several gigabytes of memory, and their constant writes wear out a Pi's SD card.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="how">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li><h3>Install</h3><p class="muted">One command on 64-bit Raspberry Pi OS. It brings what it needs and starts by itself.</p></li>
+    <li><h3>Point it at your photos</h3><p class="muted">Open the Pi's address in a browser, make your account and pick the folder your phone backups land in.</p></li>
+    <li><h3>Scroll</h3><p class="muted">Your photos appear by day, newest first. Add Picburrow to your phone's home screen and it opens like an app.</p></li>
+  </ol>
+</section>
+
+<section class="wrap" id="features">
+  <h2>Small on purpose</h2>
+  <dl class="features">
+    <div><dt>One program, one file of data</dt><dd>No containers, no database server, no cache: one program and a SQLite file.</dd></div>
+    <div><dt>One-command install</dt><dd>The package sets up the service, a system user and the image tools for you.</dd></div>
+    <div><dt>Fits in 1 GB</dt><dd>About 20 MB for the program, 100–140 MB while making previews in our tests. Previews are made one at a time, so a big photo can't starve the board.</dd></div>
+    <div><dt>Looks after your SD card</dt><dd>Tells you if its data sits on the SD card, with the one-line fix.</dd></div>
+    <div><dt>Safe upgrades</dt><dd>Before an upgrade changes its database, it saves a copy and keeps the last three.</dd></div>
+    <div><dt>The whole family, no paid tier</dt><dd>Give each person an account and their own folder. Nothing is behind a paid plan.</dd></div>
+    <div><dt>Full camera details</dt><dd>Aperture, shutter speed, ISO, focal length and flash, next to every photo.</dd></div>
+    <div><dt>Rate many at once</dt><dd>Pick photos and give them stars in one go.</dd></div>
+    <div><dt>Your folders, untouched</dt><dd>It reads your folders as they are. Nothing is moved, renamed or rewritten.</dd></div>
+  </dl>
+  <p class="also">Also: a date scrubber for jumping through years, a full-screen viewer you can swipe, live photos, folders, albums, share links with a password and an end date, search by name, date and type, favourites, archive and trash. Light and dark, phone and desktop.</p>
+  <div class="gallery">
+    <figure><img src="img/share.webp" width="1440" height="900" alt="Sharing an album: a link with an optional password and an end date." loading="lazy"><figcaption>Share an album with a link, a password and an end date.</figcaption></figure>
+    <figure><img src="img/viewer-phone.webp" width="585" height="996" alt="A photo open full screen on a phone." loading="lazy"><figcaption>Swipe through photos full screen.</figcaption></figure>
+  </div>
+</section>
+
+<section class="wrap" id="pricing">
+  <h2>Price</h2>
+  <div class="price">
+    <p class="amount">Free</p>
+    <p>All of it, for everyone in your home. Picburrow is free software under the <a href="https://github.com/oPercentOps/RaspictureGalleryNas/blob/main/LICENSE">GNU AGPL v3</a>: you can use it, change it and share it.</p>
+    <ul>
+      <li>No paid plan and no locked features</li>
+      <li>No account with us</li>
+      <li>It never calls home: your photos and your data stay on your Pi</li>
+    </ul>
+  </div>
+</section>
+
+<section class="wrap install" id="install">
+  <h2>Install</h2>
+  <p>On 64-bit Raspberry Pi OS (Pi 3, 4 or 5), download the <code>.deb</code> from the <a href="https://github.com/oPercentOps/RaspictureGalleryNas/releases">releases page</a>, then:</p>
+  <pre tabindex="0" aria-label="Install command"><code>sudo apt install ./picburrow_0.1.0_arm64.deb</code></pre>
+  <p>Open <code>http://&lt;your-pi&gt;:8080</code>, make your account and pick your photo folder. Put Picburrow's data on a USB drive or SSD rather than the SD card; the <a href="https://github.com/oPercentOps/RaspictureGalleryNas#install-on-a-raspberry-pi-64-bit-raspberry-pi-os">README</a> shows how.</p>
+</section>
+
+<section class="wrap" id="faq">
+  <h2>Questions</h2>
+  <details><summary>Will it run on my Pi 3?</summary><p>It is built for 64-bit Raspberry Pi OS on a Pi 3, 4 or 5 with 1 GB of memory, and stayed well under that on a 64-bit test machine. Testing on real Pi boards is still in progress, so please tell us what you see.</p></details>
+  <details><summary>Does it change my photos?</summary><p>No. It only reads them. Its own data (previews, albums, favourites) lives in a separate folder.</p></details>
+  <details><summary>How do photos get from my phone to the Pi?</summary><p>With the sync app you already use: Syncthing, your NAS's app, anything that copies files into a folder. Picburrow shows whatever lands there.</p></details>
+  <details><summary>Can I move over from another photo app?</summary><p>If that app keeps your originals in normal folders, point Picburrow at them. Albums and faces from other apps are not imported.</p></details>
+  <details><summary>Does it recognise faces, or search for "beach"?</summary><p>No, on purpose. Those need several gigabytes of memory, which is exactly what Picburrow exists to avoid.</p></details>
+  <details><summary>Can I see my photos away from home?</summary><p>Yes, through a VPN such as WireGuard or Tailscale, or behind a web server that adds HTTPS. Picburrow has no HTTPS of its own, so don't open its port straight to the internet.</p></details>
+  <details><summary>iPhone photos (HEIC) and live photos?</summary><p>Yes. HEIC previews are made with libvips, and live photos play their motion clip. So far this is tested with generated files; reports from real iPhone libraries are very welcome.</p></details>
+  <details><summary>What does it cost to run?</summary><p>Nothing beyond your Pi and your disk. There is no paid plan.</p></details>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Give your photo folders a home.</h2>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/oPercentOps/RaspictureGalleryNas/releases">Download for Raspberry Pi</a>
+      <a class="btn secondary" href="https://github.com/oPercentOps/RaspictureGalleryNas">Read the source</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="wrap">
+  Picburrow is free software under the GNU AGPL v3. Not affiliated with Raspberry Pi Ltd.
+</footer>
+</body>
+</html>
