@@ -1,5 +1,5 @@
 {
-  "name": "homeroll-e2e",
+  "name": "picburrow-e2e",
   "private": true,
   "scripts": {
     "test": "playwright test"

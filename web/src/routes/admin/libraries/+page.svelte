@@ -43,7 +43,7 @@
   }
 </script>
 
-<svelte:head><title>Libraries · Homeroll</title></svelte:head>
+<svelte:head><title>Libraries · Picburrow</title></svelte:head>
 
 <div class="page">
   <h1>Libraries</h1>

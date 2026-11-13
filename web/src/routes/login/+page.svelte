@@ -22,7 +22,7 @@
   }
 </script>
 
-<svelte:head><title>Sign in · Homeroll</title></svelte:head>
+<svelte:head><title>Sign in · Picburrow</title></svelte:head>
 
 <div class="center">
   <form class="card" onsubmit={submit}>

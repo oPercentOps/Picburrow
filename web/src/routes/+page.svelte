@@ -27,7 +27,7 @@
   });
 </script>
 
-<svelte:head><title>Photos · Homeroll</title></svelte:head>
+<svelte:head><title>Photos · Picburrow</title></svelte:head>
 
 <div class="page">
   <header><h1>Photos</h1></header>

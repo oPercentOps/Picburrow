@@ -37,7 +37,7 @@
   const title = $derived(crumbs.at(-1)?.name || 'Folders');
 </script>
 
-<svelte:head><title>{title} · Homeroll</title></svelte:head>
+<svelte:head><title>{title} · Picburrow</title></svelte:head>
 
 <div class="page">
   <nav aria-label="Breadcrumb" class="crumbs">

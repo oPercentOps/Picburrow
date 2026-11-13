@@ -1,7 +1,17 @@
 {
-  "name": "Homeroll",
-  "avoid": ["Immich", "PhotoPrism", "FUTO"],
-  "domains": ["immich.app", "photoprism.app", "futo.org"],
+  "name": "Picburrow",
+  "avoid": [
+    "Immich",
+    "PhotoPrism",
+    "FUTO",
+    "Homeroll"
+  ],
+  "domains": [
+    "immich.app",
+    "photoprism.app",
+    "futo.org"
+  ],
   "colors": [],
-  "_colors_note": "The originals' brand colours were not verified from a primary source in this session, so none are listed rather than guessed. Homeroll's accent (#b4470f / #ff9a5c, burnt orange) is outside the blue/purple family both use."
+  "_colors_note": "The originals' brand colours were not verified from a primary source in this session, so none are listed rather than guessed. Homeroll's accent (#b4470f / #ff9a5c, burnt orange) is outside the blue/purple family both use.",
+  "_avoid_note": "Homeroll was this app's first name (dropped 2026-11-13: two App Store apps use it); it stays here so the sweep catches leftovers."
 }

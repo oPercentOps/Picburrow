@@ -19,7 +19,7 @@
   }
 </script>
 
-<svelte:head><title>Albums · Homeroll</title></svelte:head>
+<svelte:head><title>Albums · Picburrow</title></svelte:head>
 
 <div class="page">
   <header>

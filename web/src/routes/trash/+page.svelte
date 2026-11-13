@@ -21,7 +21,7 @@
   }
 </script>
 
-<svelte:head><title>Trash · Homeroll</title></svelte:head>
+<svelte:head><title>Trash · Picburrow</title></svelte:head>
 
 <div class="page">
   <header>

@@ -36,7 +36,7 @@
   }
 </script>
 
-<svelte:head><title>{album?.name ?? 'Album'} · Homeroll</title></svelte:head>
+<svelte:head><title>{album?.name ?? 'Album'} · Picburrow</title></svelte:head>
 
 <div class="page">
   {#if error}

@@ -5,7 +5,7 @@ test('F07-H1 first-run setup indexes the folder and lands on the timeline', asyn
   test.setTimeout(240_000); // indexes the whole fixture library
   await page.goto('/');
   await expect(page).toHaveURL(/\/setup$/);
-  await expect(page.getByRole('heading', { name: 'Welcome to Homeroll' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome to Picburrow' })).toBeVisible();
   await axe(page);
   await page.screenshot({ path: `${SHOTS}/S02-setup.png` });
 
