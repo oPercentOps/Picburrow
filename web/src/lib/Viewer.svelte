@@ -13,6 +13,18 @@
   let asset = $state<Asset | null>(null);
   let error = $state('');
   let showInfo = $state(false);
+  // capture settings, read from the file when the details panel opens (owner only)
+  let details = $state<Record<string, string> | null>(null);
+  $effect(() => {
+    details = null;
+    if (!showInfo || readonly || !ready) return;
+    const ctl = new AbortController();
+    api<Record<string, string>>(`/api/assets/${id}/details`, { signal: ctl.signal }).then((d) => (details = d)).catch(() => {});
+    return () => ctl.abort();
+  });
+  const exposure = $derived(details ? [details.FNumber && `f/${details.FNumber}`, details.ExposureTime && `${details.ExposureTime} s`,
+    details.ISO && `ISO ${details.ISO}`, details.ExposureCompensation && details.ExposureCompensation !== '0' && `${details.ExposureCompensation} EV`].filter(Boolean).join(' · ') : '');
+  const focal = $derived(details?.FocalLength ? details.FocalLength + (details.FocalLengthIn35mmFormat ? ` (${details.FocalLengthIn35mmFormat} equiv.)` : '') : '');
   let scale = $state(1);
   let tx = $state(0);
   let ty = $state(0);
@@ -215,6 +227,9 @@
         {#if asset.size}<dt>Size</dt><dd>{mb(asset.size)}{asset.w && asset.h ? ` · ${asset.w} × ${asset.h}` : ''}</dd>{/if}
         {#if camera}<dt>Camera</dt><dd>{camera}</dd>{/if}
         {#if asset.lens}<dt>Lens</dt><dd>{asset.lens}</dd>{/if}
+        {#if exposure}<dt>Exposure</dt><dd>{exposure}</dd>{/if}
+        {#if focal}<dt>Focal length</dt><dd>{focal}</dd>{/if}
+        {#if details?.Flash}<dt>Flash</dt><dd>{details.Flash}</dd>{/if}
         {#if !readonly}
           <dt id="rating-label">Rating</dt>
           <dd>

@@ -26,6 +26,7 @@
 <div class="page">
   <h1>Indexing</h1>
   {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
+  {#if jobs?.storage_warning}<p class="warn" role="alert">{jobs.storage_warning}</p>{/if}
   {#if jobs}
     <section aria-labelledby="scan-h">
       <h2 id="scan-h">Folder scan</h2>
@@ -63,6 +64,7 @@
   .errs { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
   .errs li { display: grid; gap: var(--space-1); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
   .path { font: var(--text-sm) var(--font-mono); overflow-wrap: anywhere; }
+  .warn { margin-top: var(--space-5); padding: var(--space-4) var(--space-5); border-left: 4px solid var(--warning); background: var(--surface); }
   .errs .muted { overflow-wrap: anywhere; }
   @media (min-width: 768px) { .page { padding: var(--space-6) var(--space-6) var(--space-7); } }
 </style>

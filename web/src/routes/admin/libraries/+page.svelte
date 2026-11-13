@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, formatWhen, type Library } from '$lib/api';
+  import { api, formatWhen, type Library, type Jobs } from '$lib/api';
 
   let libs = $state<Library[] | null>(null);
   let error = $state('');
@@ -14,6 +14,8 @@
     for (const l of ls) forms[l.id] = { name: l.name, paths: l.import_paths.join('\n'), globs: l.exclusion_globs.join('\n'), error: '', saved: false, busy: false };
   }
   load();
+  let storageWarning = $state('');
+  api<Jobs>('/api/jobs').then((j) => (storageWarning = j.storage_warning ?? '')).catch(() => {});
 
   const lines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
 
@@ -47,6 +49,7 @@
   <h1>Libraries</h1>
   <p class="muted intro">The folders the gallery reads photos from. Files are only read, never moved or changed.</p>
   {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
+  {#if storageWarning}<p class="warn" role="alert">{storageWarning}</p>{/if}
   {#each libs ?? [] as l (l.id)}
     {@const f = forms[l.id]}
     <form class="card" onsubmit={(e) => save(l, e)}>
@@ -86,6 +89,8 @@
   .card { display: grid; gap: var(--space-5); padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-lg); }
   .status { display: grid; gap: var(--space-2); }
   .warn { color: var(--warning); font: var(--text-sm) var(--font-sans); overflow-wrap: anywhere; }
+  p.warn { color: var(--text); font: var(--text-base) var(--font-sans); margin: 0 0 var(--space-5); padding: var(--space-4) var(--space-5);
+    border-left: 4px solid var(--warning); background: var(--surface); }
   .ok { color: var(--success); font: var(--text-sm) var(--font-sans); margin: 0; }
   textarea { padding: var(--space-3) var(--space-4); border: 1px solid var(--border-input); border-radius: var(--radius-sm); background: var(--bg);
     color: var(--text); font: var(--text-base) var(--font-sans); resize: vertical; width: 100%; }
