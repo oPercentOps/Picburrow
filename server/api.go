@@ -29,6 +29,7 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("GET /api/assets/{id}", a.auth(false, a.getAsset))
 	m.HandleFunc("GET /api/assets/{id}/thumb/{size}", a.auth(false, a.getThumb))
 	m.HandleFunc("GET /api/assets/{id}/original", a.auth(false, a.getOriginal))
+	m.HandleFunc("GET /api/assets/{id}/play", a.auth(false, a.getPlay))
 	m.HandleFunc("GET /api/assets/{id}/details", a.auth(false, a.getDetails))
 	m.HandleFunc("GET /api/jobs", a.auth(false, a.getJobs))
 	m.HandleFunc("POST /api/libraries/{id}/scan", a.auth(true, a.postScan))
@@ -59,6 +60,7 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("GET /api/s/{token}/assets/{id}", a.getSharedAsset)
 	m.HandleFunc("GET /api/s/{token}/assets/{id}/thumb/{size}", a.getSharedThumb)
 	m.HandleFunc("GET /api/s/{token}/assets/{id}/original", a.getSharedOriginal)
+	m.HandleFunc("GET /api/s/{token}/assets/{id}/play", a.getSharedPlay)
 	m.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { httpError(w, http.StatusNotFound, "No such API route") })
 	m.Handle("/", a.spa())
 	return securityHeaders(m)
@@ -377,16 +379,17 @@ type assetRow struct {
 	Prev        *int64   `json:"prev_id"` // newer
 	Next        *int64   `json:"next_id"` // older
 	libraryID   int64
+	playAt      sql.NullInt64
 }
 
 func (a *App) loadAsset(userID, id int64) (*assetRow, error) {
 	var x assetRow
 	err := a.db.QueryRow(`select a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
 		a.thumb_error is not null, a.path, a.dir, a.size, a.mime, a.tz_offset_min, a.camera_make, a.camera_model, a.lens,
-		a.lat, a.lon, a.library_id, a.is_archived, a.rating, a.live_video_id
+		a.lat, a.lon, a.library_id, a.is_archived, a.rating, a.live_video_id, a.play_at
 		from assets a join libraries l on l.id = a.library_id where a.id = ? and l.id in `+mine, id, userID).
 		Scan(&x.ID, &x.W, &x.H, &x.Type, &x.Taken, &x.Fav, &x.Duration, &x.V, &x.Err, &x.Path, &x.Dir, &x.Size, &x.Mime,
-			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived, &x.Rating, &x.Live)
+			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived, &x.Rating, &x.Live, &x.playAt)
 	if err != nil {
 		return nil, err
 	}
@@ -535,8 +538,10 @@ func (a *App) getJobs(w http.ResponseWriter, r *http.Request) {
 	var done, todo, errs int
 	a.db.QueryRow(`select count(*) filter (where thumbs_at is not null), count(*) filter (where thumbs_at is null and thumb_error is null),
 		count(*) filter (where thumb_error is not null) from assets where missing_at is null`).Scan(&done, &todo, &errs)
+	var videos int
+	a.db.QueryRow("select count(*) from assets where type = 'video' and play_at is null and missing_at is null").Scan(&videos)
 	a.scan.mu.Lock()
-	res := map[string]any{"scanning": a.scan.running, "scan_found": a.scan.found, "scan_error": a.scan.lastErr,
+	res := map[string]any{"videos_todo": videos, "scanning": a.scan.running, "scan_found": a.scan.found, "scan_error": a.scan.lastErr,
 		"thumbs_done": done, "thumbs_todo": todo, "thumb_errors": errs}
 	a.scan.mu.Unlock()
 	if userFrom(r).IsAdmin { // file paths are admin-only detail

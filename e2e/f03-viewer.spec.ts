@@ -40,13 +40,13 @@ test('F03-E1 double-click zooms and swaps in the original', async ({ page }) => 
   await expect(img).toHaveAttribute('src', /thumb\/l/);
 });
 
-test('F03-E2 videos play from the original with seeking (Range)', async ({ page }) => {
+test('F03-E2 videos play with seeking (Range)', async ({ page }) => {
   const months = await api<any[]>(page, '/api/timeline/buckets');
   const vid = (await api<any[]>(page, `/api/timeline?month=${months[0].month}`)).find((t) => t.type === 'video');
   await page.goto(`/photos/${vid.id}`);
   const video = viewer(page).locator('video');
-  await expect(video).toHaveAttribute('src', /\/original$/);
-  const r = await page.request.get(`/api/assets/${vid.id}/original`, { headers: { Range: 'bytes=0-99' } });
+  await expect(video).toHaveAttribute('src', /\/play$/);
+  const r = await page.request.get(`/api/assets/${vid.id}/play`, { headers: { Range: 'bytes=0-99' } });
   expect(r.status()).toBe(206);
   expect((await r.body()).length).toBe(100);
 });

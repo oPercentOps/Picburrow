@@ -229,7 +229,7 @@ func (a *App) upsertAsset(libID int64, f newFile, h [32]byte, m Meta, relinkID i
 			duration_ms=excluded.duration_ms, taken_local=excluded.taken_local, tz_offset_min=excluded.tz_offset_min,
 			camera_make=excluded.camera_make, camera_model=excluded.camera_model, lens=excluded.lens, lat=excluded.lat,
 			lon=excluded.lon, content_id=excluded.content_id, rating=coalesce(assets.rating, excluded.rating),
-			missing_at=null, thumbs_at=null, thumb_error=null, updated_at=unixepoch()`, append(args, libID)...)
+			missing_at=null, thumbs_at=null, thumb_error=null, play_at=null, updated_at=unixepoch()`, append(args, libID)...)
 	return err
 }
 

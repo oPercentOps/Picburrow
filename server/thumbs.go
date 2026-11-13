@@ -132,7 +132,11 @@ func (a *App) makeThumbs(id int64, src, typ string) error {
 
 // run starts a low-priority child with a hard timeout; a decoder crash or leak dies with the child.
 func (a *App) run(name string, args ...string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	return a.runFor(context.Background(), 3*time.Minute, name, args...)
+}
+
+func (a *App) runFor(ctx context.Context, limit time.Duration, name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	argv := append([]string{"-n", "10"}, a.ionice...)
 	cmd := exec.CommandContext(ctx, "nice", append(append(argv, name), args...)...)

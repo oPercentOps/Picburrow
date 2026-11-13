@@ -40,6 +40,7 @@ export type Jobs = {
   thumbs_done: number;
   thumbs_todo: number;
   thumb_errors: number;
+  videos_todo: number;
   errors?: { path: string; error: string }[]; // admins only
   storage_warning?: string; // admins only: data on the SD card
 };

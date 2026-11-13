@@ -40,6 +40,7 @@
       <div class="progress" role="progressbar" aria-label={t('Previews made')} aria-valuenow={jobs.thumbs_done} aria-valuemax={total}>
         <div style:width="{total ? (100 * jobs.thumbs_done) / total : 100}%"></div>
       </div>
+      {#if jobs.videos_todo}<p class="muted">{t('{n} videos still to check or convert for smooth playback. Until then they play from the original file.', { n: jobs.videos_todo.toLocaleString() })}</p>{/if}
     </section>
     <section aria-labelledby="err-h">
       <h2 id="err-h">{t('Files without a preview ({n})', { n: jobs.thumb_errors.toLocaleString() })}</h2>

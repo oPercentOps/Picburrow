@@ -62,6 +62,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go a.thumbWorker(ctx)
+	go a.playWorker(ctx)
 	go a.housekeeping(ctx)
 
 	srv := &http.Server{Addr: *listen, Handler: a.routes(), ReadHeaderTimeout: 10 * time.Second}

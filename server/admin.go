@@ -48,6 +48,7 @@ func (a *App) forget(ids []int64) (int, error) {
 			for _, s := range []string{"s", "l"} {
 				os.Remove(a.thumbPath(id, s))
 			}
+			os.Remove(a.playPath(id))
 		}
 	}
 	return n, nil
@@ -234,6 +235,7 @@ func (a *App) deleteUser(w http.ResponseWriter, r *http.Request) {
 		for _, s := range []string{"s", "l"} {
 			os.Remove(a.thumbPath(x, s))
 		}
+		os.Remove(a.playPath(x))
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

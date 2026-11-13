@@ -25,6 +25,8 @@ var migrations = []string{
 	   primary key (library_id, user_id));
 	 create index if not exists library_members_user on library_members(user_id);
 	 insert or ignore into library_members (library_id, user_id) select id, owner_id from libraries;`,
+	`alter table assets add column play_at integer;
+	 create index assets_play on assets(id) where type = 'video' and play_at is null;`,
 }
 
 var schemaVersion = len(migrations) + 1
