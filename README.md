@@ -6,17 +6,31 @@ and 64-bit Raspberry Pi OS, and only reads your photo folders, never changes the
 
 Status: timeline with date scrubber, viewer, live photos, star ratings, folders, favourites, archive, trash, albums, multi-select, search, share links, family accounts, library settings; installable on a phone's home screen. Feature parity 87/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
 
-## Run it
+## Install on a Raspberry Pi (64-bit Raspberry Pi OS)
+
+```bash
+sudo apt install ./homeroll_0.1.0_arm64.deb
+```
+
+That one command pulls in libvips, exiftool and ffmpeg, creates a `homeroll` system user and starts the service.
+Open `http://<pi-address>:8080`, create your account and enter the folder your phone backups land in.
+Build the package on any machine with `make deb-pi`.
+
+- **Settings**: `/etc/default/homeroll` (`HOMEROLL_DATA`, `HOMEROLL_LISTEN`), then `sudo systemctl restart homeroll`.
+- **Put the data on an SSD or USB drive, not the SD card.** Homeroll warns on the Indexing page when it isn't.
+- **Photo folder permissions**: the `homeroll` user only needs to read your photos, e.g. `sudo usermod -aG <folder group> homeroll`.
+- **Upgrades**: install the newer `.deb` the same way. Before changing its database, Homeroll saves a copy next to it
+  (`homeroll.db.v<N>-<date>.bak`, newest 3 kept). To go back: `sudo systemctl stop homeroll`, copy the backup over
+  `homeroll.db`, reinstall the older package, start again.
+- **Uninstalling** never deletes `/var/lib/homeroll` (albums, favourites, previews) and never touches your photos.
+
+## Run it anywhere else
 
 ```bash
 sudo apt install libvips-tools libimage-exiftool-perl ffmpeg
 make            # builds the web UI and ./homeroll (needs Go 1.26+ and Node 22)
 ./homeroll --data-dir ./data --listen :8080
 ```
-
-Open http://<pi-address>:8080, create the admin account and enter the folder your phone backups land in.
-
-For a Pi, build on any machine with `make pi` and copy `homeroll-arm64` over: it's a single static binary.
 
 | flag | default | |
 | --- | --- | --- |

@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"os"
 	"path/filepath"
+	"sort"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -49,6 +52,11 @@ func openDB(dataDir string) (*sql.DB, error) {
 		db.Close()
 		return nil, fmt.Errorf("database version %d is newer than this build (%d)", v, schemaVersion)
 	default:
+		// a consistent copy of the old database before touching it; restore = stop, copy it over homeroll.db, start
+		if err := backupDB(db, dataDir, v); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("backup before upgrade (nothing was changed): %w", err)
+		}
 		for ; v < schemaVersion; v++ { // one transaction per step: a failed upgrade leaves the old version intact
 			tx, err := db.Begin()
 			if err == nil {
@@ -68,4 +76,19 @@ func openDB(dataDir string) (*sql.DB, error) {
 		}
 	}
 	return db, nil
+}
+
+// backupDB writes homeroll.db.v<version>-<time>.bak next to the database and keeps the newest 3.
+func backupDB(db *sql.DB, dataDir string, version int) error {
+	name := filepath.Join(dataDir, fmt.Sprintf("homeroll.db.v%d-%s.bak", version, time.Now().Format("20060102-150405")))
+	if _, err := db.Exec("vacuum into ?", name); err != nil {
+		return err
+	}
+	old, _ := filepath.Glob(filepath.Join(dataDir, "homeroll.db.v*.bak"))
+	sort.Strings(old) // the time in the name sorts oldest first within a version; versions only grow
+	for len(old) > 3 {
+		os.Remove(old[0])
+		old = old[1:]
+	}
+	return nil
 }

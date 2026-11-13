@@ -16,6 +16,10 @@ test('F03-H1 arrows step through photos, info shows the details', async ({ page 
   const info = page.getByRole('complementary', { name: 'Details' });
   await expect(info).toContainText('Google Pixel 8');
   await expect(info).toContainText('UTC+01:00');
+  // capture settings, read from the file on demand
+  await expect(info).toContainText('f/1.8 · 1/120 s · ISO 100');
+  await expect(info).toContainText('6.9 mm (26 mm equiv.)');
+  await expect(info).toContainText('Off, Did not fire');
   await page.screenshot({ path: `${SHOTS}/S05-info.png` });
   await axe(page);
 });

@@ -40,6 +40,7 @@ export type Jobs = {
   thumbs_todo: number;
   thumb_errors: number;
   errors?: { path: string; error: string }[]; // admins only
+  storage_warning?: string; // admins only: data on the SD card
 };
 
 export class ApiError extends Error {

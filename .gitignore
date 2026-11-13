@@ -5,3 +5,4 @@ web/node_modules/
 web/.svelte-kit/
 /homeroll
 /homeroll-arm64
+*.deb

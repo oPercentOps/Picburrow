@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+if [ -d /run/systemd/system ]; then systemctl daemon-reload || true; fi
+if [ "$1" = purge ]; then
+  # Never delete the library data: albums, favourites and ratings live there. Say where it is instead.
+  if [ -d /var/lib/homeroll ]; then
+    echo "Homeroll's data is still in /var/lib/homeroll (albums, favourites, previews). Delete it yourself if you don't need it."
+  fi
+fi
+exit 0

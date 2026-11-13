@@ -1,8 +1,9 @@
 # make        -> web UI + server binary for this machine
 # make pi     -> arm64 binary for 64-bit Raspberry Pi OS
+# make deb-pi -> homeroll_<version>_arm64.deb: on the Pi, sudo apt install ./homeroll_<version>_arm64.deb
 # make e2e    -> Playwright end-to-end against the real binary (builds first)
 # make test   -> server tests + layout self-check
-.PHONY: all web server pi test e2e
+.PHONY: all web server pi test e2e deb deb-pi
 
 all: web server
 
@@ -22,3 +23,9 @@ test:
 
 e2e: all
 	cd e2e && npm ci --no-audit --no-fund && npx playwright test
+
+deb: all
+	packaging/build-deb.sh homeroll amd64
+
+deb-pi: pi
+	packaging/build-deb.sh homeroll-arm64 arm64

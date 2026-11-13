@@ -70,13 +70,50 @@ func (e *exifTool) Close() {
 
 // Read returns metadata for each path, in order. A file exiftool can't read gets a zero Meta.
 func (e *exifTool) Read(paths []string) ([]Meta, error) {
+	// -n: numbers not prose; QuickTimeUTC: video CreateDate is UTC, convert to the server's local time.
+	raw, err := e.run(append([]string{"-n", "-fast", "-api", "QuickTimeUTC=1", "-api", "LargeFileSupport=1"}, exifTags...), paths)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]Meta, len(paths))
+	for i, p := range paths {
+		if r, ok := raw[p]; ok {
+			res[i] = parseMeta(r)
+		}
+	}
+	return res, nil
+}
+
+// detailTags are shown in the info panel, as exiftool words them ("1/120", "f/1.8"... no -n).
+var detailTags = []string{"FNumber", "ExposureTime", "ISO", "FocalLength", "FocalLengthIn35mmFormat", "ExposureCompensation", "Flash"}
+
+// Details reads the capture settings of one file on demand (the info panel), so no rescan is needed for them.
+func (e *exifTool) Details(path string) (map[string]string, error) {
+	args := []string{"-fast"}
+	for _, t := range detailTags {
+		args = append(args, "-"+t)
+	}
+	raw, err := e.run(args, []string{path})
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, t := range detailTags {
+		if v := strings.TrimSpace(str(raw[path][t])); v != "" {
+			out[t] = v
+		}
+	}
+	return out, nil
+}
+
+// run sends one command to the long-lived exiftool and returns its JSON rows by file path.
+func (e *exifTool) run(args, paths []string) (map[string]map[string]any, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	var b strings.Builder
-	// -n: numbers not prose; QuickTimeUTC: video CreateDate is UTC, convert to the server's local time.
-	b.WriteString("-json\n-n\n-fast\n-charset\nfilename=utf8\n-api\nQuickTimeUTC=1\n-api\nLargeFileSupport=1\n")
-	for _, t := range exifTags {
-		b.WriteString(t + "\n")
+	b.WriteString("-json\n-charset\nfilename=utf8\n")
+	for _, a := range args {
+		b.WriteString(a + "\n")
 	}
 	for _, p := range paths {
 		if strings.ContainsAny(p, "\n\r") {
@@ -111,13 +148,7 @@ func (e *exifTool) Read(paths []string) ([]Meta, error) {
 			bySource[s] = r
 		}
 	}
-	res := make([]Meta, len(paths))
-	for i, p := range paths {
-		if r, ok := bySource[p]; ok {
-			res[i] = parseMeta(r)
-		}
-	}
-	return res, nil
+	return bySource, nil
 }
 
 func parseMeta(r map[string]any) Meta {

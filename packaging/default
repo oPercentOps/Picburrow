@@ -1,0 +1,8 @@
+# Settings for the Homeroll service. Restart after changing: sudo systemctl restart homeroll
+#
+# Where the database and previews live. Put this on a USB SSD or hard drive rather than the SD card,
+# and give the homeroll user write access to it: sudo chown homeroll: /mnt/ssd/homeroll
+#HOMEROLL_DATA=/var/lib/homeroll
+#
+# Address to serve on.
+#HOMEROLL_LISTEN=:8080

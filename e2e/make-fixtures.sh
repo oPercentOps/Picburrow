@@ -24,6 +24,8 @@ done
 vips zone big.v 8000 6000 && vips jpegsave big.v DCIM/Camera/IMG_big_48mp.jpg --Q 85 && rm big.v
 exiftool -q -overwrite_original "-DateTimeOriginal=2026:11:01 09:00:00" DCIM/Camera/IMG_big_48mp.jpg
 echo "not really a jpeg" > DCIM/Camera/IMG_broken.jpg
+# capture settings on September's photos, for the info panel
+exiftool -q -overwrite_original -FNumber=1.8 -ExposureTime=1/120 -ISO=100 -FocalLength=6.9 -FocalLengthIn35mmFormat=26 "-Flash#=16" DCIM/Camera/IMG_202609*.jpg
 # a live photo: still + 2 s clip with the same name (how iPhones export them), the only photo in August
 cp DCIM/Camera/IMG_20260903_1.jpg DCIM/Camera/IMG_LIVE_0001.jpg
 exiftool -q -overwrite_original "-DateTimeOriginal=2026:08:15 18:00:00" DCIM/Camera/IMG_LIVE_0001.jpg

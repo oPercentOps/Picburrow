@@ -129,3 +129,21 @@ test('N-1 BUG-011: on a phone, More reaches Favourites, Archive, Trash and the a
     await page.goBack();
   }
 });
+
+test('R-2 rate several photos at once from the selection bar', async ({ page }) => {
+  await page.goto('/');
+  await expect(tiles(page).first()).toBeVisible();
+  const circles = page.getByRole('button', { name: /^Select / });
+  await circles.nth(1).click();
+  await circles.nth(2).click();
+  const bar = page.getByRole('toolbar', { name: 'Selected photos' });
+  await bar.getByRole('button', { name: 'Rate' }).click();
+  await expect(bar.getByRole('button', { name: 'Rate' })).toHaveAttribute('aria-expanded', 'true');
+  await axe(page);
+  await page.getByRole('group', { name: 'Rate the selected photos' }).getByRole('button', { name: /3 stars/ }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Rated 2 with 3 stars' })).toBeVisible();
+  const rated = await api<any[]>(page, '/api/search?rating=3');
+  expect(rated.length).toBeGreaterThanOrEqual(2);
+  // clear them again
+  for (const t of rated) await page.request.patch('/api/assets', { data: { ids: [t.id], rating: 0 } });
+});
