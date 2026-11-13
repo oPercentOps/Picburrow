@@ -1,0 +1,24 @@
+[Unit]
+Description=Homeroll photo gallery
+Documentation=https://github.com/oPercentOps/RaspictureGalleryNas
+# photo folders are often network or USB mounts
+After=network-online.target local-fs.target remote-fs.target
+Wants=network-online.target
+
+[Service]
+User=homeroll
+Group=homeroll
+# HOMEROLL_DATA and HOMEROLL_LISTEN can be changed in /etc/default/homeroll
+EnvironmentFile=-/etc/default/homeroll
+ExecStart=/usr/bin/homeroll
+StateDirectory=homeroll
+Restart=on-failure
+RestartSec=5
+# Homeroll only reads photo folders; it writes nothing but its own data dir.
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

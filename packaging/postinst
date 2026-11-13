@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+  if ! getent passwd homeroll >/dev/null; then
+    adduser --system --group --home /var/lib/homeroll --no-create-home --quiet homeroll
+  fi
+  mkdir -p /var/lib/homeroll
+  chown homeroll:homeroll /var/lib/homeroll
+  if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    systemctl enable --now homeroll.service >/dev/null 2>&1 || systemctl enable --now homeroll.service
+    ip=$(hostname -I 2>/dev/null | cut -d' ' -f1)
+    echo
+    echo "Homeroll is running. Open http://${ip:-this-device}:8080 to set it up."
+  else
+    echo "Homeroll is installed. Start it with: sudo -u homeroll /usr/bin/homeroll"
+  fi
+  echo "If it can't read your photo folder, give the homeroll user read access, for example:"
+  echo "  sudo usermod -aG <the folder's group> homeroll && sudo systemctl restart homeroll"
+fi
+exit 0
