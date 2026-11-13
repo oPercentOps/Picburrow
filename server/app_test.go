@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -537,4 +539,230 @@ func TestHEICThumbnail(t *testing.T) {
 	if !fileExists(a.thumbPath(1, "l")) || !fileExists(a.thumbPath(1, "s")) {
 		t.Fatal("HEIC thumbnails not written")
 	}
+}
+
+func TestAlbumsLinksSearch(t *testing.T) {
+	for _, tool := range []string{"exiftool", "ffmpeg", "vipsthumbnail"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	lib := t.TempDir()
+	for i, f := range []string{"beach_100%.jpg", "city.jpg", "forest.jpg"} {
+		p := filepath.Join(lib, f)
+		mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", p)
+		mustRun(t, "exiftool", "-q", "-overwrite_original", fmt.Sprintf("-DateTimeOriginal=2024:0%d:15 10:00:00", i+1),
+			"-Make=Google", fmt.Sprintf("-Model=Pixel %d", i+6), p)
+	}
+	a, srv := newTestApp(t)
+	ann := client(t)
+	if code := post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	ids := map[string]int64{}
+	rows, _ := a.db.Query("select id, path from assets")
+	for rows.Next() {
+		var id int64
+		var p string
+		rows.Scan(&id, &p)
+		ids[filepath.Base(p)] = id
+	}
+	rows.Close()
+	beach, city, forest := itoa(ids["beach_100%.jpg"]), itoa(ids["city.jpg"]), itoa(ids["forest.jpg"])
+
+	// placeholder made with the thumbnails
+	if err := a.ensureThumbs(context.Background(), ids["city.jpg"]); err != nil {
+		t.Fatal(err)
+	}
+	var ph []byte
+	a.db.QueryRow("select thumbhash from assets where id = ?", ids["city.jpg"]).Scan(&ph)
+	if len(ph) < 20 || len(ph) > 2000 || string(ph[8:12]) != "WEBP" {
+		t.Fatalf("placeholder = %d bytes, want a tiny WebP", len(ph))
+	}
+
+	// another user, with a photo of their own
+	hash, _ := hashPassword("another pass")
+	a.db.Exec("insert into users (username, password_hash) values ('bob', ?)", hash)
+	a.db.Exec(`insert into libraries (owner_id, name, import_paths) values (2, 'bob', '[]')`)
+	a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local) values (2, '/bob/x.jpg', '/bob', 1, 1, x'00', 'image', 'image/jpeg', '2024-01-01 00:00:00')`)
+	var bobAsset int64
+	a.db.QueryRow("select id from assets where library_id = 2").Scan(&bobAsset)
+	bob := client(t)
+	post(t, bob, srv.URL+"/api/login", `{"username":"bob","password":"another pass"}`)
+
+	// albums: create with photos; someone else's photo is skipped
+	if code := post(t, ann, srv.URL+"/api/albums", `{"name":"  Summer  ","ids":[`+beach+`,`+city+`,`+itoa(bobAsset)+`]}`); code != 200 {
+		t.Fatalf("create album: %d", code)
+	}
+	if code := post(t, ann, srv.URL+"/api/albums", `{"name":"   "}`); code != 400 {
+		t.Fatalf("blank album name: %d", code)
+	}
+	var albums []album
+	get(t, ann, srv.URL+"/api/albums", &albums)
+	if len(albums) != 1 || albums[0].Name != "Summer" || albums[0].Count != 2 || albums[0].Cover == nil {
+		t.Fatalf("albums = %+v", albums)
+	}
+	al := itoa(albums[0].ID)
+	post(t, ann, srv.URL+"/api/albums/"+al+"/assets", `{"ids":[`+forest+`]}`)
+	if code := del(t, ann, srv.URL+"/api/albums/"+al+"/assets", `{"ids":[`+city+`]}`); code != 200 {
+		t.Fatalf("remove from album: %d", code)
+	}
+	var one album
+	get(t, ann, srv.URL+"/api/albums/"+al, &one)
+	if len(one.Assets) != 2 {
+		t.Fatalf("album assets = %d, want 2 (beach + forest)", len(one.Assets))
+	}
+	for _, u := range []string{"/api/albums/" + al} {
+		if r, _ := bob.Get(srv.URL + u); r.StatusCode != 404 {
+			t.Errorf("bob GET %s = %d", u, r.StatusCode)
+		}
+	}
+	if code := post(t, bob, srv.URL+"/api/albums/"+al+"/assets", `{"ids":[`+itoa(bobAsset)+`]}`); code != 404 {
+		t.Errorf("bob adding to ann's album = %d", code)
+	}
+	if code := post(t, bob, srv.URL+"/api/albums/"+al+"/links", `{}`); code != 404 {
+		t.Errorf("bob sharing ann's album = %d", code)
+	}
+
+	// open link without downloads
+	if code := post(t, ann, srv.URL+"/api/albums/"+al+"/links", `{"allow_download":false}`); code != 200 {
+		t.Fatalf("create link: %d", code)
+	}
+	get(t, ann, srv.URL+"/api/albums/"+al, &one)
+	tok := one.Links[0].Token
+	if len(tok) < 40 {
+		t.Fatalf("token too short: %q", tok)
+	}
+	guest := client(t)
+	var shared struct {
+		Name   string
+		Locked bool
+		Assets []tile
+	}
+	get(t, guest, srv.URL+"/api/s/"+tok, &shared)
+	if shared.Name != "Summer" || shared.Locked || len(shared.Assets) != 2 {
+		t.Fatalf("shared = %+v", shared)
+	}
+	for u, want := range map[string]int{
+		"/api/s/" + tok + "/assets/" + beach + "/thumb/s":  200,
+		"/api/s/" + tok + "/assets/" + beach:               200,
+		"/api/s/" + tok + "/assets/" + beach + "/original": 403, // downloads off
+		"/api/s/" + tok + "/assets/" + city + "/thumb/s":   404, // removed from the album
+		"/api/s/" + tok + "/assets/" + itoa(bobAsset):      404,
+		"/api/s/not-a-token":                               410,
+		"/api/assets/" + beach:                             401, // the link is not a session
+	} {
+		if r, _ := guest.Get(srv.URL + u); r.StatusCode != want {
+			t.Errorf("guest GET %s = %d, want %d", u, r.StatusCode, want)
+		}
+	}
+	var sa map[string]any
+	get(t, guest, srv.URL+"/api/s/"+tok+"/assets/"+beach, &sa)
+	if _, leaks := sa["path"]; leaks || sa["lat"] != nil {
+		t.Errorf("shared asset leaks owner details: %v", sa)
+	}
+
+	// password link: locked until unlocked, per browser
+	post(t, ann, srv.URL+"/api/albums/"+al+"/links", `{"password":"sunny","allow_download":true}`)
+	get(t, ann, srv.URL+"/api/albums/"+al, &one)
+	ptok := one.Links[1].Token
+	shared.Assets = nil // decoding into a reused struct keeps fields the next response leaves out
+	get(t, guest, srv.URL+"/api/s/"+ptok, &shared)
+	if !shared.Locked || shared.Assets != nil {
+		t.Fatalf("password link before unlock = %+v", shared)
+	}
+	if r, _ := guest.Get(srv.URL + "/api/s/" + ptok + "/assets/" + beach + "/thumb/s"); r.StatusCode != 401 {
+		t.Errorf("locked thumb = %d", r.StatusCode)
+	}
+	if code := post(t, guest, srv.URL+"/api/s/"+ptok+"/unlock", `{"password":"rainy"}`); code != 401 {
+		t.Errorf("wrong link password = %d", code)
+	}
+	if code := post(t, guest, srv.URL+"/api/s/"+ptok+"/unlock", `{"password":"sunny"}`); code != 204 {
+		t.Fatalf("unlock = %d", code)
+	}
+	get(t, guest, srv.URL+"/api/s/"+ptok, &shared)
+	if shared.Locked || len(shared.Assets) != 2 {
+		t.Fatalf("after unlock = %+v", shared)
+	}
+	if r, _ := guest.Get(srv.URL + "/api/s/" + ptok + "/assets/" + beach + "/original"); r.StatusCode != 200 {
+		t.Errorf("download on an allow_download link = %d", r.StatusCode)
+	}
+	// unlocking one link doesn't open the other link of the same album... it's open anyway; but another browser stays locked
+	if r, _ := client(t).Get(srv.URL + "/api/s/" + ptok + "/assets/" + beach + "/thumb/s"); r.StatusCode != 401 {
+		t.Errorf("fresh browser on a password link = %d", r.StatusCode)
+	}
+	// expiry and revoke
+	if code := post(t, ann, srv.URL+"/api/albums/"+al+"/links", `{"expires_at":1}`); code != 400 {
+		t.Errorf("expiry in the past = %d", code)
+	}
+	a.db.Exec("update shared_links set expires_at = unixepoch() - 1 where token = ?", ptok)
+	if r, _ := guest.Get(srv.URL + "/api/s/" + ptok); r.StatusCode != 410 {
+		t.Errorf("expired link = %d", r.StatusCode)
+	}
+	if code := del(t, bob, srv.URL+"/api/links/"+itoa(one.Links[0].ID), ``); code != 404 {
+		t.Errorf("bob revoking ann's link = %d", code)
+	}
+	if code := del(t, ann, srv.URL+"/api/links/"+itoa(one.Links[0].ID), ``); code != 204 {
+		t.Errorf("revoke = %d", code)
+	}
+	if r, _ := guest.Get(srv.URL + "/api/s/" + tok); r.StatusCode != 410 {
+		t.Errorf("revoked link = %d", r.StatusCode)
+	}
+
+	// search
+	for q, want := range map[string][]string{
+		"q=beach":                       {"beach_100%.jpg"},
+		"q=%25":                         {"beach_100%.jpg"}, // a literal %, not a wildcard
+		"q=_":                           {"beach_100%.jpg"}, // a literal _, not "any one character"
+		"q=pixel%208":                   {"forest.jpg"},
+		"from=2024-02-01&to=2024-02-15": {"city.jpg"}, // inclusive end day
+		"q=CITY&type=video":             {},
+		"":                              {"beach_100%.jpg", "city.jpg", "forest.jpg"},
+	} {
+		var res []tile
+		get(t, ann, srv.URL+"/api/search?"+q, &res)
+		var got []string
+		for _, x := range res {
+			for n, id := range ids {
+				if id == x.ID {
+					got = append(got, n)
+				}
+			}
+		}
+		sort.Strings(got)
+		if fmt.Sprint(got) != fmt.Sprint(want) && !(len(got) == 0 && len(want) == 0) {
+			t.Errorf("search %q = %v, want %v", q, got, want)
+		}
+	}
+	var bobRes []tile
+	get(t, bob, srv.URL+"/api/search?q=beach", &bobRes)
+	if len(bobRes) != 0 {
+		t.Errorf("bob finds ann's photos: %v", bobRes)
+	}
+	if r, _ := ann.Get(srv.URL + "/api/search?from=yesterday"); r.StatusCode != 400 {
+		t.Errorf("bad date = %d", r.StatusCode)
+	}
+
+	// deleting the album keeps the photos
+	if code := del(t, ann, srv.URL+"/api/albums/"+al, ``); code != 204 {
+		t.Fatalf("delete album: %d", code)
+	}
+	var n int
+	a.db.QueryRow("select count(*) from assets where library_id = 1").Scan(&n)
+	if n != 3 {
+		t.Fatalf("photos after deleting the album = %d", n)
+	}
+}
+
+func del(t *testing.T, c *http.Client, url, body string) int {
+	t.Helper()
+	req, _ := http.NewRequest("DELETE", url, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	r, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Body.Close()
+	return r.StatusCode
 }

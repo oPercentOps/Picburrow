@@ -113,7 +113,21 @@ func (a *App) makeThumbs(id int64, src, typ string) error {
 		}
 		src = final
 	}
-	return nil
+	// blur placeholder from the small thumbnail: ~16 px WebP, a few hundred bytes, stored in the row
+	ph, err := filepath.Abs(filepath.Join(dir, fmt.Sprintf("%d-ph.tmp.webp", id)))
+	if err != nil {
+		return err
+	}
+	defer os.Remove(ph)
+	if err := a.run("vipsthumbnail", a.thumbPath(id, "s"), "--size", "16x16", "-o", ph+"[Q=50,strip,effort=0]"); err != nil {
+		return err
+	}
+	b, err := os.ReadFile(ph)
+	if err != nil {
+		return err
+	}
+	_, err = a.db.Exec("update assets set thumbhash = ? where id = ?", b, id)
+	return err
 }
 
 // run starts a low-priority child with a hard timeout; a decoder crash or leak dies with the child.
