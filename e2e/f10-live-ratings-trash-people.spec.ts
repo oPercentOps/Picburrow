@@ -154,3 +154,30 @@ test('L-1 AGPL: the sidebar offers the source code on desktop', async ({ page })
   await page.goto('/');
   await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Source code · AGPL-3.0' })).toHaveAttribute('href', 'https://github.com/oPercentOps/Picburrow');
 });
+
+test('P-2 a family member shares the admin photos: same timeline, nothing re-indexed, deleting them keeps the photos', async ({ page, browser }) => {
+  await page.goto('/admin/users');
+  const before = await (await page.request.get('/api/timeline/buckets')).json();
+  await page.getByLabel('Username').fill('tom');
+  await page.getByLabel('Password').fill('tom password');
+  await page.getByLabel('Their photos').selectOption({ index: 1 }); // the first library to share
+  await expect(page.getByLabel('Their photo folder')).toHaveCount(0); // no folder to type when sharing
+  await axe(page);
+  await page.getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Added tom. They see the same photos as you.' })).toBeVisible();
+  const jobs = await (await page.request.get('/api/jobs')).json();
+  expect(jobs.scanning).toBe(false); // sharing starts no scan
+
+  const tom = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+  await tom.goto('/login');
+  await tom.getByLabel('Username').fill('tom');
+  await tom.getByLabel('Password').fill('tom password');
+  await tom.getByRole('button', { name: 'Sign in' }).click();
+  await expect(tiles(tom).first()).toBeVisible();
+  expect(await (await tom.request.get('/api/timeline/buckets')).json()).toEqual(before);
+  await tom.context().close();
+
+  await page.getByRole('button', { name: 'Delete tom' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: 'tom' })).toHaveCount(0);
+  expect(await (await page.request.get('/api/timeline/buckets')).json()).toEqual(before);
+});

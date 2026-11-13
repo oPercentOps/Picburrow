@@ -13,7 +13,7 @@ import (
 func (a *App) getAssets(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	// shortcut: no paging, capped at 5000; page like the timeline if libraries get bigger favourites lists
-	const own = `from assets a join libraries l on l.id = a.library_id where l.owner_id = ? and a.missing_at is null and ` + notLiveClip
+	const own = `from assets a join libraries l on l.id = a.library_id where l.id in ` + mine + ` and a.missing_at is null and ` + notLiveClip
 	switch {
 	case q.Get("favorite") == "1":
 		a.writeTiles(w, `select `+tileCols+` `+own+` and a.is_favorite = 1 and a.is_archived = 0
@@ -58,9 +58,9 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 		args = append(args, id)
 	}
 	args = append(args, userFrom(r).ID)
-	// the owner check is in the same statement: ids from other users' libraries are silently skipped
+	// the access check is in the same statement: ids from libraries the user doesn't see are silently skipped
 	res, err := a.db.Exec(`update assets set `+strings.Join(set, ", ")+`, updated_at = unixepoch()
-		where id in (?`+strings.Repeat(",?", len(in.IDs)-1)+`) and library_id in (select id from libraries where owner_id = ?)`, args...)
+		where id in (?`+strings.Repeat(",?", len(in.IDs)-1)+`) and library_id in `+mine, args...)
 	if err != nil {
 		serverError(w, err)
 		return
@@ -82,7 +82,7 @@ type folder struct {
 // With no path it lists the library roots.
 func (a *App) getFolders(w http.ResponseWriter, r *http.Request) {
 	uid := userFrom(r).ID
-	libs, err := a.ownLibraries(uid)
+	libs, err := a.ownLibraries(uid, true) // shared libraries' folders too
 	if err != nil {
 		serverError(w, err)
 		return
@@ -191,11 +191,15 @@ type library struct {
 	Missing       int      `json:"missing"`
 }
 
-func (a *App) ownLibraries(uid int64) ([]library, error) {
+func (a *App) ownLibraries(uid int64, shared bool) ([]library, error) {
+	who := "l.owner_id = ?"
+	if shared {
+		who = "l.id in " + mine
+	}
 	rows, err := a.db.Query(`select l.id, l.name, l.import_paths, l.exclusion_globs, l.last_scan_at, l.last_scan_error,
 		(select count(*) from assets where library_id = l.id and missing_at is null),
 		(select count(*) from assets where library_id = l.id and missing_at is not null)
-		from libraries l where l.owner_id = ? order by l.id`, uid)
+		from libraries l where `+who+` order by l.id`, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +219,7 @@ func (a *App) ownLibraries(uid int64) ([]library, error) {
 }
 
 func (a *App) getLibraries(w http.ResponseWriter, r *http.Request) {
-	libs, err := a.ownLibraries(userFrom(r).ID)
+	libs, err := a.ownLibraries(userFrom(r).ID, false) // only the owner edits a library
 	if err != nil {
 		serverError(w, err)
 		return

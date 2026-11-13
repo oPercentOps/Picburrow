@@ -19,6 +19,12 @@ var schemaSQL string
 var migrations = []string{
 	`alter table assets add column content_id text;
 	 create index assets_content on assets(content_id) where content_id is not null;`,
+	`create table if not exists library_members (
+	   library_id integer not null references libraries(id) on delete cascade,
+	   user_id    integer not null references users(id) on delete cascade,
+	   primary key (library_id, user_id));
+	 create index if not exists library_members_user on library_members(user_id);
+	 insert or ignore into library_members (library_id, user_id) select id, owner_id from libraries;`,
 }
 
 var schemaVersion = len(migrations) + 1

@@ -174,6 +174,10 @@ func (a *App) postSetup(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
+	if _, err := tx.Exec("insert into library_members (library_id, user_id) select id, owner_id from libraries where owner_id = ?", uid); err != nil {
+		serverError(w, err)
+		return
+	}
 	if err := tx.Commit(); err != nil {
 		serverError(w, err)
 		return
@@ -261,9 +265,12 @@ func (a *App) postLogout(w http.ResponseWriter, r *http.Request) {
 
 // ---- timeline
 
-// visible = assets the user owns that belong on the timeline.
+// mine = the libraries a user sees: their own and the ones shared with them (library_members). One "?" = user id.
+const mine = `(select library_id from library_members where user_id = ?)`
+
+// visible = assets the user sees that belong on the timeline.
 const visible = `from assets a join libraries l on l.id = a.library_id
-	where l.owner_id = ? and a.missing_at is null and a.is_archived = 0 and ` + notLiveClip
+	where l.id in ` + mine + ` and a.missing_at is null and a.is_archived = 0 and ` + notLiveClip
 
 func (a *App) getBuckets(w http.ResponseWriter, r *http.Request) {
 	rows, err := a.db.Query(`select substr(a.taken_local, 1, 7) as m, count(*) `+visible+` group by m order by m desc`, userFrom(r).ID)
@@ -377,7 +384,7 @@ func (a *App) loadAsset(userID, id int64) (*assetRow, error) {
 	err := a.db.QueryRow(`select a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
 		a.thumb_error is not null, a.path, a.dir, a.size, a.mime, a.tz_offset_min, a.camera_make, a.camera_model, a.lens,
 		a.lat, a.lon, a.library_id, a.is_archived, a.rating, a.live_video_id
-		from assets a join libraries l on l.id = a.library_id where a.id = ? and l.owner_id = ?`, id, userID).
+		from assets a join libraries l on l.id = a.library_id where a.id = ? and l.id in `+mine, id, userID).
 		Scan(&x.ID, &x.W, &x.H, &x.Type, &x.Taken, &x.Fav, &x.Duration, &x.V, &x.Err, &x.Path, &x.Dir, &x.Size, &x.Mime,
 			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived, &x.Rating, &x.Live)
 	if err != nil {

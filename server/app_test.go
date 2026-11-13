@@ -815,6 +815,10 @@ func TestMigrateFromV1(t *testing.T) {
 	if err := db.QueryRow("select is_favorite, content_id from assets").Scan(&fav, &cid); err != nil || v != schemaVersion || !fav {
 		t.Fatalf("after upgrade: version %d, fav %v, err %v", v, fav, err)
 	}
+	var member int
+	if db.QueryRow("select count(*) from library_members where library_id = 1 and user_id = 1").Scan(&member); member != 1 {
+		t.Fatal("after upgrade, the library's owner isn't a member of it: they'd see no photos")
+	}
 }
 
 func TestLiveRatingsTrashUsers(t *testing.T) {
@@ -1168,5 +1172,65 @@ func TestLoginRateLimitBehindProxy(t *testing.T) {
 	}
 	if code := try("9.9.9.9, 198.51.100.7"); code != 401 {
 		t.Fatalf("faking an earlier hop must not matter: %d", code)
+	}
+}
+
+// A family shares one photo folder: a second person joins the admin's library instead of indexing it again.
+func TestSharedLibrary(t *testing.T) {
+	a, srv := newTestApp(t)
+	ann := client(t)
+	post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+t.TempDir()+`"}`)
+	waitScan(t, a)
+	for i := 0; i < 3; i++ {
+		a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local, thumbs_at)
+			values (1, ?, '/p', 1, 1, x'00', 'image', 'image/jpeg', '2024-01-01 00:00:00', 1)`, fmt.Sprintf("/p/%d.jpg", i))
+	}
+	if code := post(t, ann, srv.URL+"/api/users", `{"username":"bob","password":"another pass","is_admin":true,"library_id":1}`); code != 200 {
+		t.Fatalf("add bob sharing library 1: %d", code)
+	}
+	var libs, assets int
+	a.db.QueryRow("select count(*) from libraries").Scan(&libs)
+	a.db.QueryRow("select count(*) from assets").Scan(&assets)
+	if libs != 1 || assets != 3 {
+		t.Fatalf("sharing made %d libraries and %d assets, want 1 and 3 (nothing indexed twice)", libs, assets)
+	}
+	if code := post(t, ann, srv.URL+"/api/users", `{"username":"eve","password":"another pass","library_id":99}`); code != 404 {
+		t.Fatalf("sharing a library you can't see = %d, want 404", code)
+	}
+	bob := client(t)
+	post(t, bob, srv.URL+"/api/login", `{"username":"bob","password":"another pass"}`)
+	var month []tile
+	get(t, bob, srv.URL+"/api/timeline?month=2024-01", &month)
+	if len(month) != 3 {
+		t.Fatalf("bob sees %d photos, want the 3 shared ones", len(month))
+	}
+	// favourites are the family's: bob's heart shows for ann
+	patch(t, bob, srv.URL+"/api/assets", `{"ids":[`+itoa(month[0].ID)+`],"favorite":true}`)
+	var favs []tile
+	get(t, ann, srv.URL+"/api/assets?favorite=1", &favs)
+	if len(favs) != 1 {
+		t.Fatalf("ann sees %d favourites, want bob's 1", len(favs))
+	}
+	var mine []map[string]any
+	get(t, bob, srv.URL+"/api/libraries", &mine)
+	if len(mine) != 0 {
+		t.Fatalf("bob can edit %d libraries, want 0 (only the owner edits)", len(mine))
+	}
+	if code := patch(t, bob, srv.URL+"/api/libraries/1", `{"name":"x"}`); code != 403 && code != 404 {
+		t.Fatalf("bob renaming ann's library = %d, want refused", code)
+	}
+	// deleting the owner hands the library to bob: photos and favourites stay
+	if code := del(t, bob, srv.URL+"/api/users/1", ""); code != 204 {
+		t.Fatalf("delete ann: %d", code)
+	}
+	var owner int64
+	a.db.QueryRow("select count(*) from assets").Scan(&assets)
+	a.db.QueryRow("select owner_id from libraries where id = 1").Scan(&owner)
+	if assets != 3 || owner != 2 {
+		t.Fatalf("after deleting the owner: %d assets, owner %d; want 3 and bob (2)", assets, owner)
+	}
+	get(t, bob, srv.URL+"/api/assets?favorite=1", &favs)
+	if len(favs) != 1 {
+		t.Fatalf("bob lost the family favourite")
 	}
 }
