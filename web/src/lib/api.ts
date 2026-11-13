@@ -12,9 +12,11 @@ export type Tile = {
   v: number | null;
   err?: boolean;
   ph?: string; // tiny WebP placeholder, base64
+  live?: number; // id of the live-photo clip
 };
 export type Asset = Tile & {
   archived: boolean;
+  rating: number | null;
   path: string;
   dir: string;
   name: string;

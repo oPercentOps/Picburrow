@@ -2,7 +2,7 @@
   import { api, thumbURL, browserCanShow, formatDay, type Asset } from '$lib/api';
   import { overrides, picker } from '$lib/state.svelte';
   import { SvelteSet } from 'svelte/reactivity';
-  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore, BookPlus } from '@lucide/svelte';
+  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore, BookPlus, CirclePlay, Star } from '@lucide/svelte';
 
   // seq: ids to step through (a folder, favourites); without it prev/next follow the timeline.
   // base + readonly: a visitor on a shared album reads through the link and can't change anything.
@@ -58,6 +58,7 @@
     const ctl = new AbortController();
     error = '';
     previewFailed = false;
+    playingLive = false;
     resetZoom();
     api<Asset>(`${base}/assets/${id}`, { signal: ctl.signal })
       .then((a) => (asset = a))
@@ -78,6 +79,20 @@
   });
 
   function resetZoom() { scale = 1; tx = 0; ty = 0; original = false; }
+  let playingLive = $state(false);
+  let rating = $state<number | null>(null);
+  $effect(() => { rating = asset?.rating ?? null; });
+  async function rate(n: number) {
+    if (!asset || !ready || readonly) return;
+    const prev = rating;
+    rating = n || null;
+    try {
+      await api('/api/assets', { method: 'PATCH', body: { ids: [asset.id], rating: n } });
+    } catch (e) {
+      rating = prev;
+      saveError = (e as Error).message;
+    }
+  }
   const go = (to: number | null | undefined) => { if (to) onnavigate(to); };
 
   function zoomTo(s: number) {
@@ -91,6 +106,8 @@
     else if (e.key === 'ArrowLeft') go(prevId);
     else if (e.key === 'ArrowRight') go(nextId);
     else if (e.key === 'f') save({ favorite: !fav });
+    else if (/^[0-5]$/.test(e.key) && !readonly) rate(Number(e.key));
+    else if (e.key === 'l' && asset?.live) playingLive = !playingLive;
     else if (e.key === 'i') showInfo = !showInfo;
     else if (e.key === '+' || e.key === '=') zoomTo(scale * 1.5);
     else if (e.key === '-') zoomTo(scale / 1.5);
@@ -157,6 +174,11 @@
         <img src={original ? `${base}/assets/${asset.id}/original` : thumbURL(asset, 'l', base)} alt="{asset.name}, {formatDay(asset.taken)}"
           style:transform="translate({tx}px, {ty}px) scale({scale})" draggable="false"
           onerror={() => (original ? (original = false) : (previewFailed = true))} />
+        {#if playingLive && asset.live && canDownload}
+          <!-- the clip plays over the still, muted like a phone gallery, then the still comes back -->
+          <video class="live" src="{base}/assets/{asset.live}/original" muted playsinline autoplay
+            onended={() => (playingLive = false)} onerror={() => (playingLive = false)}></video>
+        {/if}
       {/if}
     {/if}
   </div>
@@ -170,6 +192,9 @@
           <Heart aria-hidden="true" fill={fav ? 'currentColor' : 'none'} /></button>
         <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? 'Unarchive' : 'Archive'} disabled={!ready}>
           {#if archived}<ArchiveRestore aria-hidden="true" />{:else}<Archive aria-hidden="true" />{/if}</button>
+      {/if}
+      {#if asset?.live && canDownload}
+        <button class="btn icon-btn" onclick={() => (playingLive = !playingLive)} aria-label="Play live photo" aria-pressed={playingLive}><CirclePlay aria-hidden="true" /></button>
       {/if}
       <button class="btn icon-btn" onclick={() => (showInfo = !showInfo)} aria-label="Details" aria-pressed={showInfo}><Info aria-hidden="true" /></button>
       {#if asset && canDownload}<a class="btn icon-btn" href="{base}/assets/{id}/original?download=1" aria-label="Download original"><Download aria-hidden="true" /></a>{/if}
@@ -190,6 +215,17 @@
         {#if asset.size}<dt>Size</dt><dd>{mb(asset.size)}{asset.w && asset.h ? ` · ${asset.w} × ${asset.h}` : ''}</dd>{/if}
         {#if camera}<dt>Camera</dt><dd>{camera}</dd>{/if}
         {#if asset.lens}<dt>Lens</dt><dd>{asset.lens}</dd>{/if}
+        {#if !readonly}
+          <dt id="rating-label">Rating</dt>
+          <dd>
+            <div class="stars" role="radiogroup" aria-labelledby="rating-label">
+              {#each [1, 2, 3, 4, 5] as n}
+                <button role="radio" aria-checked={rating === n} aria-label="{n} {n === 1 ? 'star' : 'stars'}" disabled={!ready}
+                  class:on={(rating ?? 0) >= n} onclick={() => rate(rating === n ? 0 : n)}><Star aria-hidden="true" /></button>
+              {/each}
+            </div>
+          </dd>
+        {/if}
         {#if asset.lat != null && asset.lon != null}<dt>Location</dt><dd>{asset.lat.toFixed(5)}, {asset.lon.toFixed(5)}</dd>{/if}
       </dl>
     </aside>
@@ -225,6 +261,12 @@
   dt { color: var(--viewer-text-muted); }
   dd { margin: 0; }
   .wrap { overflow-wrap: anywhere; }
+  .stage .live { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--viewer-bg); }
+  .stars { display: flex; gap: 0; margin: -10px 0 -10px -10px; }
+  .stars button { width: 40px; height: 40px; padding: 0; border: 0; background: none; color: var(--viewer-text-muted); cursor: pointer; display: grid; place-items: center; }
+  .stars button :global(svg) { width: 20px; height: 20px; }
+  .stars button.on { color: var(--viewer-text); } /* the viewer is always dark: theme colours would fail contrast here */
+  .stars button.on :global(svg) { fill: currentColor; }
   @media (min-width: 768px) {
     aside { inset: 0 0 0 auto; width: var(--info-drawer); max-height: none; border-radius: 0; }
     .with-info { right: var(--info-drawer); }

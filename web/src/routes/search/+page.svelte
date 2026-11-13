@@ -13,6 +13,7 @@
   let to = $state(page.url.searchParams.get('to') ?? '');
   let type = $state(page.url.searchParams.get('type') ?? '');
   let favorite = $state(page.url.searchParams.get('favorite') === '1');
+  let rating = $state(page.url.searchParams.get('rating') ?? '');
   let tiles = $state<Tile[] | null>(null);
   let error = $state('');
   let width = $state(0);
@@ -34,6 +35,7 @@
     if (to) p.set('to', to);
     if (type) p.set('type', type);
     if (favorite) p.set('favorite', '1');
+    if (rating) p.set('rating', rating);
     goto('/search?' + p.toString(), { keepFocus: true });
   }
   const shown = $derived(tiles?.filter((t) => !overrides[t.id]?.archived) ?? []);
@@ -53,6 +55,10 @@
     <div class="field">
       <label for="sy">Kind</label>
       <select id="sy" bind:value={type}><option value="">Photos and videos</option><option value="image">Photos</option><option value="video">Videos</option></select>
+    </div>
+    <div class="field">
+      <label for="sr">Stars</label>
+      <select id="sr" bind:value={rating}><option value="">Any</option>{#each [1, 2, 3, 4, 5] as n}<option value={String(n)}>{n}+ {n === 1 ? 'star' : 'stars'}</option>{/each}</select>
     </div>
     <label class="check"><input type="checkbox" bind:checked={favorite} /> Favourites only</label>
     <button class="btn primary"><Search aria-hidden="true" />Search</button>
