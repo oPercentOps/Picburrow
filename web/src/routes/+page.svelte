@@ -27,7 +27,7 @@
   });
 </script>
 
-<svelte:head><title>Photos</title></svelte:head>
+<svelte:head><title>Photos · Homeroll</title></svelte:head>
 
 <div class="page">
   <header><h1>Photos</h1></header>
@@ -37,8 +37,8 @@
   {:else if buckets && buckets.length === 0}
     <div class="empty">
       <Images aria-hidden="true" />
-      <strong>No photos here yet</strong>
-      <span class="muted">They'll show up as soon as the first scan finds some. Check the folder under Admin › Libraries if nothing appears.</span>
+      <strong>No photos yet</strong>
+      <span class="muted">They appear here as soon as the first scan finds them. If nothing shows up, check the folder under Libraries.</span>
     </div>
   {:else if buckets}
     <div bind:clientWidth={width}>

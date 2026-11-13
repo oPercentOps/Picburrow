@@ -63,7 +63,7 @@
 {:else if ready && user}
   <div class="shell">
     <nav class="side" aria-label="Main">
-      <div class="brand">Photos</div>
+      <div class="brand">Homeroll</div>
       {#each nav as item}
         <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}><item.icon aria-hidden="true" />{item.label}</a>
       {/each}

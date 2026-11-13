@@ -3,5 +3,5 @@ server/dist/*
 !server/dist/.keep
 web/node_modules/
 web/.svelte-kit/
-/raspicture
-/raspicture-arm64
+/homeroll
+/homeroll-arm64

@@ -22,7 +22,7 @@ var schemaVersion = len(migrations) + 1
 
 // openDB opens (and creates on first run) the SQLite database in dataDir.
 func openDB(dataDir string) (*sql.DB, error) {
-	dsn := "file:" + filepath.Join(dataDir, "raspicture.db") +
+	dsn := "file:" + filepath.Join(dataDir, "homeroll.db") +
 		"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)" +
 		"&_pragma=synchronous(NORMAL)&_pragma=cache_size(-16000)" // 16 MB page cache: 1 GB Pi budget
 	db, err := sql.Open("sqlite", dsn)

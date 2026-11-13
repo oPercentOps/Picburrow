@@ -1,15 +1,30 @@
 {
-  "name": "Photos",
-  "short_name": "Photos",
-  "description": "Your photo library, served from your own Raspberry Pi",
+  "name": "Homeroll",
+  "short_name": "Homeroll",
+  "description": "The photo folders you already have, as a timeline on your phone. Runs on a 1 GB Raspberry Pi.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0e1014",
   "theme_color": "#0e1014",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ]
 }

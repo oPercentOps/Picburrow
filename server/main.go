@@ -31,8 +31,8 @@ type App struct {
 }
 
 func main() {
-	dataDir := flag.String("data-dir", envOr("RASPICTURE_DATA", "/var/lib/raspicture"), "database and thumbnails")
-	listen := flag.String("listen", envOr("RASPICTURE_LISTEN", ":8080"), "address to serve on")
+	dataDir := flag.String("data-dir", envOr("HOMEROLL_DATA", "/var/lib/homeroll"), "database and thumbnails")
+	listen := flag.String("listen", envOr("HOMEROLL_LISTEN", ":8080"), "address to serve on")
 	workers := flag.Int("workers", 1, "parallel thumbnail decodes (1 for a 1 GB Pi; 2-4 with more RAM)")
 	flag.Parse()
 

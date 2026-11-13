@@ -1,0 +1,7 @@
+{
+  "name": "Homeroll",
+  "avoid": ["Immich", "PhotoPrism", "FUTO"],
+  "domains": ["immich.app", "photoprism.app", "futo.org"],
+  "colors": [],
+  "_colors_note": "The originals' brand colours were not verified from a primary source in this session, so none are listed rather than guessed. Homeroll's accent (#b4470f / #ff9a5c, burnt orange) is outside the blue/purple family both use."
+}
