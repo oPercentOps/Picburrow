@@ -20,7 +20,16 @@ Build the package on any machine with `make deb-pi`.
 
 - **Settings**: `/etc/default/picburrow` (`PICBURROW_DATA`, `PICBURROW_LISTEN`), then `sudo systemctl restart picburrow`.
 - **Put the data on an SSD or USB drive, not the SD card.** Picburrow warns on the Indexing page when it isn't.
-- **Photo folder permissions**: the `picburrow` user only needs to read your photos, e.g. `sudo usermod -aG <folder group> picburrow`.
+- **Photo folder permissions**: the `picburrow` user must read your photos *and pass through every folder above them*.
+  Test with `sudo -u picburrow ls /path/to/photos`; `namei -l /path/to/photos` shows who may enter each folder on the way.
+  - Folder shared through a group: `sudo usermod -aG <folder group> picburrow`, then `sudo systemctl restart picburrow`.
+  - Photos inside your home: Ubuntu makes `/home/<you>` private, so a group on the photo folder isn't enough. Let it pass
+    through your home without listing it, then read the photos (`sudo apt install acl` if `setfacl` is missing):
+    `sudo setfacl -m u:picburrow:x /home/<you>` and `sudo setfacl -R -m u:picburrow:rX,d:u:picburrow:rX /home/<you>/Pictures`.
+  - A USB drive the desktop mounted under `/media/<you>/`: only you may enter `/media/<you>`. Better: mount the drive at a
+    fixed place in `/etc/fstab` (e.g. `/mnt/photos`), which also keeps it mounted when nobody is logged in. Or, for a quick
+    test, `sudo setfacl -m u:picburrow:x /media/<you>`.
+  The Libraries page names the folder that blocks the way.
 - **Upgrades**: install the newer `.deb` the same way. Before changing its database, Picburrow saves a copy next to it
   (`picburrow.db.v<N>-<date>.bak`, newest 3 kept). To go back: `sudo systemctl stop picburrow`, copy the backup over
   `picburrow.db`, reinstall the older package, start again.
