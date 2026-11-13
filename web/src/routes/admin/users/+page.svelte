@@ -47,7 +47,7 @@
   }
 </script>
 
-<svelte:head><title>People · Homeroll</title></svelte:head>
+<svelte:head><title>People · Picburrow</title></svelte:head>
 
 <div class="page">
   <h1>People</h1>

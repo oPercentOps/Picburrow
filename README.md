@@ -1,6 +1,6 @@
-# Homeroll
+# Picburrow
 
-The photo folders you already have, as a timeline on your phone. Homeroll is one small program for a Raspberry Pi NAS, with no Docker, no Postgres and no Redis:
+The photo folders you already have, as a timeline on your phone. Picburrow is one small program for a Raspberry Pi NAS, with no Docker, no Postgres and no Redis:
 a timeline by day, a fast fullscreen viewer, and photo details. It runs on a Pi 3, 4 or 5 with **1 GB RAM**
 and 64-bit Raspberry Pi OS, and only reads your photo folders, never changes them.
 
@@ -9,32 +9,32 @@ Status: timeline with date scrubber, viewer, live photos, star ratings, folders,
 ## Install on a Raspberry Pi (64-bit Raspberry Pi OS)
 
 ```bash
-sudo apt install ./homeroll_0.1.0_arm64.deb
+sudo apt install ./picburrow_0.1.0_arm64.deb
 ```
 
-That one command pulls in libvips, exiftool and ffmpeg, creates a `homeroll` system user and starts the service.
+That one command pulls in libvips, exiftool and ffmpeg, creates a `picburrow` system user and starts the service.
 Open `http://<pi-address>:8080`, create your account and enter the folder your phone backups land in.
 Build the package on any machine with `make deb-pi`.
 
-- **Settings**: `/etc/default/homeroll` (`HOMEROLL_DATA`, `HOMEROLL_LISTEN`), then `sudo systemctl restart homeroll`.
-- **Put the data on an SSD or USB drive, not the SD card.** Homeroll warns on the Indexing page when it isn't.
-- **Photo folder permissions**: the `homeroll` user only needs to read your photos, e.g. `sudo usermod -aG <folder group> homeroll`.
-- **Upgrades**: install the newer `.deb` the same way. Before changing its database, Homeroll saves a copy next to it
-  (`homeroll.db.v<N>-<date>.bak`, newest 3 kept). To go back: `sudo systemctl stop homeroll`, copy the backup over
-  `homeroll.db`, reinstall the older package, start again.
-- **Uninstalling** never deletes `/var/lib/homeroll` (albums, favourites, previews) and never touches your photos.
+- **Settings**: `/etc/default/picburrow` (`PICBURROW_DATA`, `PICBURROW_LISTEN`), then `sudo systemctl restart picburrow`.
+- **Put the data on an SSD or USB drive, not the SD card.** Picburrow warns on the Indexing page when it isn't.
+- **Photo folder permissions**: the `picburrow` user only needs to read your photos, e.g. `sudo usermod -aG <folder group> picburrow`.
+- **Upgrades**: install the newer `.deb` the same way. Before changing its database, Picburrow saves a copy next to it
+  (`picburrow.db.v<N>-<date>.bak`, newest 3 kept). To go back: `sudo systemctl stop picburrow`, copy the backup over
+  `picburrow.db`, reinstall the older package, start again.
+- **Uninstalling** never deletes `/var/lib/picburrow` (albums, favourites, previews) and never touches your photos.
 
 ## Run it anywhere else
 
 ```bash
 sudo apt install libvips-tools libimage-exiftool-perl ffmpeg
-make            # builds the web UI and ./homeroll (needs Go 1.26+ and Node 22)
-./homeroll --data-dir ./data --listen :8080
+make            # builds the web UI and ./picburrow (needs Go 1.26+ and Node 22)
+./picburrow --data-dir ./data --listen :8080
 ```
 
 | flag | default | |
 | --- | --- | --- |
-| `--data-dir` | `/var/lib/homeroll` | database and thumbnails (put it on the SSD/USB disk, not the SD card if you can) |
+| `--data-dir` | `/var/lib/picburrow` | database and thumbnails (put it on the SSD/USB disk, not the SD card if you can) |
 | `--listen` | `:8080` | address to serve on |
 | `--workers` | `1` | parallel thumbnail decodes; keep 1 on a 1 GB Pi |
 

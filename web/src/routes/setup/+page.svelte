@@ -23,13 +23,13 @@
   }
 </script>
 
-<svelte:head><title>Set up · Homeroll</title></svelte:head>
+<svelte:head><title>Set up · Picburrow</title></svelte:head>
 
 <div class="center">
   <form class="card" onsubmit={submit}>
     <div>
-      <h1>Welcome to Homeroll</h1>
-      <p class="muted">Make your account, then tell Homeroll where your phone photos land. It only reads them: nothing gets moved, renamed or changed.</p>
+      <h1>Welcome to Picburrow</h1>
+      <p class="muted">Make your account, then tell Picburrow where your phone photos land. It only reads them: nothing gets moved, renamed or changed.</p>
     </div>
     <div class="field">
       <label for="u">Admin username</label>

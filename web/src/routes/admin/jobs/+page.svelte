@@ -21,7 +21,7 @@
   const total = $derived(jobs ? jobs.thumbs_done + jobs.thumbs_todo : 0);
 </script>
 
-<svelte:head><title>Indexing · Homeroll</title></svelte:head>
+<svelte:head><title>Indexing · Picburrow</title></svelte:head>
 
 <div class="page">
   <h1>Indexing</h1>

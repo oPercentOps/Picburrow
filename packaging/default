@@ -1,8 +1,8 @@
-# Settings for the Homeroll service. Restart after changing: sudo systemctl restart homeroll
+# Settings for the Picburrow service. Restart after changing: sudo systemctl restart picburrow
 #
 # Where the database and previews live. Put this on a USB SSD or hard drive rather than the SD card,
-# and give the homeroll user write access to it: sudo chown homeroll: /mnt/ssd/homeroll
-#HOMEROLL_DATA=/var/lib/homeroll
+# and give the picburrow user write access to it: sudo chown picburrow: /mnt/ssd/picburrow
+#PICBURROW_DATA=/var/lib/picburrow
 #
 # Address to serve on.
-#HOMEROLL_LISTEN=:8080
+#PICBURROW_LISTEN=:8080

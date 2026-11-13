@@ -25,7 +25,7 @@ var schemaVersion = len(migrations) + 1
 
 // openDB opens (and creates on first run) the SQLite database in dataDir.
 func openDB(dataDir string) (*sql.DB, error) {
-	dsn := "file:" + filepath.Join(dataDir, "homeroll.db") +
+	dsn := "file:" + filepath.Join(dataDir, "picburrow.db") +
 		"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)" +
 		"&_pragma=synchronous(NORMAL)&_pragma=cache_size(-16000)" // 16 MB page cache: 1 GB Pi budget
 	db, err := sql.Open("sqlite", dsn)
@@ -52,7 +52,7 @@ func openDB(dataDir string) (*sql.DB, error) {
 		db.Close()
 		return nil, fmt.Errorf("database version %d is newer than this build (%d)", v, schemaVersion)
 	default:
-		// a consistent copy of the old database before touching it; restore = stop, copy it over homeroll.db, start
+		// a consistent copy of the old database before touching it; restore = stop, copy it over picburrow.db, start
 		if err := backupDB(db, dataDir, v); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("backup before upgrade (nothing was changed): %w", err)
@@ -78,13 +78,13 @@ func openDB(dataDir string) (*sql.DB, error) {
 	return db, nil
 }
 
-// backupDB writes homeroll.db.v<version>-<time>.bak next to the database and keeps the newest 3.
+// backupDB writes picburrow.db.v<version>-<time>.bak next to the database and keeps the newest 3.
 func backupDB(db *sql.DB, dataDir string, version int) error {
-	name := filepath.Join(dataDir, fmt.Sprintf("homeroll.db.v%d-%s.bak", version, time.Now().Format("20060102-150405")))
+	name := filepath.Join(dataDir, fmt.Sprintf("picburrow.db.v%d-%s.bak", version, time.Now().Format("20060102-150405")))
 	if _, err := db.Exec("vacuum into ?", name); err != nil {
 		return err
 	}
-	old, _ := filepath.Glob(filepath.Join(dataDir, "homeroll.db.v*.bak"))
+	old, _ := filepath.Glob(filepath.Join(dataDir, "picburrow.db.v*.bak"))
 	sort.Strings(old) // the time in the name sorts oldest first within a version; versions only grow
 	for len(old) > 3 {
 		os.Remove(old[0])

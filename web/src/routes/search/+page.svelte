@@ -41,7 +41,7 @@
   const shown = $derived(tiles?.filter((t) => !overrides[t.id]?.archived) ?? []);
 </script>
 
-<svelte:head><title>Search · Homeroll</title></svelte:head>
+<svelte:head><title>Search · Picburrow</title></svelte:head>
 
 <div class="page">
   <h1>Search</h1>

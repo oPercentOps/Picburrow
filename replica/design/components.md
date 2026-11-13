@@ -151,6 +151,6 @@ Password gate (shared link)
 ## Not taken from the originals
 
 - Icons: Lucide, not Immich's Material Design icons and not PhotoPrism's set.
-- Colours: Homeroll burnt orange `#b4470f` (light) / `#ff9a5c` (dark), chosen in replica-brand outside the blue/purple family of the apps it was modelled on.
+- Colours: Picburrow burnt orange `#b4470f` (light) / `#ff9a5c` (dark), chosen in replica-brand outside the blue/purple family of the apps it was modelled on.
 - Copy: every label and empty state above is new.
 - Layout patterns (justified grid, date scrubber, black viewer, info drawer) are common to every photo app, not owned by either original.

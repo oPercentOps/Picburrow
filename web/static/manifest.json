@@ -1,6 +1,6 @@
 {
-  "name": "Homeroll",
-  "short_name": "Homeroll",
+  "name": "Picburrow",
+  "short_name": "Picburrow",
   "description": "The photo folders you already have, as a timeline on your phone. Runs on a 1 GB Raspberry Pi.",
   "start_url": "/",
   "scope": "/",

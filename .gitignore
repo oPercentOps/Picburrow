@@ -3,6 +3,6 @@ server/dist/*
 !server/dist/.keep
 web/node_modules/
 web/.svelte-kit/
-/homeroll
-/homeroll-arm64
+/picburrow
+/picburrow-arm64
 *.deb

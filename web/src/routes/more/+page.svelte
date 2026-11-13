@@ -22,7 +22,7 @@
   }
 </script>
 
-<svelte:head><title>More · Homeroll</title></svelte:head>
+<svelte:head><title>More · Picburrow</title></svelte:head>
 
 <div class="page">
   <h1>More</h1>

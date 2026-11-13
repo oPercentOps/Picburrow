@@ -777,7 +777,7 @@ func TestMigrateFromV1(t *testing.T) {
 	if v1 == schemaSQL {
 		t.Fatal("couldn't rebuild the v1 schema from schema.sql")
 	}
-	old, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "homeroll.db"))
+	old, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "picburrow.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -796,7 +796,7 @@ func TestMigrateFromV1(t *testing.T) {
 	}
 	defer db.Close()
 	// a backup of the old database was taken first, and it still opens at version 1 with the data
-	baks, _ := filepath.Glob(filepath.Join(dir, "homeroll.db.v1-*.bak"))
+	baks, _ := filepath.Glob(filepath.Join(dir, "picburrow.db.v1-*.bak"))
 	if len(baks) != 1 {
 		t.Fatalf("backups before upgrade = %v, want one v1 backup", baks)
 	}
