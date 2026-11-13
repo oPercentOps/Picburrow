@@ -82,7 +82,7 @@
 {:else if ready && user}
   <div class="shell">
     <nav class="side" aria-label={t('Main')}>
-      <div class="brand">Picburrow</div>
+      <div class="brand"><img src="/icon.svg" alt="" width="28" height="28" />Picburrow</div>
       {#each nav as item}
         <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}><item.icon aria-hidden="true" />{item.label}</a>
       {/each}
@@ -115,32 +115,40 @@
 
 <style>
   .shell { min-height: 100dvh; }
-  main { min-width: 0; padding-bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom)); }
+  main { min-width: 0; padding-bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom) + var(--space-3)); }
   .side { display: none; }
-  .bottom { position: fixed; z-index: 10; inset: auto 0 0; display: flex; justify-content: space-around; height: calc(var(--bottom-nav) + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom); background: var(--bg); border-top: 1px solid var(--border); }
-  .bottom a { display: grid; justify-items: center; align-content: center; gap: 2px; min-width: var(--touch-target); color: var(--text-muted);
-    text-decoration: none; font: var(--weight-xs) var(--text-xs) var(--font-sans); }
-  .bottom a[aria-current='page'] { color: var(--accent); }
+  /* glass: 90% keeps muted text >= 4.5:1 even over a pure black or white photo */
+  .bottom, .toast span { background: color-mix(in srgb, var(--bg) 90%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); box-shadow: var(--shadow-pop); }
+  .bottom { position: fixed; z-index: 10; left: var(--space-4); right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
+    display: flex; justify-content: space-around; gap: var(--space-1); height: calc(var(--bottom-nav) - var(--space-4)); padding: var(--space-2);
+    border-radius: var(--radius-pill); max-width: 480px; margin: 0 auto; }
+  .bottom a { flex: 1; display: grid; justify-items: center; align-content: center; gap: 2px; min-width: var(--touch-target); border-radius: var(--radius-pill);
+    color: var(--text-muted); text-decoration: none; font: var(--weight-xs) var(--text-xs) var(--font-sans);
+    transition: background var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease); }
+  .bottom a[aria-current='page'] { color: var(--accent); background: var(--accent-tint); font-weight: 700; }
+  .bottom a:active { transform: scale(.96); }
   @media (min-width: 768px) {
     .shell { display: grid; grid-template-columns: var(--sidebar) 1fr; }
     main { padding-bottom: 0; }
     .bottom { display: none; }
-    .side { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100dvh; padding: var(--space-5) var(--space-4);
-      border-right: 1px solid var(--border); background: var(--bg); overflow-y: auto; }
-    .brand { font: var(--weight-lg) var(--text-lg) var(--font-sans); padding: 0 var(--space-4) var(--space-5); }
-    .section { margin-top: var(--space-6); padding: 0 var(--space-4) var(--space-3); color: var(--text-muted); font: var(--weight-xs) var(--text-xs) var(--font-sans); text-transform: uppercase; letter-spacing: .06em; }
-    .side a { display: flex; align-items: center; gap: var(--space-4); height: 40px; padding: 0 var(--space-4); border-radius: var(--radius-md);
-      color: var(--text); text-decoration: none; font: var(--text-sm) var(--font-sans); }
-    .side a:hover { background: var(--surface); }
-    .side a[aria-current='page'] { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
-    .signout { margin-top: auto; justify-content: flex-start; font-weight: 400; }
+    .side { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100dvh; padding: var(--space-6) var(--space-4) var(--space-5);
+      background: var(--surface); overflow-y: auto; }
+    .brand { display: flex; align-items: center; gap: var(--space-3); font: 800 var(--text-lg) var(--font-sans); letter-spacing: -.02em;
+      padding: 0 var(--space-3) var(--space-6); }
+    .brand img { border-radius: var(--radius-sm); }
+    .section { margin-top: var(--space-6); padding: 0 var(--space-4) var(--space-3); color: var(--text-muted); font: var(--weight-xs) var(--text-xs) var(--font-sans); text-transform: uppercase; letter-spacing: .08em; }
+    .side a { display: flex; align-items: center; gap: var(--space-4); height: 40px; padding: 0 var(--space-4); border-radius: var(--radius-pill);
+      color: var(--text); text-decoration: none; font: 500 var(--text-sm) var(--font-sans); transition: background var(--motion-fast) var(--motion-ease); }
+    .side a:hover { background: color-mix(in srgb, var(--surface) 90%, var(--text)); }
+    .side a[aria-current='page'] { background: var(--bg); color: var(--accent); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .signout { margin-top: auto; justify-content: flex-start; font-weight: 500; }
     .side a.source { height: 32px; color: var(--text-muted); font: var(--text-xs) var(--font-sans); }
   }
   nav :global(svg) { width: 20px; height: 20px; flex: none; }
   .toast { position: fixed; z-index: 60; left: 50%; translate: -50% 0; bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom) + var(--space-4));
     pointer-events: none; width: max-content; max-width: calc(100% - 2 * var(--space-5)); }
-  .toast span { display: block; padding: var(--space-4) var(--space-5); border-radius: var(--radius-md); background: var(--text); color: var(--bg);
-    box-shadow: var(--shadow-pop); font: var(--text-sm) var(--font-sans); }
+  .toast span { display: block; padding: var(--space-4) var(--space-6); border-radius: var(--radius-pill); color: var(--text);
+    font: 500 var(--text-sm) var(--font-sans); }
   @media (min-width: 768px) { .toast { bottom: var(--space-6); } }
 </style>

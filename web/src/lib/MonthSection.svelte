@@ -27,7 +27,7 @@
 
   const shown = $derived(tiles?.filter((t) => !overrides[t.id]?.archived) ?? []);
   // placeholder height before the month is loaded, or after it scrolls far away
-  const estimate = $derived(Math.ceil((count * 1.33 * rowHeight) / Math.max(width, 1)) * (rowHeight + 2) + 48);
+  const estimate = $derived(Math.ceil((count * 1.33 * rowHeight) / Math.max(width, 1)) * (rowHeight + 3) + 48);
 </script>
 
 <section bind:this={el} id="m-{month}" aria-label={month} style:min-height="{near && tiles ? 0 : measured || estimate}px">
