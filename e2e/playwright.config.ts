@@ -1,4 +1,4 @@
-// Run: cd e2e && npm ci && npx playwright test   (needs ../raspicture built: `make` in the repo root)
+// Run: cd e2e && npm ci && npx playwright test   (needs ../homeroll built: `make` in the repo root)
 // Each run starts the real binary on a fresh data dir and a generated fixture library (made once, cached in .fixtures).
 import { defineConfig, devices } from '@playwright/test';
 
@@ -14,7 +14,7 @@ export default defineConfig({
   globalSetup: './global-setup.ts',
   use: { baseURL: BASE, trace: 'off', screenshot: 'only-on-failure' },
   webServer: {
-    command: 'rm -rf .data && mkdir .data && ../raspicture --data-dir .data --listen 127.0.0.1:8090',
+    command: 'rm -rf .data && mkdir .data && ../homeroll --data-dir .data --listen 127.0.0.1:8090',
     url: BASE + '/api/status',
     reuseExistingServer: false,
     stdout: 'ignore',

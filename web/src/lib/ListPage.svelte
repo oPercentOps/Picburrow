@@ -21,7 +21,7 @@
   const shown = $derived(tiles?.filter(keep) ?? []);
 </script>
 
-<svelte:head><title>{title} · Photos</title></svelte:head>
+<svelte:head><title>{title} · Homeroll</title></svelte:head>
 
 <div class="page">
   <header><h1>{title}</h1>{#if tiles}<span class="muted">{shown.length.toLocaleString()} items</span>{/if}</header>

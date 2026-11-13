@@ -1,4 +1,4 @@
--- RaspictureGalleryNas schema, SQLite 3.38+ for unixepoch() (WAL mode, foreign_keys=ON per connection).
+-- Homeroll schema, SQLite 3.38+ for unixepoch() (WAL mode, foreign_keys=ON per connection).
 -- Times: INTEGER unix seconds UTC unless noted. IDs: INTEGER rowid (smaller/faster than uuid on a Pi);
 -- anything exposed publicly uses a random token instead of the id.
 

@@ -88,7 +88,7 @@ func httpError(w http.ResponseWriter, code int, msg string) {
 
 func serverError(w http.ResponseWriter, err error) {
 	log.Printf("error: %v", err)
-	httpError(w, http.StatusInternalServerError, "Something went wrong on the server")
+	httpError(w, http.StatusInternalServerError, "Something went wrong on the server. Try again in a moment; if it keeps happening, the server log says why.")
 }
 
 // readJSON also acts as CSRF protection: a cross-site form can't send application/json without a CORS preflight.

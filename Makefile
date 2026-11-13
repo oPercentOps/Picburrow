@@ -11,10 +11,10 @@ web:
 	touch server/dist/.keep
 
 server:
-	cd server && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o ../raspicture .
+	cd server && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o ../homeroll .
 
 pi: web
-	cd server && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ../raspicture-arm64 .
+	cd server && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o ../homeroll-arm64 .
 
 test:
 	cd server && go test ./...

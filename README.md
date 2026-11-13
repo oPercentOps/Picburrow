@@ -1,6 +1,6 @@
-# RaspictureGalleryNas
+# Homeroll
 
-An alternative to simple file galleries for browsing the phone photos you back up to a Raspberry Pi NAS:
+The photo folders you already have, as a timeline on your phone. Homeroll is one small program for a Raspberry Pi NAS, with no Docker, no Postgres and no Redis:
 a timeline by day, a fast fullscreen viewer, and photo details. It runs on a Pi 3, 4 or 5 with **1 GB RAM**
 and 64-bit Raspberry Pi OS, and only reads your photo folders, never changes them.
 
@@ -10,17 +10,17 @@ Status: timeline with date scrubber, viewer, live photos, star ratings, folders,
 
 ```bash
 sudo apt install libvips-tools libimage-exiftool-perl ffmpeg
-make            # builds the web UI and ./raspicture (needs Go 1.26+ and Node 22)
-./raspicture --data-dir ./data --listen :8080
+make            # builds the web UI and ./homeroll (needs Go 1.26+ and Node 22)
+./homeroll --data-dir ./data --listen :8080
 ```
 
 Open http://<pi-address>:8080, create the admin account and enter the folder your phone backups land in.
 
-For a Pi, build on any machine with `make pi` and copy `raspicture-arm64` over: it's a single static binary.
+For a Pi, build on any machine with `make pi` and copy `homeroll-arm64` over: it's a single static binary.
 
 | flag | default | |
 | --- | --- | --- |
-| `--data-dir` | `/var/lib/raspicture` | database and thumbnails (put it on the SSD/USB disk, not the SD card if you can) |
+| `--data-dir` | `/var/lib/homeroll` | database and thumbnails (put it on the SSD/USB disk, not the SD card if you can) |
 | `--listen` | `:8080` | address to serve on |
 | `--workers` | `1` | parallel thumbnail decodes; keep 1 on a 1 GB Pi |
 

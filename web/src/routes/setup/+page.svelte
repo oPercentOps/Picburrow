@@ -23,13 +23,13 @@
   }
 </script>
 
-<svelte:head><title>Set up · Photos</title></svelte:head>
+<svelte:head><title>Set up · Homeroll</title></svelte:head>
 
 <div class="center">
   <form class="card" onsubmit={submit}>
     <div>
-      <h1>Welcome</h1>
-      <p class="muted">Create the admin account and point the gallery at the folder where your phone photos land. Files are only read, never moved or changed.</p>
+      <h1>Welcome to Homeroll</h1>
+      <p class="muted">Make your account, then tell Homeroll where your phone photos land. It only reads them: nothing gets moved, renamed or changed.</p>
     </div>
     <div class="field">
       <label for="u">Admin username</label>
@@ -47,7 +47,7 @@
       <span class="hint" id="fh">Full path, for example /mnt/nas/phone-backup. You can add more folders later.</span>
     </div>
     {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
-    <button class="btn primary" disabled={busy} aria-busy={busy}>{busy ? 'Setting up…' : 'Start indexing'}</button>
+    <button class="btn primary" disabled={busy} aria-busy={busy}>{busy ? 'Setting up…' : 'Show my photos'}</button>
   </form>
 </div>
 

@@ -777,7 +777,7 @@ func TestMigrateFromV1(t *testing.T) {
 	if v1 == schemaSQL {
 		t.Fatal("couldn't rebuild the v1 schema from schema.sql")
 	}
-	old, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "raspicture.db"))
+	old, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "homeroll.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
