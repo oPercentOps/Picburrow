@@ -1,5 +1,6 @@
 // F02 Find a photo from a past month (S03 scrubber).
-import { test, expect, axe, SHOTS, tiles } from './helpers';
+import { test, expect, axe, SHOTS, tiles, LIB } from './helpers';
+import { statSync } from 'node:fs';
 
 test('F02-H1 scrubber: keyboard End jumps to the oldest month, Home back to the newest', async ({ page }) => {
   await page.goto('/');
@@ -40,8 +41,9 @@ test.describe('F02-E2 time zones', () => {
   });
 });
 
-test('F02-E3 dateless videos land on their file date (today)', async ({ page }) => {
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+test('F02-E3 dateless videos land on their file date', async ({ page }) => {
+  const mtime = statSync(`${LIB}/DCIM/Camera/VID_20261015.mp4`).mtime; // the fixtures may be cached from another day
+  const today = mtime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 2, name: today })).toBeVisible();
   await expect(page.getByRole('link', { name: /^Video from/ }).first()).toBeVisible();

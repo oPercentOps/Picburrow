@@ -6,6 +6,10 @@ export const LIB = resolve('.fixtures');
 export const SHOTS = resolve('../replica/clone-screens');
 export const USER = { name: 'ann', password: 'correct horse' };
 
+// Answer the next prompt() on this page (the guard handles every dialog, so tests don't add their own handlers).
+const promptAnswers = new WeakMap<Page, string>();
+export const answerPrompt = (page: Page, text: string) => promptAnswers.set(page, text);
+
 // Every test fails on a console error (except expected 4xx resource errors the UI handles) or any 5xx response.
 // Native confirm() dialogs are accepted.
 export const test = base.extend<{ guard: void }>({
@@ -19,7 +23,16 @@ export const test = base.extend<{ guard: void }>({
       page.on('response', (r) => {
         if (r.status() >= 500) problems.push(`${r.status()} ${r.url()}`);
       });
-      page.on('dialog', (d) => (d.type() === 'confirm' ? d.accept() : (problems.push(`unexpected ${d.type()}: ${d.message()}`), d.dismiss())));
+      page.on('dialog', (d) => {
+        if (d.type() === 'confirm') return d.accept();
+        if (d.type() === 'prompt' && promptAnswers.has(page)) {
+          const a = promptAnswers.get(page)!;
+          promptAnswers.delete(page);
+          return d.accept(a);
+        }
+        problems.push(`unexpected ${d.type()}: ${d.message()}`);
+        return d.dismiss();
+      });
       await use();
       expect(problems, 'console errors, page errors, 5xx or unexpected dialogs').toEqual([]);
     },

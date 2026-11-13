@@ -17,12 +17,12 @@ Download original,view,must,yes,yes,
 Favourites,organize,must,yes,yes,heart / F key in the viewer; S09 page; viewer steps through favourites
 Responsive mobile web layout,browse,must,yes,yes,"bottom nav < 768px, checked at 390px and 1440px"
 Single admin login (local LAN),auth,must,yes,yes,"bcrypt, HttpOnly SameSite session, 10 attempts/min/IP"
-Albums (virtual; no file moves),organize,should,yes,no,
+Albums (virtual; no file moves),organize,should,yes,yes,"S07/S08: create from a selection or the viewer, rename, remove photos, delete (photos stay)"
 Archive/hide from timeline,organize,should,yes,yes,viewer button moves on to the next photo; S10 page; unarchive from there
-"Search by date range, folder path, filename, camera, media type, rating",search,should,yes,no,Immich searching.md filter list minus ML filters
-Multi-select in grid (shift-click / long-press),browse,should,yes,no,
+"Search by date range, folder path, filename, camera, media type, rating",search,should,yes,partial,"S11: words in file name/folder/camera/lens, date range, photos/videos, favourites; query in the URL. No rating filter (ratings not built)"
+Multi-select in grid (shift-click / long-press),browse,should,yes,yes,"select circle (keyboard: Space), shift-click, long-press on phones; bar: favourite, add to album, archive / remove from album"
 Live/motion photos (still + short video pair),view,should,yes,no,PhotoPrism plays live photos on hover and in slideshows
-Public share link for an album (optional expiry/password),sharing,should,yes,no,"Immich sharing.md: random token, expiry, password, allowed actions"
+Public share link for an album (optional expiry/password),sharing,should,yes,yes,"S12: random 256-bit token, optional password (per-browser unlock), expiry, view-only mode; visitors see only the album"
 Multiple users with own libraries,auth,should,yes,partial,ownership enforced on every query; no UI to add users yet
 Keep metadata stable when a file moves (content hash),library,should,no,yes,tested: favourite survives a move
 XMP sidecar read (description rating date GPS tags),library,could,yes,no,Immich xmp-sidecars.md; IMG.jpg.xmp preferred over IMG.xmp
@@ -40,11 +40,11 @@ Smart (CLIP) search by content,search,skip,yes,skip,same ML limit
 Server-side video transcoding,view,skip,yes,skip,a Pi with 1 GB RAM can't transcode in reasonable time
 Native mobile apps,clients,skip,yes,skip,responsive web app first
 Paid-member features (PhotoPrism interactive world maps),billing,skip,yes,skip,PhotoPrism README: members get interactive world maps; free here via could-row map
-Installable PWA (add to home screen),clients,should,yes,no,PhotoPrism README: PWA with native-app feel; replaces native apps
+Installable PWA (add to home screen),clients,should,yes,yes,"manifest + own icons (192/512, maskable, apple-touch); no offline service worker (LAN app)"
 Hierarchical tags (read from XMP/IPTC),organize,could,yes,no,Immich tags.md
 Locked folder behind a PIN,organize,could,yes,no,Immich locked-folder.md: 15 min unlocked session
 Star rating,organize,could,yes,no,Immich search filter + xmp:Rating
 Partner sharing (whole library to another user),sharing,could,yes,no,Immich partner-sharing.md; one-way
-Blurred placeholder (thumbhash) while thumbnails load,browse,should,yes,no,Immich system-settings: 3 thumbnail kinds
+Blurred placeholder (thumbhash) while thumbnails load,browse,should,yes,yes,"a ~16 px WebP stored with each photo, blurred behind the tile until the thumbnail loads (not the ThumbHash algorithm)"
 WebDAV access to the library,sync,skip,yes,skip,PhotoPrism feature; out of browse+view slice
 OCR text search,search,skip,yes,skip,Immich searching.md; needs ML

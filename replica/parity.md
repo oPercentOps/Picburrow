@@ -1,39 +1,36 @@
 # Parity report: RaspictureGalleryNas vs Immich / PhotoPrism (browse + view slice)
 
-Build: main after oPercentOps/RaspictureGalleryNas#5 + HEIC check. Date: 2026-11-13.
+Build: albums, multi-select, search, share links, PWA, placeholders. Date: 2026-11-13.
 
 | | score |
 | --- | --- |
-| **Overall** | **67.1** (features only; layout not measured, see below) |
-| Features | 67.1 / 100, must-haves **18 of 18** |
+| **Overall** | **80.0** (features only; layout not measured, see below) |
+| Features | 80.0 / 100, must-haves **18 of 18** |
 | Layout | not measured |
 | Open bugs | 0 S1, 0 S2 (`replica/bugs.md`) |
 
-**Verdict: not shippable yet** by this report's own bar: every must-have works and no S1/S2 bug is open, but the feature score is 67, under the 80 needed. The gap is all should-haves (albums, search, multi-select, share links, PWA, blur placeholders). Six of them get it to 81.
+**Verdict: shippable** by this report's bar: every must-have works, the feature score reaches 80, and no S1 or S2 bug is open (`replica/bugs.md`). That is a family/LAN release; the real-hardware checks below still decide whether it is a *Raspberry Pi 3* release.
+
+Up from 67.1: albums, multi-select, share links, the installable app and blur placeholders are done; search is partial (no rating filter, because ratings are not built).
 
 ## Feature parity (parity.py)
 
-features 67.1  (40 counted, must-haves 18 of 18 done)
+features 80.0  (40 counted, must-haves 18 of 18 done)
 
 ## By area, weakest first
-- search                         0.0  (2 features)
-- sharing                        0.0  (2 features)
-- clients                        0.0  (1 features)
-- organize                      41.7  (8 features)
-- browse                        66.7  (8 features)
+- search                        33.3  (2 features)
+- organize                      58.3  (8 features)
+- sharing                       66.7  (2 features)
 - auth                          80.0  (2 features)
 - view                          81.8  (9 features)
+- browse                        88.9  (8 features)
 - library                       90.0  (8 features)
+- clients                      100.0  (1 features)
 
 ## Missing, in build order
-- [should] browse: Blurred placeholder (thumbhash) while thumbnails load, no  (Immich system-settings: 3 thumbnail kinds)
-- [should] browse: Multi-select in grid (shift-click / long-press), no
-- [should] clients: Installable PWA (add to home screen), no  (PhotoPrism README: PWA with native-app feel; replaces native apps)
-- [should] organize: Albums (virtual; no file moves), no
-- [should] search: Search by date range, folder path, filename, camera, media type, rating, no  (Immich searching.md filter list minus ML filters)
-- [should] sharing: Public share link for an album (optional expiry/password), no  (Immich sharing.md: random token, expiry, password, allowed actions)
 - [should] view: Live/motion photos (still + short video pair), no  (PhotoPrism plays live photos on hover and in slideshows)
 - [should] auth: Multiple users with own libraries, partial  (ownership enforced on every query; no UI to add users yet)
+- [should] search: Search by date range, folder path, filename, camera, media type, rating, partial  (S11: words in file name/folder/camera/lens, date range, photos/videos, favourites; query in the URL. No rating filter (ratings not built))
 - [could] browse: Map of geotagged photos, no  (needs map tiles from an external provider)
 - [could] browse: On this day / memories, no
 - [could] library: Write favourites/albums back to XMP sidecars, no  (Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise)
@@ -86,13 +83,13 @@ Layout is 20% of the overall score; colour is ignored on purpose (the rebrand ch
 | Edits on a read-only mount | metadata edits "silently fail" (Immich docs, danger box) | favourites and archive live in the database and work on read-only mounts | keep (better); XMP write-back is a could |
 | F04 folder view | opt-in under Account Settings | on by default, URL mirrors the disk | keep |
 | F02 find a month | date scrubber | scrubber, keyboard slider, sized by photo count | parity |
-| F03 viewer | favourite, archive, info, download, plus edit, add to album, share, stacks | favourite, archive, info, download, zoom, swipe | gap: add to album, share |
-| F05 albums | albums, shared with users as editor/viewer | not built | build (should) |
-| Search | metadata filters + CLIP smart search + OCR + faces | none | build the metadata filters (should); ML search stays out (no RAM) |
-| F06 share | public link with expiry, password, allowed actions | not built | build (should) |
-| Loading | thumbhash blur, small, large | small + large, grey until loaded | build thumbhash (should, cheap) |
+| F03 viewer | favourite, archive, info, download, plus edit, add to album, share, stacks | favourite, archive, info, download, zoom, swipe, add to album | gap: edit, stacks |
+| F05 albums | albums, shared with users as editor/viewer | albums from a selection or the viewer; share with anyone by link | gap: sharing with other accounts |
+| Search | metadata filters + CLIP smart search + OCR + faces | words in name/folder/camera, date range, type, favourites | keep; ML search stays out (no RAM) |
+| F06 share | public link with expiry, password, allowed actions | link with password, expiry, view-only; visitors see nothing else | parity |
+| Loading | thumbhash blur, small, large | 16 px WebP blur, small, large | parity |
 | Live photos | PhotoPrism plays them on hover | shown as two items | build (should) |
-| Phone app | Immich native apps; PhotoPrism installable PWA | responsive web, not installable yet | build the PWA manifest (should, cheap) |
+| Phone app | Immich native apps; PhotoPrism installable PWA | installable web app (manifest, icons) | parity with PhotoPrism |
 
 ## Measured on the build box (x86 container, not a Pi)
 
@@ -107,10 +104,10 @@ The 48 MP case is over the 350 MB target set in `architecture.md`. It still fits
 
 ## Top five to build next
 
-1. **Albums** (S07, S08): the biggest should-have; the viewer and grid already have the hooks.
-2. **Multi-select** in grids: needed to add many photos to an album, archive or favourite at once.
-3. **Search** with metadata filters (date range, folder, filename, camera, type, favourites): SQLite `LIKE`, no ML.
-4. **Share links** for an album (S12): random token, expiry, password; the schema already has `shared_links`.
-5. **PWA manifest + thumbhash placeholders**: both small, and they make the phone experience feel native.
+1. **Live photos**: pair the still and its short video, play on press/hover. The last should-have.
+2. **Ratings + rating filter**: completes search, and reads `xmp:Rating` from sidecars.
+3. **Trash page** (S15) with restore and the 30-day purge the schema already supports.
+4. **User management UI**: the API enforces ownership; admins need a page to add family members.
+5. **The real-hardware pass**: a 1 GB Pi 3 with real iPhone HEICs, Safari on an iPhone, a screen reader.
 
-Together that is 81, over the shippable bar. Then `/replica-entrepreneur` to aim for "better than the original", which the behaviour table says is already true on install, moved files, unmounted shares and read-only mounts.
+Then `/replica-entrepreneur`: the behaviour table already shows wins on install, moved files, unmounted shares and read-only mounts.

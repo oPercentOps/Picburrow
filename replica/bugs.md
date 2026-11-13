@@ -6,8 +6,8 @@ Bugs found earlier, while building, are in `replica/build-log.md`.
 | | open | fixed |
 | --- | --- | --- |
 | S1 | 0 | 2 |
-| S2 | 0 | 1 |
-| S3 | 0 | 3 |
+| S2 | 0 | 2 |
+| S3 | 0 | 6 |
 | S4 | 0 | 0 |
 
 ### BUG-001: right after setup the library looks empty and idle
@@ -106,6 +106,65 @@ Expected: "December 2025" (the oldest month).
 Actual: jumped there, then the slider announced and drew "January 2026": the oldest month can't reach the top of the page, so the scroll tracker picked the month above it.
 Evidence: `F02-H1` failed on one run in three.
 Status: fixed in d513470 (at the bottom of the page the last month is current).
+
+### BUG-007: video length badge unreadable before the photo loads
+
+- Severity: S3 (accessibility, contrast)
+- Flow / case: F02-H1 (axe)
+- Screen: S03, all grids
+- Build: 336b8ba  Browser / device: Chromium, axe
+
+Steps
+1. Open the timeline; look at a video tile before its thumbnail has faded in.
+
+Expected: the "0:04" badge readable on anything.
+Actual: white text with only a shadow, on the light tile background: axe color-contrast failure (it couldn't measure while the photo was always there; the new fade-in exposed it).
+Status: fixed (badges get their own dark backing).
+
+### BUG-008: unarchiving the last photo in the viewer jumps back to one already unarchived
+
+- Severity: S3
+- Flow / case: F05-A2
+- Screen: S04 opened from S10
+- Build: 336b8ba  Browser / device: Chromium 1440px
+
+Steps
+1. Archive two photos. Open the first on the Archive page, Unarchive, Unarchive.
+
+Expected: moves to the second, then closes: nothing is left in the archive.
+Actual: after the second, it went back to the first photo, which is no longer archived.
+Evidence: `F05-A2` (rewritten to step through with the viewer).
+Status: fixed (the viewer skips photos that left its list).
+
+### BUG-009: a wrong share-link password sends the visitor to the owner's sign-in page
+
+- Severity: S2 (the visitor can't retry and lands somewhere that makes no sense to them)
+- Flow / case: F06-H1
+- Screen: S12
+- Build: 336b8ba  Browser / device: Chromium 1440px
+
+Steps
+1. Open a password-protected share link in a fresh browser, type a wrong password.
+
+Expected: "Wrong password", try again.
+Actual: redirected to /login: the API client treated every 401 as an expired session.
+Evidence: `F05-A1 … F06-H1` failed at the password gate.
+Status: fixed (share-link calls never redirect).
+
+### BUG-010: the scrubber sometimes lands on (and announces) the month next to the one asked for
+
+- Severity: S3
+- Flow / case: F02-H1
+- Screen: S03
+- Build: 336b8ba  Browser / device: Chromium 1440px
+
+Steps
+1. Press End on the scrubber in a long timeline.
+
+Expected: the oldest month, announced as such.
+Actual: 1 run in 3: months around the target loaded and replaced their estimated heights, the page shifted and the tracker relabelled the slider with a neighbouring month.
+Evidence: `F02-H1` failed once in 3 full runs, after the albums work made the page longer.
+Status: fixed (re-anchors on the target while the layout settles; 3 full runs green after).
 
 ## To check (not reproduced as bugs)
 

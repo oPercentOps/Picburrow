@@ -53,8 +53,21 @@ Result: ✅ pass · ⏭ not run (reason) · 🔲 manual, not done yet.
 | F05-E1 | | edge: double click on the heart | dblclick | button and server agree | e2e | ✅ |
 | F05-E3 | | edge: F while the next photo loads | slow network | the previous photo is never changed | e2e | ✅ (BUG-005) |
 | F05-N1 | | negative: someone else's photo | PATCH another user's id | unchanged | go | ✅ |
-| F05-A | | albums | — | — | — | ⏭ albums not built |
-| F06 | share an album | all | — | — | — | ⏭ sharing not built |
+| F05-A1 | albums | happy ♿ | pick 3 photos, Add to album, new "Été 2026 🌞", remove one, rename | album with 2, name with accents and emoji | e2e | ✅ |
+| F05-A2 | | edge: keyboard, bulk archive | Space on a select circle, Escape; archive 2 from the bar; unarchive both in the viewer | bar appears/clears; timeline −2 then back | e2e | ✅ (BUG-008) |
+| F05-A3 | | edge: phone | long-press a photo, tap another | picks both, doesn't open the photo | e2e (phone) | ✅ |
+| F05-A4 | | edge: from the viewer | Add to album in the viewer | album with that photo | e2e | ✅ |
+| F05-A5 | | negative: other users | add to / share / read someone else's album or photo | 404, photo skipped | go | ✅ |
+| F05-A6 | | edge: delete album | Delete | album and its links gone, photos stay | e2e, go | ✅ |
+| F06-H1 | share an album | happy ♿ | link with password, view only; visitor opens it | password gate, album grid, no download / no favourite / no app nav | e2e | ✅ |
+| F06-N1 | | negative: wrong password | wrong, then right | "Wrong password", then the album | e2e, go | ✅ (BUG-009) |
+| F06-E1 | | edge: link turned off / expired | revoke; expiry in the past | "This link no longer works" (410) | e2e, go | ✅ |
+| F06-E2 | | edge: what a visitor can reach | other photos, owner API, path/GPS fields, originals when view-only | 404 / 401 / not sent / 403 | go | ✅ |
+| S11-H1 | search | happy ♿ | "plage"; Sep 2026 range; videos; reload | 1, 16, 3 results; query kept in the URL | e2e (desktop + phone) | ✅ |
+| S11-E1 | | edge: wildcards | `%`, `_` | matched literally | e2e, go | ✅ |
+| S11-N1 | | negative: other user / bad date | — | nothing of others; 400 | go | ✅ |
+| S03-P1 | placeholders | happy | indexed photos | every tile carries a tiny blurred preview | e2e, go | ✅ |
+| X-4 | install as an app | happy | manifest + icons | standalone manifest, icons served | e2e | ✅ |
 | F07-H2 | admin adds a folder | happy ♿ | add folder, Save | scanned, count +1 | e2e | ✅ |
 | F07-E4 | | edge: remove a folder | remove, confirm | asks first, its photos go to trash | e2e | ✅ |
 | F07-E5 | | edge: Scan now | button | scan runs | e2e | ✅ |
@@ -70,6 +83,6 @@ Result: ✅ pass · ⏭ not run (reason) · 🔲 manual, not done yet.
 
 ## Totals
 
-- Automated: 36 Playwright tests in 9 files (35 run, 1 touch-only test skipped on desktop) and 9 Go test functions (several cover many cases each, e.g. TestFlow, TestManage). All pass; 3 full Playwright runs in a row.
+- Automated: 45 Playwright tests in 11 files (43 run, 2 touch-only tests skipped on desktop) and 11 Go test functions (several cover many cases each: TestFlow, TestManage, TestAlbumsLinksSearch). All pass; 3 full Playwright runs in a row after the last fix.
 - Manual: 4 open (HEIC, Pi memory, Safari, screen reader).
-- Not run: albums and sharing (not built).
+- Not built, so not tested: live photos, ratings, trash page, map, memories.
