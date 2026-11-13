@@ -19,11 +19,11 @@ Responsive mobile web layout,browse,must,yes,yes,"bottom nav < 768px, checked at
 Single admin login (local LAN),auth,must,yes,yes,"bcrypt, HttpOnly SameSite session, 10 attempts/min/IP"
 Albums (virtual; no file moves),organize,should,yes,yes,"S07/S08: create from a selection or the viewer, rename, remove photos, delete (photos stay)"
 Archive/hide from timeline,organize,should,yes,yes,viewer button moves on to the next photo; S10 page; unarchive from there
-"Search by date range, folder path, filename, camera, media type, rating",search,should,yes,partial,"S11: words in file name/folder/camera/lens, date range, photos/videos, favourites; query in the URL. No rating filter (ratings not built)"
+"Search by date range, folder path, filename, camera, media type, rating",search,should,yes,yes,"S11: words in file name/folder/camera/lens, date range, photos/videos, minimum stars, favourites; query in the URL"
 Multi-select in grid (shift-click / long-press),browse,should,yes,yes,"select circle (keyboard: Space), shift-click, long-press on phones; bar: favourite, add to album, archive / remove from album"
-Live/motion photos (still + short video pair),view,should,yes,no,PhotoPrism plays live photos on hover and in slideshows
+Live/motion photos (still + short video pair),view,should,yes,yes,"paired by Apple content id, else same name + clip <= 5 s; one item with a Live badge; Play live photo (or L) plays the clip over the still; also through share links. Google/Samsung embedded motion photos not read"
 Public share link for an album (optional expiry/password),sharing,should,yes,yes,"S12: random 256-bit token, optional password (per-browser unlock), expiry, view-only mode; visitors see only the album"
-Multiple users with own libraries,auth,should,yes,partial,ownership enforced on every query; no UI to add users yet
+Multiple users with own libraries,auth,should,yes,yes,"People page: admins add family members with their own folder, reset passwords (signs them out), delete; nobody sees others' photos"
 Keep metadata stable when a file moves (content hash),library,should,no,yes,tested: favourite survives a move
 XMP sidecar read (description rating date GPS tags),library,could,yes,no,Immich xmp-sidecars.md; IMG.jpg.xmp preferred over IMG.xmp
 Write favourites/albums back to XMP sidecars,library,could,yes,no,"Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise"
@@ -31,7 +31,7 @@ Map of geotagged photos,browse,could,yes,no,needs map tiles from an external pro
 Reverse geocoding (place names) from offline dataset,search,could,yes,no,Immich uses GeoNames loaded locally; a city-level extract keeps it small
 On this day / memories,browse,could,yes,no,
 Duplicate finder (exact hash),organize,could,yes,no,Immich uses ML similarity; exact content hash is our 1 GB substitute
-Trash with 30-day restore,organize,could,yes,no,read-only mounts mean trash only affects the index
+Trash with 30-day restore,organize,could,yes,yes,S15: missing files listed; putting the file back restores it with albums/favourites; forgotten after 30 days or on demand; files never touched
 RAW (DNG/CR2/ARW) previews,view,could,yes,no,use embedded JPEG preview only; full RAW decode is too heavy for 1 GB
 Basic edit (rotate),view,could,yes,no,
 Phone backup/upload,backup,skip,yes,skip,out of slice; existing sync tools (Syncthing/SMB/phone backup apps) already drop files on the NAS
@@ -43,7 +43,7 @@ Paid-member features (PhotoPrism interactive world maps),billing,skip,yes,skip,P
 Installable PWA (add to home screen),clients,should,yes,yes,"manifest + own icons (192/512, maskable, apple-touch); no offline service worker (LAN app)"
 Hierarchical tags (read from XMP/IPTC),organize,could,yes,no,Immich tags.md
 Locked folder behind a PIN,organize,could,yes,no,Immich locked-folder.md: 15 min unlocked session
-Star rating,organize,could,yes,no,Immich search filter + xmp:Rating
+Star rating,organize,could,yes,yes,"0-5 in the viewer (stars or keys), read from XMP/EXIF Rating; the app wins on rescan"
 Partner sharing (whole library to another user),sharing,could,yes,no,Immich partner-sharing.md; one-way
 Blurred placeholder (thumbhash) while thumbnails load,browse,should,yes,yes,"a ~16 px WebP stored with each photo, blurred behind the tile until the thumbnail loads (not the ThumbHash algorithm)"
 WebDAV access to the library,sync,skip,yes,skip,PhotoPrism feature; out of browse+view slice

@@ -68,6 +68,17 @@ Result: ✅ pass · ⏭ not run (reason) · 🔲 manual, not done yet.
 | S11-N1 | | negative: other user / bad date | — | nothing of others; 400 | go | ✅ |
 | S03-P1 | placeholders | happy | indexed photos | every tile carries a tiny blurred preview | e2e, go | ✅ |
 | X-4 | install as an app | happy | manifest + icons | standalone manifest, icons served | e2e | ✅ |
+| L-1 | live photos | happy | still + 2 s clip with the same name | one item marked Live; Play shows the clip, then the still again | e2e, go | ✅ |
+| L-2 | | edge: pairing | same name but an 8 s video; Apple content id with different names; clip deleted | not paired; paired; unpaired | go | ✅ |
+| L-3 | | edge: share link | clip of a shared photo / an unrelated video | plays / 404 | go | ✅ |
+| R-1 | ratings | happy ♿ | stars and keys 1-5/0 in the viewer, search by stars | saved, found, cleared | e2e, go | ✅ |
+| R-2 | | edge: rating in the file | XMP Rating 4; set 2 in the app; file changes | 4 on import; 2 survives the rescan | go | ✅ |
+| T-1 | trash | happy ♿ | move a favourite's file away, scan; put it back, scan; Forget them now | listed; restored with its favourite; empty | e2e (desktop + phone) | ✅ |
+| T-2 | | edge: 30 days | missing 31 days vs 1 day | purged vs kept; files never touched | go | ✅ |
+| P-1 | people | happy ♿ | add lea with her folder; she signs in; new password; delete | her 3 photos only; old session ends; gone, files stay | e2e, go | ✅ |
+| P-2 | | negative | short password, missing folder, taken name, non-admin, delete yourself | 400 / 400 / 409 / 403 / 400 | go | ✅ |
+| N-1 | phone navigation | happy ♿ | More → Favourites, Archive, Trash, People | each reachable, More marked current | e2e (phone) | ✅ (BUG-011) |
+| M-1 | upgrade | edge | open a version-1 database | upgraded in place, rows kept | go | ✅ |
 | F07-H2 | admin adds a folder | happy ♿ | add folder, Save | scanned, count +1 | e2e | ✅ |
 | F07-E4 | | edge: remove a folder | remove, confirm | asks first, its photos go to trash | e2e | ✅ |
 | F07-E5 | | edge: Scan now | button | scan runs | e2e | ✅ |
@@ -83,6 +94,6 @@ Result: ✅ pass · ⏭ not run (reason) · 🔲 manual, not done yet.
 
 ## Totals
 
-- Automated: 45 Playwright tests in 11 files (43 run, 2 touch-only tests skipped on desktop) and 11 Go test functions (several cover many cases each: TestFlow, TestManage, TestAlbumsLinksSearch). All pass; 3 full Playwright runs in a row after the last fix.
+- Automated: 52 Playwright test runs from 12 spec files (1 setup + 42 desktop + 9 phone; 49 run, 3 phone-only tests skip on desktop) and 14 Go test functions (several cover many cases each: TestFlow, TestManage, TestAlbumsLinksSearch, TestLiveRatingsTrashUsers). All pass; 3 full Playwright runs in a row after the last fix.
 - Manual: 4 open (HEIC, Pi memory, Safari, screen reader).
-- Not built, so not tested: live photos, ratings, trash page, map, memories.
+- Not built, so not tested: the could-haves (map, memories, tags, duplicates, XMP sidecars, rotate, RAW previews, locked folder).
