@@ -25,6 +25,7 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("GET /api/me", a.auth(false, func(w http.ResponseWriter, r *http.Request) { writeJSON(w, userFrom(r)) }))
 	m.HandleFunc("GET /api/timeline/buckets", a.auth(false, a.getBuckets))
 	m.HandleFunc("GET /api/timeline", a.auth(false, a.getTimeline))
+	m.HandleFunc("GET /api/slideshow", a.auth(false, a.getSlideshow))
 	m.HandleFunc("GET /api/assets/{id}", a.auth(false, a.getAsset))
 	m.HandleFunc("GET /api/assets/{id}/thumb/{size}", a.auth(false, a.getThumb))
 	m.HandleFunc("GET /api/assets/{id}/original", a.auth(false, a.getOriginal))
@@ -311,6 +312,13 @@ func (a *App) getTimeline(w http.ResponseWriter, r *http.Request) {
 	next := t.AddDate(0, 1, 0).Format("2006-01")
 	a.writeTiles(w, `select `+tileCols+` `+visible+` and a.taken_local >= ? and a.taken_local < ?
 		order by a.taken_local desc, a.id desc`, userFrom(r).ID, month, next)
+}
+
+// getSlideshow returns up to 50 random photos from the timeline that have a large preview ready.
+// The page asks again when it runs out; shortcut: ORDER BY random() scans every row, fine for a home library.
+func (a *App) getSlideshow(w http.ResponseWriter, r *http.Request) {
+	a.writeTiles(w, `select `+tileCols+` `+visible+` and a.type = 'image' and a.thumbs_at is not null
+		and a.thumb_error is null order by random() limit 50`, userFrom(r).ID)
 }
 
 const tileCols = `a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at, a.thumb_error is not null, a.thumbhash, a.live_video_id`

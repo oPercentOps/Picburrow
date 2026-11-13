@@ -3,7 +3,7 @@
   import MonthSection from '$lib/MonthSection.svelte';
   import IndexingBanner from '$lib/IndexingBanner.svelte';
   import Scrubber from '$lib/Scrubber.svelte';
-  import { Images } from '@lucide/svelte';
+  import { Images, MonitorPlay } from '@lucide/svelte';
 
   let buckets = $state<Bucket[] | null>(null);
   let error = $state('');
@@ -30,7 +30,10 @@
 <svelte:head><title>Photos · Picburrow</title></svelte:head>
 
 <div class="page">
-  <header><h1>Photos</h1></header>
+  <header>
+    <h1>Photos</h1>
+    {#if buckets?.length}<a class="btn secondary" href="/slideshow"><MonitorPlay aria-hidden="true" />Slideshow</a>{/if}
+  </header>
   <IndexingBanner onscandone={load} />
   {#if error}
     <p class="error-msg" role="alert">{error}</p>
@@ -53,7 +56,9 @@
 
 <style>
   .page { padding: 0 var(--space-1) var(--space-6); }
-  header { padding: var(--space-5) var(--space-4) 0; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-5) var(--space-4) 0; }
+  header a :global(svg) { width: 20px; height: 20px; }
+  header a { text-decoration: none; }
   @media (min-width: 768px) {
     .page { padding: 0 var(--space-8) var(--space-7) var(--space-6); } /* right padding = the scrubber's column */
     header { padding: var(--space-6) 0 0; }
