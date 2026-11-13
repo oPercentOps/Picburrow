@@ -11,6 +11,7 @@ export type Tile = {
   duration_ms?: number;
   v: number | null;
   err?: boolean;
+  ph?: string; // tiny WebP placeholder, base64
 };
 export type Asset = Tile & {
   archived: boolean;
@@ -52,7 +53,8 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
     headers: init?.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
     body: init?.body !== undefined ? JSON.stringify(init.body) : undefined
   });
-  if (res.status === 401 && !path.startsWith('/api/login')) {
+  // an expired session sends you to sign in; a wrong password on a share link must not (BUG-009)
+  if (res.status === 401 && !path.startsWith('/api/login') && !path.startsWith('/api/s/')) {
     goto('/login');
   }
   if (!res.ok) {
@@ -65,8 +67,9 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
   return res.status === 204 || res.status === 202 ? (undefined as T) : res.json();
 }
 
-export const thumbURL = (t: { id: number; v: number | null }, size: 's' | 'l') =>
-  `/api/assets/${t.id}/thumb/${size}` + (t.v ? `?v=${t.v}` : '');
+// base: '/api' for your own photos, '/api/s/<token>' for a shared album
+export const thumbURL = (t: { id: number; v: number | null }, size: 's' | 'l', base = '/api') =>
+  `${base}/assets/${t.id}/thumb/${size}` + (t.v ? `?v=${t.v}` : '');
 
 // Browsers can show these originals directly; anything else (HEIC, RAW, TIFF) uses the large preview.
 export const browserCanShow = (mime: string) =>
@@ -100,3 +103,6 @@ export type Library = {
 
 export const formatWhen = (unix: number | null) =>
   unix ? new Date(unix * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'never';
+
+export type Link = { id: number; token: string; has_password: boolean; allow_download: boolean; expires_at: number | null; created_at: number };
+export type Album = { id: number; name: string; count: number; cover?: Tile; shared: boolean; updated_at: number; assets?: Tile[]; links?: Link[] };

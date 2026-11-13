@@ -1,10 +1,14 @@
 <script lang="ts">
   import { api, thumbURL, browserCanShow, formatDay, type Asset } from '$lib/api';
-  import { overrides } from '$lib/state.svelte';
-  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore } from '@lucide/svelte';
+  import { overrides, picker } from '$lib/state.svelte';
+  import { SvelteSet } from 'svelte/reactivity';
+  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore, BookPlus } from '@lucide/svelte';
 
-  // seq: ids to step through (a folder, favourites); without it prev/next follow the timeline
-  let { id, seq, onnavigate, onclose }: { id: number; seq?: number[]; onnavigate: (id: number) => void; onclose: () => void } = $props();
+  // seq: ids to step through (a folder, favourites); without it prev/next follow the timeline.
+  // base + readonly: a visitor on a shared album reads through the link and can't change anything.
+  let { id, seq, onnavigate, onclose, base = '/api', readonly = false }: {
+    id: number; seq?: number[]; onnavigate: (id: number) => void; onclose: () => void; base?: string; readonly?: boolean;
+  } = $props();
 
   let asset = $state<Asset | null>(null);
   let error = $state('');
@@ -18,22 +22,33 @@
   let opener: Element | null = null;
   let saveError = $state('');
 
-  const at = $derived(seq ? seq.indexOf(id) : -1);
-  const prevId = $derived(seq ? (at > 0 ? seq[at - 1] : null) : asset?.prev_id);
-  const nextId = $derived(seq ? (at >= 0 && at < seq.length - 1 ? seq[at + 1] : null) : asset?.next_id);
+  // photos archived/unarchived here have left the list this viewer steps through (BUG-008)
+  const left = new SvelteSet<number>();
+  const stepIn = (dir: 1 | -1) => {
+    if (!seq) return null;
+    for (let i = seq.indexOf(id) + dir; i >= 0 && i < seq.length; i += dir) if (!left.has(seq[i])) return seq[i];
+    return null;
+  };
+  const prevId = $derived(seq ? stepIn(-1) : asset?.prev_id);
+  const nextId = $derived(seq ? stepIn(1) : asset?.next_id);
   // after next/prev, `asset` still holds the previous photo until the new one loads: act only when they match (BUG-005)
   const ready = $derived(asset?.id === id);
+  // a shared album can turn off downloads (and so video playback, which streams the original)
+  const canDownload = $derived(!readonly || (asset as (Asset & { allow_download?: boolean }) | null)?.allow_download !== false);
   const fav = $derived(asset ? (overrides[asset.id]?.fav ?? asset.fav) : false);
   const archived = $derived(asset ? (overrides[asset.id]?.archived ?? asset.archived) : false);
 
   async function save(change: { favorite?: boolean; archived?: boolean }) {
-    if (!asset || !ready) return;
+    if (!asset || !ready || readonly) return;
     const target = asset.id;
     saveError = '';
     try {
       await api('/api/assets', { method: 'PATCH', body: { ids: [target], ...change } });
       overrides[target] = { ...overrides[target], ...('favorite' in change ? { fav: change.favorite } : { archived: change.archived }) };
-      if ('archived' in change) nextId ? go(nextId) : prevId ? go(prevId) : onclose(); // it leaves this view
+      if ('archived' in change) {
+        left.add(target); // it leaves this view
+        nextId ? go(nextId) : prevId ? go(prevId) : onclose();
+      }
     } catch (e) {
       saveError = (e as Error).message;
     }
@@ -44,7 +59,7 @@
     error = '';
     previewFailed = false;
     resetZoom();
-    api<Asset>(`/api/assets/${id}`, { signal: ctl.signal })
+    api<Asset>(`${base}/assets/${id}`, { signal: ctl.signal })
       .then((a) => (asset = a))
       .catch((e) => { if (e.name !== 'AbortError') error = e.message; });
     return () => ctl.abort();
@@ -130,12 +145,16 @@
     {:else if asset}
       {#if asset.type === 'video'}
         <!-- svelte-ignore a11y_media_has_caption -->
-        <video src="/api/assets/{asset.id}/original" poster={thumbURL(asset, 'l')} controls playsinline autoplay></video>
+        {#if canDownload}
+          <video src="{base}/assets/{asset.id}/original" poster={thumbURL(asset, 'l', base)} controls playsinline autoplay></video>
+        {:else}
+          <div class="msg"><img src={thumbURL(asset, 'l', base)} alt="{asset.name}, {formatDay(asset.taken)}" /><p>The owner turned off video playback and downloads for this album.</p></div>
+        {/if}
       {:else if previewFailed || asset.err}
         <div class="msg"><ImageOff aria-hidden="true" /><p>This file can't be previewed here.</p>
-          <a class="btn secondary" href="/api/assets/{asset.id}/original?download=1">Download original</a></div>
+          {#if canDownload}<a class="btn secondary" href="{base}/assets/{asset.id}/original?download=1">Download original</a>{/if}</div>
       {:else}
-        <img src={original ? `/api/assets/${asset.id}/original` : thumbURL(asset, 'l')} alt="{asset.name}, {formatDay(asset.taken)}"
+        <img src={original ? `${base}/assets/${asset.id}/original` : thumbURL(asset, 'l', base)} alt="{asset.name}, {formatDay(asset.taken)}"
           style:transform="translate({tx}px, {ty}px) scale({scale})" draggable="false"
           onerror={() => (original ? (original = false) : (previewFailed = true))} />
       {/if}
@@ -145,14 +164,15 @@
   <div class="bar top">
     <button class="btn icon-btn" onclick={onclose} aria-label="Close"><X aria-hidden="true" /></button>
     <div class="actions">
-      {#if asset}
+      {#if asset && !readonly}
+        <button class="btn icon-btn" onclick={() => (picker.ids = [id])} aria-label="Add to album" disabled={!ready}><BookPlus aria-hidden="true" /></button>
         <button class="btn icon-btn" onclick={() => save({ favorite: !fav })} aria-label="Favourite" aria-pressed={fav} disabled={!ready}>
           <Heart aria-hidden="true" fill={fav ? 'currentColor' : 'none'} /></button>
         <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? 'Unarchive' : 'Archive'} disabled={!ready}>
           {#if archived}<ArchiveRestore aria-hidden="true" />{:else}<Archive aria-hidden="true" />{/if}</button>
       {/if}
       <button class="btn icon-btn" onclick={() => (showInfo = !showInfo)} aria-label="Details" aria-pressed={showInfo}><Info aria-hidden="true" /></button>
-      {#if asset}<a class="btn icon-btn" href="/api/assets/{id}/original?download=1" aria-label="Download original"><Download aria-hidden="true" /></a>{/if}
+      {#if asset && canDownload}<a class="btn icon-btn" href="{base}/assets/{id}/original?download=1" aria-label="Download original"><Download aria-hidden="true" /></a>{/if}
     </div>
   </div>
   {#if prevId}<button class="btn icon-btn nav prev" onclick={() => go(prevId)} aria-label="Previous"><ChevronLeft aria-hidden="true" /></button>{/if}
@@ -166,8 +186,8 @@
       <dl>
         <dt>Taken</dt><dd>{formatDay(asset.taken)} {time(asset.taken)}{offset(asset.tz_offset_min)}</dd>
         <dt>File</dt><dd class="wrap">{asset.name}</dd>
-        <dt>Folder</dt><dd class="wrap">{asset.dir}</dd>
-        <dt>Size</dt><dd>{mb(asset.size)}{asset.w && asset.h ? ` · ${asset.w} × ${asset.h}` : ''}</dd>
+        {#if asset.dir}<dt>Folder</dt><dd class="wrap">{asset.dir}</dd>{/if}
+        {#if asset.size}<dt>Size</dt><dd>{mb(asset.size)}{asset.w && asset.h ? ` · ${asset.w} × ${asset.h}` : ''}</dd>{/if}
         {#if camera}<dt>Camera</dt><dd>{camera}</dd>{/if}
         {#if asset.lens}<dt>Lens</dt><dd>{asset.lens}</dd>{/if}
         {#if asset.lat != null && asset.lon != null}<dt>Location</dt><dd>{asset.lat.toFixed(5)}, {asset.lon.toFixed(5)}</dd>{/if}
