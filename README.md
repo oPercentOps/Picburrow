@@ -11,7 +11,7 @@ To hear about new versions: **Watch → Custom → Releases** on GitHub. The pro
 ## Install on a Raspberry Pi (64-bit Raspberry Pi OS)
 
 ```bash
-sudo apt install ./picburrow_0.1.2_arm64.deb
+sudo apt install ./picburrow_0.1.3_arm64.deb
 ```
 
 That one command pulls in libvips (with the HEVC decoder iPhone HEIC photos need), exiftool and ffmpeg, creates a `picburrow` system user and starts the service.

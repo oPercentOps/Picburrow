@@ -1,5 +1,5 @@
 // Issue #20: a random, self-advancing slideshow with smooth transitions.
-import { test, expect, axe, SHOTS } from './helpers';
+import { test, expect, axe, SHOTS, api, viewer } from './helpers';
 
 const current = (page: import('@playwright/test').Page) =>
   page.getByRole('region', { name: 'Slideshow' }).getByRole('img').last();
@@ -77,4 +77,28 @@ test('SL-2 sleep mode on a phone: a tap wakes it back to the page @mobile', asyn
   await expect(current(page)).toBeVisible();
   await page.touchscreen.tap(200, 400);
   await expect(page).toHaveURL(/\/albums$/);
+});
+
+test('SL-3 sleep mode waits while a video plays, then starts once it has ended', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 768, 'desktop');
+  const months = await api<{ month: string }[]>(page, '/api/timeline/buckets');
+  let video: { id: number } | undefined;
+  for (const m of months) {
+    video = (await api<any[]>(page, `/api/timeline?month=${m.month}`)).find((t) => t.type === 'video' && !t.err);
+    if (video) break;
+  }
+  expect(video, 'the fixture library has a playable video').toBeTruthy();
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('picburrow.sleep.seconds', '2'));
+  await page.goto(`/photos/${video!.id}`);
+  const clip = viewer(page).locator('video');
+  await expect(clip).toBeVisible();
+  // muted playback is allowed without a click; the 4 s clip then plays with no input from the person
+  await clip.evaluate((v: HTMLVideoElement) => { v.muted = true; return v.play(); });
+  await expect.poll(() => clip.evaluate((v: HTMLVideoElement) => v.currentTime > 0 && !v.paused)).toBe(true);
+  await page.waitForTimeout(3000); // longer than the 2 s sleep time
+  expect(await clip.evaluate((v: HTMLVideoElement) => v.ended || !v.paused)).toBe(true); // it really was playing all along
+  await expect(page).toHaveURL(new RegExp(`/photos/${video!.id}$`));
+  // when the clip ends, the screen is left alone again and the slideshow starts
+  await expect(page).toHaveURL(/\/slideshow\?idle=1$/, { timeout: 10_000 });
 });
