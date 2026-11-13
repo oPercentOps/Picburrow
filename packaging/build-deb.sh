@@ -12,6 +12,10 @@ trap 'rm -rf "$ROOT"' EXIT
 install -D -m 0755 "$BIN" "$ROOT/usr/bin/picburrow"
 install -D -m 0644 "$HERE/picburrow.service" "$ROOT/lib/systemd/system/picburrow.service"
 install -D -m 0644 "$HERE/default" "$ROOT/etc/default/picburrow"
+# AGPL text (Debian's common-licenses has no AGPL) and the licences of everything built into the binary
+install -D -m 0644 "$HERE/../LICENSE" "$ROOT/usr/share/doc/picburrow/copyright"
+"$HERE/notices.sh" "$ARCH" > "$ROOT/usr/share/doc/picburrow/THIRD_PARTY_NOTICES"
+chmod 0644 "$ROOT/usr/share/doc/picburrow/THIRD_PARTY_NOTICES"
 install -d "$ROOT/DEBIAN"
 for f in postinst prerm postrm; do install -m 0755 "$HERE/$f" "$ROOT/DEBIAN/$f"; done
 echo /etc/default/picburrow > "$ROOT/DEBIAN/conffiles"

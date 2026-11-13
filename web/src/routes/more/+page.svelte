@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { api, type User } from '$lib/api';
+  import { SOURCE_URL } from '$lib/source';
   import { Heart, Archive, Trash2, HardDrive, Activity, Users, LogOut, ChevronRight } from '@lucide/svelte';
 
   // Phones: the bottom bar holds four places; the rest lives here.
@@ -38,6 +39,7 @@
     {/if}
   </nav>
   {#if me}<button class="btn secondary out" onclick={logout}><LogOut aria-hidden="true" />Sign out {me.username}</button>{/if}
+  <p class="muted about">Picburrow is free software under the AGPL-3.0. <a class="inline" href={SOURCE_URL} rel="noopener">Source code</a></p>
 </div>
 
 <style>
@@ -50,4 +52,6 @@
   a :global(svg), .out :global(svg) { width: 20px; height: 20px; }
   a :global(svg:last-child) { color: var(--text-muted); }
   .out { margin-top: var(--space-6); }
+  .about { margin-top: var(--space-6); }
+  a.inline { display: inline; min-height: 0; border: 0; text-decoration: underline; }
 </style>

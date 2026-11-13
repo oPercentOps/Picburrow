@@ -8,6 +8,7 @@
   import AlbumPicker from '$lib/AlbumPicker.svelte';
   import { selection, toast } from '$lib/state.svelte';
   import { api, type User } from '$lib/api';
+  import { SOURCE_URL } from '$lib/source';
   import { Image, Folder, BookImage, Heart, Archive, Search, Trash2, HardDrive, Activity, LogOut, Users, Menu } from '@lucide/svelte';
 
   let { children } = $props();
@@ -74,6 +75,7 @@
         {/each}
       {/if}
       <button class="btn ghost signout" onclick={logout}><LogOut aria-hidden="true" />Sign out {user.username}</button>
+      <a class="source" href={SOURCE_URL} rel="noopener">Source code · AGPL-3.0</a>
     </nav>
     <main>{@render children()}</main>
     {#if selection.size > 0}<SelectionBar />{/if}
@@ -115,6 +117,7 @@
     .side a:hover { background: var(--surface); }
     .side a[aria-current='page'] { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
     .signout { margin-top: auto; justify-content: flex-start; font-weight: 400; }
+    .side a.source { height: 32px; color: var(--text-muted); font: var(--text-xs) var(--font-sans); }
   }
   nav :global(svg) { width: 20px; height: 20px; flex: none; }
   .toast { position: fixed; z-index: 60; left: 50%; translate: -50% 0; bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom) + var(--space-4));

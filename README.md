@@ -51,3 +51,11 @@ The e2e suite (`e2e/*.spec.ts`) follows the flows in `replica/test-plan.md` on d
 Screenshots land in `replica/clone-screens/`.
 
 Planning docs: `replica/` (recon, architecture, design tokens, build log).
+
+## Licence
+
+Picburrow is free software: you can use, study, share and change it under the
+[GNU Affero General Public License v3.0 or later](LICENSE). If you run a changed version for other people,
+including over the network, you must offer them your changed source; the "Source code" link in the app
+(`web/src/lib/source.ts`) is where it points. The libraries built into each release are listed with their licences
+in `/usr/share/doc/picburrow/THIRD_PARTY_NOTICES` (made by `packaging/notices.sh`).

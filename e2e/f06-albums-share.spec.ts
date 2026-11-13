@@ -66,6 +66,7 @@ test('F05-A1 pick photos, make an album, remove one, rename; F06-H1 share it wit
   await expect(tiles(guest)).toHaveCount(2);
   await expect(guest.getByRole('button', { name: /^Select / })).toHaveCount(0); // visitors can't pick
   await expect(guest.getByRole('link', { name: 'Photos' })).toHaveCount(0); // no app navigation for visitors
+  await expect(guest.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/oPercentOps/RaspictureGalleryNas'); // AGPL section 13
   await guest.screenshot({ path: `${SHOTS}/S12-shared.png` });
   await axe(guest);
   await tiles(guest).first().click();
