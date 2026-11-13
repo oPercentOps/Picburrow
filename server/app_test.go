@@ -1082,3 +1082,60 @@ func TestCheckFolderNamesTheBlockingFolder(t *testing.T) {
 		t.Fatalf("missing folder: %q", got)
 	}
 }
+
+func TestSlideshow(t *testing.T) {
+	a, srv := newTestApp(t)
+	ann := client(t)
+	post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+t.TempDir()+`"}`)
+	waitScan(t, a)
+	add := func(lib int, name, typ, extra string) {
+		a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local, thumbs_at)
+			values (?, ?, '/p', 1, 1, x'00', ?, 'image/jpeg', '2024-01-01 00:00:00', 1)`, lib, "/p/"+name, typ)
+		if extra != "" {
+			a.db.Exec("update assets set "+extra+" where path = ?", "/p/"+name)
+		}
+	}
+	for i := 0; i < 60; i++ {
+		add(1, fmt.Sprintf("ok%02d.jpg", i), "image", "")
+	}
+	add(1, "clip.mp4", "video", "")
+	add(1, "archived.jpg", "image", "is_archived = 1")
+	add(1, "gone.jpg", "image", "missing_at = 1")
+	add(1, "broken.jpg", "image", "thumb_error = 'bad'")
+	add(1, "noprev.jpg", "image", "thumbs_at = null")
+	hash, _ := hashPassword("another pass")
+	a.db.Exec("insert into users (username, password_hash) values ('bob', ?)", hash)
+	a.db.Exec(`insert into libraries (owner_id, name, import_paths) values (2, 'bob', '[]')`)
+	add(2, "bobs.jpg", "image", "")
+
+	names := map[int64]string{}
+	rows, _ := a.db.Query("select id, path from assets")
+	for rows.Next() {
+		var id int64
+		var p string
+		rows.Scan(&id, &p)
+		names[id] = filepath.Base(p)
+	}
+	rows.Close()
+	seen := map[string]bool{}
+	for round := 0; round < 4; round++ {
+		var got []tile
+		get(t, ann, srv.URL+"/api/slideshow", &got)
+		if len(got) != 50 {
+			t.Fatalf("round %d: %d photos, want a batch of 50", round, len(got))
+		}
+		for _, p := range got {
+			n := names[p.ID]
+			if !strings.HasPrefix(n, "ok") {
+				t.Fatalf("slideshow showed %s", n)
+			}
+			seen[n] = true
+		}
+	}
+	if len(seen) <= 50 {
+		t.Errorf("4 batches covered only %d of 60 photos: not random", len(seen))
+	}
+	if r, _ := http.Get(srv.URL + "/api/slideshow"); r.StatusCode != 401 {
+		t.Errorf("signed out: %d, want 401", r.StatusCode)
+	}
+}
