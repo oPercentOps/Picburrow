@@ -24,7 +24,7 @@ func sdCardWarning(dataDir string) string {
 		return ""
 	}
 	return "The library data (" + dataDir + ") is on the SD card (" + src + "). Previews will be slow and the card wears out. " +
-		"Move it to a USB SSD or hard drive and start Picburrow with --data-dir pointing there."
+		"Move it to a USB SSD or hard drive: sudo dpkg-reconfigure picburrow (or start Picburrow with --data-dir)."
 }
 
 // mountSource finds the device behind major:minor in /proc/self/mountinfo

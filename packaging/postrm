@@ -1,10 +1,22 @@
 #!/bin/sh
 set -e
+# debconf first: loading it re-runs this script under debconf, so nothing may happen before it
+if [ "$1" = purge ] && [ -e /usr/share/debconf/confmodule ]; then . /usr/share/debconf/confmodule; fi
+DROPIN=/etc/systemd/system/picburrow.service.d/data-dir.conf
+if [ "$1" = purge ]; then
+  DATA=/var/lib/picburrow
+  if [ -f "$DROPIN" ]; then DATA=$(sed -n 's/^Environment=PICBURROW_DATA=//p' "$DROPIN"); fi
+  rm -f "$DROPIN"
+  rmdir "$(dirname "$DROPIN")" 2>/dev/null || true
+  if command -v db_purge >/dev/null 2>&1; then db_purge; db_stop; fi
+fi
 if [ -d /run/systemd/system ]; then systemctl daemon-reload || true; fi
 if [ "$1" = purge ]; then
   # Never delete the library data: albums, favourites and ratings live there. Say where it is instead.
-  if [ -d /var/lib/picburrow ]; then
-    echo "Picburrow's data is still in /var/lib/picburrow (albums, favourites, previews). Delete it yourself if you don't need it."
-  fi
+  for d in $(printf '%s\n' "$DATA" /var/lib/picburrow | sort -u); do
+    if [ -f "$d/picburrow.db" ]; then
+      echo "Picburrow's data is still in $d (albums, favourites, previews). Delete it yourself if you don't need it."
+    fi
+  done
 fi
 exit 0

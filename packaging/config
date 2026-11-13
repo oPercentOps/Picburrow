@@ -1,0 +1,45 @@
+#!/bin/sh
+# Asks where Picburrow keeps its data (debconf). Re-ask with: sudo dpkg-reconfigure picburrow
+set -e
+. /usr/share/debconf/confmodule
+Q=picburrow/data-dir
+
+# what's wrong with a folder, or nothing
+problem() {
+  case "$1" in
+    /usr|/usr/*|/etc|/etc/*|/boot|/boot/*|/home|/home/*|/root|/root/*|/proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/run|/run/*) echo invalid; return ;;
+    /*) ;;
+    *) echo invalid; return ;;
+  esac
+  d=$1
+  while [ ! -e "$d" ]; do d=$(dirname "$d"); done
+  case "$(findmnt -no FSTYPE --target "$d" 2>/dev/null)" in
+    nfs*|cifs|smb*|fuse.sshfs|9p) echo network ;;
+  esac
+}
+
+# the first time, start from a folder set by hand in /etc/default/picburrow
+db_fget $Q seen
+if [ "$RET" = false ] && [ -f /etc/default/picburrow ]; then
+  cur=$(sed -n 's/^PICBURROW_DATA=//p' /etc/default/picburrow | tail -n 1)
+  if [ -n "$cur" ]; then db_set $Q "$cur"; fi
+fi
+
+while :; do
+  shown=yes
+  db_input high $Q || shown=no
+  db_go || true
+  db_get $Q
+  if [ -z "$RET" ]; then db_set $Q /var/lib/picburrow; RET=/var/lib/picburrow; fi # an empty answer means the default
+  err=$(problem "$RET")
+  [ -z "$err" ] && break
+  if [ $shown = no ]; then # nobody to ask (noninteractive, or already answered): keep the safe default
+    db_set $Q /var/lib/picburrow
+    break
+  fi
+  db_input critical picburrow/data-dir-$err || true
+  db_go || true
+  db_set $Q /var/lib/picburrow # ask again from the default, so pressing Enter gives a folder that works
+  db_fset $Q seen false
+done
+exit 0

@@ -15,7 +15,7 @@ const patterns: [RegExp, string][] = [
   [/^The server isn't allowed through (.+) to reach that folder\. Give the picburrow user access to it \(README: Photo folder permissions\)$/,
     "Le serveur n'a pas le droit de traverser $1 pour atteindre ce dossier. Donnez-en l'accès à l'utilisateur picburrow (README : Photo folder permissions)"],
   [/^The library data \((.+)\) is on the SD card \((.+)\)\. .*$/,
-    "Les données de la bibliothèque ($1) sont sur la carte SD ($2). Les aperçus seront lents et la carte s'use. Déplacez-les sur un SSD ou un disque USB et lancez Picburrow avec --data-dir pointant dessus."],
+    "Les données de la bibliothèque ($1) sont sur la carte SD ($2). Les aperçus seront lents et la carte s'use. Déplacez-les sur un SSD ou un disque USB : sudo dpkg-reconfigure picburrow (ou lancez Picburrow avec --data-dir)."],
   [/^Request failed \((\d+)\)$/, 'La requête a échoué ($1)'],
   [/^(\w+) must look like (.+)$/, '$1 doit ressembler à $2']
 ];

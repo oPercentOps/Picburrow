@@ -1,0 +1,45 @@
+Template: picburrow/data-dir
+Type: string
+Default: /var/lib/picburrow
+Description: Folder for Picburrow's database and previews:
+ Picburrow keeps its albums, favourites, ratings and photo previews here. Your
+ photos themselves are never copied or changed.
+ .
+ Use a disk plugged into this device (USB SSD or hard drive) if you can: on the
+ SD card, previews are slow and the card wears out. A network share (NFS, SMB)
+ won't work: the database needs a local disk. Picburrow waits for this disk at
+ start-up, and copies its existing data over when you change the folder.
+ .
+ To change it later: sudo dpkg-reconfigure picburrow
+Description-fr.UTF-8: Dossier pour la base de données et les aperçus de Picburrow :
+ Picburrow y garde ses albums, favoris, notes et aperçus. Vos photos elles-mêmes
+ ne sont jamais copiées ni modifiées.
+ .
+ Si possible, choisissez un disque branché sur cet appareil (SSD ou disque USB) :
+ sur la carte SD, les aperçus sont lents et la carte s'use. Un partage réseau
+ (NFS, SMB) ne convient pas : la base de données a besoin d'un disque local.
+ Picburrow attend ce disque au démarrage et y copie ses données existantes
+ quand vous changez de dossier.
+ .
+ Pour le changer plus tard : sudo dpkg-reconfigure picburrow
+
+Template: picburrow/data-dir-invalid
+Type: error
+Description: This folder can't be used
+ Give a full path that starts with /, outside /usr, /etc, /boot, /home, /root,
+ /proc, /sys, /dev and /run (the Picburrow service can't write there). For
+ example /srv/nas/picburrow or /mnt/ssd/picburrow.
+Description-fr.UTF-8: Ce dossier ne peut pas être utilisé
+ Indiquez un chemin complet commençant par /, en dehors de /usr, /etc, /boot,
+ /home, /root, /proc, /sys, /dev et /run (le service Picburrow ne peut pas y
+ écrire). Par exemple /srv/nas/picburrow ou /mnt/ssd/picburrow.
+
+Template: picburrow/data-dir-network
+Type: error
+Description: This folder is on a network share
+ The database doesn't work reliably over NFS or SMB. Choose a folder on a disk
+ plugged into this device. Your photos can stay on the network share.
+Description-fr.UTF-8: Ce dossier est sur un partage réseau
+ La base de données ne fonctionne pas de façon fiable sur NFS ou SMB. Choisissez
+ un dossier sur un disque branché sur cet appareil. Vos photos peuvent rester
+ sur le partage réseau.
