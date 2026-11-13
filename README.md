@@ -4,7 +4,7 @@ An alternative to simple file galleries for browsing the phone photos you back u
 a timeline by day, a fast fullscreen viewer, and photo details. It runs on a Pi 3, 4 or 5 with **1 GB RAM**
 and 64-bit Raspberry Pi OS, and only reads your photo folders, never changes them.
 
-Status: milestone 2 (timeline with date scrubber, viewer, folders, favourites, archive, library settings). See `replica/build-log.md` and `replica/features.csv`.
+Status: timeline with date scrubber, viewer, folders, favourites, archive, albums, multi-select, search, share links, library settings; installable on a phone's home screen. Feature parity 80/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
 
 ## Run it
 

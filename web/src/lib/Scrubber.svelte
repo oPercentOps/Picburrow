@@ -23,9 +23,19 @@
     return out;
   });
 
+  // months near the target load and swap estimated heights for real ones, shifting the page: re-anchor on the
+  // target while that settles, and don't let the scroll tracker relabel it meanwhile (BUG-010)
+  let settling: ReturnType<typeof setTimeout> | undefined;
+  let jumping = false;
   function jump(i: number) {
     current = Math.max(0, Math.min(buckets.length - 1, i));
-    document.getElementById(`m-${buckets[current].month}`)?.scrollIntoView({ block: 'start' });
+    const target = () => document.getElementById(`m-${buckets[current].month}`)?.scrollIntoView({ block: 'start' });
+    target();
+    jumping = true;
+    clearTimeout(settling);
+    let tries = 0;
+    const again = () => { target(); settling = tries++ < 4 ? setTimeout(again, 150) : setTimeout(() => (jumping = false), 150); };
+    settling = setTimeout(again, 150);
   }
   function fromPointer(e: PointerEvent) {
     const r = rail.getBoundingClientRect();
@@ -39,7 +49,7 @@
   $effect(() => {
     let raf = 0;
     const onScroll = () => {
-      if (dragging || raf) return;
+      if (dragging || jumping || raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
         // at the very bottom the oldest month can't reach the top of the screen, but it is the current one (BUG-006)

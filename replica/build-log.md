@@ -17,7 +17,13 @@ Checked by `server/app_test.go` (Go, real files), `e2e/slice.cjs` and `e2e/miles
 | S10 | Archive | 2026-11-12 | done | paging beyond 5000 (shortcut) | — |
 | S13 | Libraries | 2026-11-12 | done | create/delete a second library | a PATCH saved valid fields before rejecting a bad one; now validates all, then writes once. Removing a folder asks first: its photos go to Trash |
 | S14 | Indexing | 2026-11-12 | done | — | — |
-| S07 S08 S11 S12 S15 | albums, search, shared link, trash | — | stub | should/could features | — |
+| S07 | Albums | 2026-11-13 | done | — | — |
+| S08 | Album | 2026-11-13 | done | choose a cover in the UI (API has it) | — |
+| S11 | Search | 2026-11-13 | partial | rating filter (no ratings yet) | `%` and `_` must be escaped for LIKE, or "100%" finds everything |
+| S12 | Shared album | 2026-11-13 | done | — | the API client's "401 = sign in again" rule must not apply to visitors (BUG-009) |
+| — | multi-select, album picker, toasts | 2026-11-13 | done | range select (shift-click picks one at a time) | long-press must not also open the photo; a nested button inside the link would be invalid HTML, so the select circle is a sibling |
+| — | PWA, blur placeholders | 2026-11-13 | done | offline service worker (not needed on a LAN) | a 16 px WebP is simpler than ThumbHash and needs no decoder |
+| S15 | Trash | — | stub | could feature | — |
 
 ## Backend findings
 

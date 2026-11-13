@@ -35,6 +35,22 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("GET /api/folders", a.auth(false, a.getFolders))
 	m.HandleFunc("GET /api/libraries", a.auth(true, a.getLibraries))
 	m.HandleFunc("PATCH /api/libraries/{id}", a.auth(true, a.patchLibrary))
+	m.HandleFunc("GET /api/search", a.auth(false, a.getSearch))
+	m.HandleFunc("GET /api/albums", a.auth(false, a.getAlbums))
+	m.HandleFunc("POST /api/albums", a.auth(false, a.postAlbum))
+	m.HandleFunc("GET /api/albums/{id}", a.auth(false, a.getAlbum))
+	m.HandleFunc("PATCH /api/albums/{id}", a.auth(false, a.patchAlbum))
+	m.HandleFunc("DELETE /api/albums/{id}", a.auth(false, a.deleteAlbum))
+	m.HandleFunc("POST /api/albums/{id}/assets", a.auth(false, a.albumAssets(true)))
+	m.HandleFunc("DELETE /api/albums/{id}/assets", a.auth(false, a.albumAssets(false)))
+	m.HandleFunc("POST /api/albums/{id}/links", a.auth(false, a.postLink))
+	m.HandleFunc("DELETE /api/links/{id}", a.auth(false, a.deleteLink))
+	// public share links: no account, the token is the key
+	m.HandleFunc("GET /api/s/{token}", a.getShared)
+	m.HandleFunc("POST /api/s/{token}/unlock", a.postUnlock)
+	m.HandleFunc("GET /api/s/{token}/assets/{id}", a.getSharedAsset)
+	m.HandleFunc("GET /api/s/{token}/assets/{id}/thumb/{size}", a.getSharedThumb)
+	m.HandleFunc("GET /api/s/{token}/assets/{id}/original", a.getSharedOriginal)
 	m.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { httpError(w, http.StatusNotFound, "No such API route") })
 	m.Handle("/", a.spa())
 	return securityHeaders(m)
@@ -257,6 +273,7 @@ type tile struct {
 	Duration *int   `json:"duration_ms,omitempty"`
 	V        *int64 `json:"v"` // thumbs version for cache busting; null = not generated yet
 	Err      bool   `json:"err,omitempty"`
+	PH       []byte `json:"ph,omitempty"` // tiny WebP placeholder, base64 in JSON
 }
 
 func (a *App) getTimeline(w http.ResponseWriter, r *http.Request) {
@@ -271,7 +288,7 @@ func (a *App) getTimeline(w http.ResponseWriter, r *http.Request) {
 		order by a.taken_local desc, a.id desc`, userFrom(r).ID, month, next)
 }
 
-const tileCols = `a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at, a.thumb_error is not null`
+const tileCols = `a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at, a.thumb_error is not null, a.thumbhash`
 
 func (a *App) queryTiles(q string, args ...any) ([]tile, error) {
 	rows, err := a.db.Query(q, args...)
@@ -282,7 +299,7 @@ func (a *App) queryTiles(q string, args ...any) ([]tile, error) {
 	out := []tile{}
 	for rows.Next() {
 		var t tile
-		if err := rows.Scan(&t.ID, &t.W, &t.H, &t.Type, &t.Taken, &t.Fav, &t.Duration, &t.V, &t.Err); err != nil {
+		if err := rows.Scan(&t.ID, &t.W, &t.H, &t.Type, &t.Taken, &t.Fav, &t.Duration, &t.V, &t.Err, &t.PH); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -361,9 +378,8 @@ func (a *App) getAsset(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) getThumb(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(r)
-	size := r.PathValue("size")
-	if _, known := thumbSizes[size]; !ok || !known {
-		httpError(w, http.StatusNotFound, "No such thumbnail")
+	if !ok {
+		httpError(w, http.StatusNotFound, "No such photo")
 		return
 	}
 	x, err := a.loadAsset(userFrom(r).ID, id)
@@ -374,8 +390,18 @@ func (a *App) getThumb(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
+	a.serveThumb(w, r, x)
+}
+
+// serveThumb sends the {size} thumbnail of an asset the caller may see, making it on demand if needed.
+func (a *App) serveThumb(w http.ResponseWriter, r *http.Request, x *assetRow) {
+	size := r.PathValue("size")
+	if _, known := thumbSizes[size]; !known {
+		httpError(w, http.StatusNotFound, "No such thumbnail")
+		return
+	}
 	if x.V == nil && !x.Err {
-		if err := a.ensureThumbs(r.Context(), id); err != nil { // on demand: jumps the worker's queue
+		if err := a.ensureThumbs(r.Context(), x.ID); err != nil { // on demand: jumps the worker's queue
 			httpError(w, http.StatusUnprocessableEntity, "Can't make a preview of this file")
 			return
 		}
@@ -383,9 +409,9 @@ func (a *App) getThumb(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusUnprocessableEntity, "Can't make a preview of this file")
 		return
 	}
-	f, err := os.Open(a.thumbPath(id, size))
+	f, err := os.Open(a.thumbPath(x.ID, size))
 	if err != nil {
-		a.db.Exec("update assets set thumbs_at = null where id = ?", id) // thumbnail cache was wiped: regenerate
+		a.db.Exec("update assets set thumbs_at = null where id = ?", x.ID) // thumbnail cache was wiped: regenerate
 		httpError(w, http.StatusNotFound, "Preview not ready, try again")
 		return
 	}

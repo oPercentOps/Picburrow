@@ -4,6 +4,9 @@
   import { page } from '$app/state';
   import { goto, replaceState } from '$app/navigation';
   import Viewer from '$lib/Viewer.svelte';
+  import SelectionBar from '$lib/SelectionBar.svelte';
+  import AlbumPicker from '$lib/AlbumPicker.svelte';
+  import { selection, toast } from '$lib/state.svelte';
   import { api, type User } from '$lib/api';
   import { Image, Folder, BookImage, Heart, Archive, Search, Trash2, HardDrive, Activity, LogOut } from '@lucide/svelte';
 
@@ -12,6 +15,13 @@
   let ready = $state(false);
 
   const publicRoute = $derived(['/login', '/setup'].includes(page.url.pathname) || page.url.pathname.startsWith('/s/'));
+
+  // picking photos belongs to one page
+  let lastPath = '';
+  $effect(() => {
+    if (page.url.pathname !== lastPath && !page.state.viewer) selection.clear();
+    lastPath = page.url.pathname;
+  });
 
   $effect(() => {
     page.url.pathname; // re-check on every navigation
@@ -45,6 +55,8 @@
   }
 </script>
 
+<div class="toast" role="status" aria-live="polite">{#if toast.msg}<span>{toast.msg}</span>{/if}</div>
+
 {#if publicRoute}
   {@render children()}
 {:else if ready && user}
@@ -63,6 +75,8 @@
       <button class="btn ghost signout" onclick={logout}><LogOut aria-hidden="true" />Sign out {user.username}</button>
     </nav>
     <main>{@render children()}</main>
+    {#if selection.size > 0}<SelectionBar />{/if}
+    <AlbumPicker />
     {#if page.state.viewer}
       <!-- overlay viewer opened from any grid (openViewer); closing goes back to the same scroll position -->
       <Viewer id={page.state.viewer} seq={page.state.seq} onclose={() => history.back()}
@@ -100,4 +114,9 @@
     .signout { margin-top: auto; justify-content: flex-start; font-weight: 400; }
   }
   nav :global(svg) { width: 20px; height: 20px; flex: none; }
+  .toast { position: fixed; z-index: 60; left: 50%; translate: -50% 0; bottom: calc(var(--bottom-nav) + env(safe-area-inset-bottom) + var(--space-4));
+    pointer-events: none; width: max-content; max-width: calc(100% - 2 * var(--space-5)); }
+  .toast span { display: block; padding: var(--space-4) var(--space-5); border-radius: var(--radius-md); background: var(--text); color: var(--bg);
+    box-shadow: var(--shadow-pop); font: var(--text-sm) var(--font-sans); }
+  @media (min-width: 768px) { .toast { bottom: var(--space-6); } }
 </style>

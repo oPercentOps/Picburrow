@@ -62,7 +62,7 @@ create table assets (
   live_video_id integer references assets(id) on delete set null,  -- still -> its motion clip
   is_favorite   integer not null default 0 check (is_favorite in (0,1)),
   is_archived   integer not null default 0 check (is_archived in (0,1)),
-  thumbhash     blob,                                -- blur placeholder, ~25 bytes
+  thumbhash     blob,                                -- blur placeholder: a ~16 px WebP (~100-300 bytes), stretched + blurred by the UI
   thumbs_at     integer,                             -- null = small/large thumbnails not generated yet
   thumb_error   text,                                -- unreadable/unsupported file; shown, not retried forever
   missing_at    integer,                             -- file gone on rescan = in trash; purged after 30 days
