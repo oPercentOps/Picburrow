@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- original mark: a photo frame with a hill and a sun; full-bleed square so it also works as a maskable icon -->
+  <rect width="512" height="512" fill="#b4470f"/>
+  <rect x="120" y="140" width="272" height="232" rx="28" fill="none" stroke="#ffffff" stroke-width="24"/>
+  <circle cx="312" cy="212" r="26" fill="#ffffff"/>
+  <path d="M132 352 L220 262 L282 322 L314 292 L380 352 Z" fill="#ffffff"/>
+</svg>
