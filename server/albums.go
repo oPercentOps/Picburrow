@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -417,8 +418,10 @@ func (a *App) sharedAsset(w http.ResponseWriter, r *http.Request) (*sharedLink, 
 	id, ok := pathID(r)
 	var owner int64
 	if ok {
+		// the photo itself, or the live-photo clip of a photo in the album
 		err = a.db.QueryRow(`select al.owner_id from album_assets aa join albums al on al.id = aa.album_id
-			where aa.album_id = ? and aa.asset_id = ?`, l.albumID, id).Scan(&owner)
+			join assets s on s.id = aa.asset_id where aa.album_id = ? and (aa.asset_id = ? or s.live_video_id = ?) limit 1`,
+			l.albumID, id, id).Scan(&owner)
 	}
 	if !ok || err != nil {
 		httpError(w, http.StatusNotFound, "No such photo")
@@ -439,7 +442,7 @@ func (a *App) getSharedAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	// visitors get what they need to view it, not where it lives or where it was taken
 	writeJSON(w, map[string]any{"id": x.ID, "w": x.W, "h": x.H, "type": x.Type, "taken": x.Taken, "v": x.V, "err": x.Err,
-		"mime": x.Mime, "name": x.Name, "allow_download": l.allowDownload})
+		"mime": x.Mime, "name": x.Name, "allow_download": l.allowDownload, "live": x.Live})
 }
 
 func (a *App) getSharedThumb(w http.ResponseWriter, r *http.Request) {
@@ -464,7 +467,7 @@ func (a *App) getSharedOriginal(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) getSearch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	where := []string{"l.owner_id = ?", "a.missing_at is null", "a.is_archived = 0"}
+	where := []string{"l.owner_id = ?", "a.missing_at is null", "a.is_archived = 0", notLiveClip}
 	args := []any{userFrom(r).ID}
 	if text := strings.TrimSpace(q.Get("q")); text != "" {
 		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(text) + "%"
@@ -497,6 +500,14 @@ func (a *App) getSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	if q.Get("favorite") == "1" {
 		where = append(where, "a.is_favorite = 1")
+	}
+	if v := q.Get("rating"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > 5 {
+			httpError(w, http.StatusBadRequest, "rating must be 1 to 5")
+			return
+		}
+		where, args = append(where, "a.rating >= ?"), append(args, n)
 	}
 	// shortcut: LIKE over every row and a 2000-result cap; fine for ~100k photos in SQLite, FTS5 if not
 	a.writeTiles(w, `select `+tileCols+` from assets a join libraries l on l.id = a.library_id where `+

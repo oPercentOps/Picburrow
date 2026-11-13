@@ -12,7 +12,13 @@ import (
 //go:embed schema.sql
 var schemaSQL string
 
-const schemaVersion = 1
+// migrations[i] takes a database from version i+1 to i+2. Fresh installs get schema.sql at the latest version.
+var migrations = []string{
+	`alter table assets add column content_id text;
+	 create index assets_content on assets(content_id) where content_id is not null;`,
+}
+
+var schemaVersion = len(migrations) + 1
 
 // openDB opens (and creates on first run) the SQLite database in dataDir.
 func openDB(dataDir string) (*sql.DB, error) {
@@ -42,6 +48,24 @@ func openDB(dataDir string) (*sql.DB, error) {
 	case v > schemaVersion:
 		db.Close()
 		return nil, fmt.Errorf("database version %d is newer than this build (%d)", v, schemaVersion)
+	default:
+		for ; v < schemaVersion; v++ { // one transaction per step: a failed upgrade leaves the old version intact
+			tx, err := db.Begin()
+			if err == nil {
+				if _, err = tx.Exec(migrations[v-1]); err == nil {
+					if _, err = tx.Exec(fmt.Sprintf("pragma user_version = %d", v+1)); err == nil {
+						err = tx.Commit()
+					}
+				}
+				if err != nil {
+					tx.Rollback()
+				}
+			}
+			if err != nil {
+				db.Close()
+				return nil, fmt.Errorf("upgrade database to version %d: %w", v+1, err)
+			}
+		}
 	}
 	return db, nil
 }

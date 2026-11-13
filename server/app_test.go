@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -765,4 +766,239 @@ func del(t *testing.T, c *http.Client, url, body string) int {
 	}
 	r.Body.Close()
 	return r.StatusCode
+}
+
+// A database made by the first release (schema version 1) upgrades in place and keeps its rows.
+func TestMigrateFromV1(t *testing.T) {
+	dir := t.TempDir()
+	v1 := strings.NewReplacer(
+		"  content_id    text,                                -- Apple live-photo pairing id (still and clip share it)\n", "",
+		"create index assets_content  on assets(content_id) where content_id is not null;\n", "").Replace(schemaSQL)
+	if v1 == schemaSQL {
+		t.Fatal("couldn't rebuild the v1 schema from schema.sql")
+	}
+	old, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "raspicture.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{v1, "pragma user_version = 1",
+		"insert into users (username, password_hash) values ('ann', 'x')",
+		`insert into libraries (owner_id, name) values (1, 'l')`,
+		`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, is_favorite) values (1, '/p/a.jpg', '/p', 1, 1, x'00', 'image', 'image/jpeg', 1)`} {
+		if _, err := old.Exec(q); err != nil {
+			t.Fatalf("%v: %s", err, q[:min(len(q), 60)])
+		}
+	}
+	old.Close()
+	db, err := openDB(dir)
+	if err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	defer db.Close()
+	var v int
+	var fav bool
+	var cid *string
+	db.QueryRow("pragma user_version").Scan(&v)
+	if err := db.QueryRow("select is_favorite, content_id from assets").Scan(&fav, &cid); err != nil || v != schemaVersion || !fav {
+		t.Fatalf("after upgrade: version %d, fav %v, err %v", v, fav, err)
+	}
+}
+
+func TestLiveRatingsTrashUsers(t *testing.T) {
+	for _, tool := range []string{"exiftool", "ffmpeg", "vipsthumbnail"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	lib, bobLib := t.TempDir(), t.TempDir()
+	still := func(name string) {
+		mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", filepath.Join(lib, name))
+	}
+	clip := func(name string, secs int) {
+		mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", fmt.Sprintf("testsrc=size=64x48:duration=%d", secs), "-pix_fmt", "yuv420p", filepath.Join(lib, name))
+	}
+	still("IMG_0001.jpg")
+	clip("IMG_0001.MOV", 2) // live photo pair
+	still("IMG_0002.jpg")
+	clip("IMG_0002.mp4", 8) // same name but a real video: not a live photo
+	still("rated.jpg")
+	mustRun(t, "exiftool", "-q", "-overwrite_original", "-XMP-xmp:Rating=4", filepath.Join(lib, "rated.jpg"))
+	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", filepath.Join(bobLib, "bob.jpg"))
+
+	a, srv := newTestApp(t)
+	ann := client(t)
+	post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`)
+	waitScan(t, a)
+	id := func(name string) int64 {
+		var x int64
+		a.db.QueryRow("select id from assets where path = ?", filepath.Join(lib, name)).Scan(&x)
+		return x
+	}
+
+	// live photos
+	var liveID *int64
+	a.db.QueryRow("select live_video_id from assets where id = ?", id("IMG_0001.jpg")).Scan(&liveID)
+	if liveID == nil || *liveID != id("IMG_0001.MOV") {
+		t.Fatalf("IMG_0001.jpg not paired with its clip: %v", liveID)
+	}
+	a.db.QueryRow("select live_video_id from assets where id = ?", id("IMG_0002.jpg")).Scan(&liveID)
+	if liveID != nil {
+		t.Fatal("an 8 s video was taken for a live photo")
+	}
+	var buckets []map[string]any
+	get(t, ann, srv.URL+"/api/timeline/buckets", &buckets)
+	var month []tile
+	get(t, ann, srv.URL+"/api/timeline?month="+buckets[0]["month"].(string), &month)
+	var sawClip, sawLive bool
+	for _, x := range month {
+		sawClip = sawClip || x.ID == id("IMG_0001.MOV")
+		sawLive = sawLive || (x.ID == id("IMG_0001.jpg") && x.Live != nil)
+	}
+	if sawClip || !sawLive || len(month) != 4 {
+		t.Fatalf("timeline: %d items, clip shown %v, still marked live %v", len(month), sawClip, sawLive)
+	}
+	var folder struct{ Assets []tile }
+	get(t, ann, srv.URL+"/api/folders?path="+lib, &folder)
+	if len(folder.Assets) != 4 {
+		t.Fatalf("folder shows %d items, want 4 (clip hidden)", len(folder.Assets))
+	}
+	// the clip plays through a share link of an album holding the still
+	post(t, ann, srv.URL+"/api/albums", `{"name":"L","ids":[`+itoa(id("IMG_0001.jpg"))+`]}`)
+	post(t, ann, srv.URL+"/api/albums/1/links", `{"allow_download":true}`)
+	var al album
+	get(t, ann, srv.URL+"/api/albums/1", &al)
+	if r, _ := client(t).Get(srv.URL + "/api/s/" + al.Links[0].Token + "/assets/" + itoa(id("IMG_0001.MOV")) + "/original"); r.StatusCode != 200 {
+		t.Errorf("live clip through the share link = %d", r.StatusCode)
+	}
+	if r, _ := client(t).Get(srv.URL + "/api/s/" + al.Links[0].Token + "/assets/" + itoa(id("IMG_0002.mp4")) + "/original"); r.StatusCode != 404 {
+		t.Errorf("unrelated video through the share link = %d", r.StatusCode)
+	}
+
+	// ratings: read from the file, set in the app, the app wins on rescan
+	var rating *int
+	a.db.QueryRow("select rating from assets where id = ?", id("rated.jpg")).Scan(&rating)
+	if rating == nil || *rating != 4 {
+		t.Fatalf("rating from XMP = %v, want 4", rating)
+	}
+	patch(t, ann, srv.URL+"/api/assets", `{"ids":[`+itoa(id("rated.jpg"))+`],"rating":2}`)
+	os.Chtimes(filepath.Join(lib, "rated.jpg"), time.Now(), time.Now().Add(time.Hour)) // changed on disk: re-read
+	a.scanAll()
+	a.db.QueryRow("select rating from assets where id = ?", id("rated.jpg")).Scan(&rating)
+	if rating == nil || *rating != 2 {
+		t.Fatalf("rating after rescan = %v, want the app's 2", rating)
+	}
+	var found []tile
+	get(t, ann, srv.URL+"/api/search?rating=2", &found)
+	if len(found) != 1 {
+		t.Fatalf("search rating>=2 = %d results", len(found))
+	}
+	if code := patch(t, ann, srv.URL+"/api/assets", `{"ids":[1],"rating":6}`); code != 400 {
+		t.Errorf("rating 6 = %d", code)
+	}
+	patch(t, ann, srv.URL+"/api/assets", `{"ids":[`+itoa(id("rated.jpg"))+`],"rating":0}`)
+	a.db.QueryRow("select rating from assets where id = ?", id("rated.jpg")).Scan(&rating)
+	if rating != nil {
+		t.Fatalf("rating 0 should clear, got %v", *rating)
+	}
+
+	// a live clip that disappears unpairs; trash lists missing files, purge after 30 days, never deletes files
+	os.Remove(filepath.Join(lib, "IMG_0001.MOV"))
+	os.Remove(filepath.Join(lib, "IMG_0002.jpg"))
+	a.scanAll()
+	a.db.QueryRow("select live_video_id from assets where id = ?", id("IMG_0001.jpg")).Scan(&liveID)
+	if liveID != nil {
+		t.Fatal("still paired with a missing clip")
+	}
+	var trash []tile
+	get(t, ann, srv.URL+"/api/trash", &trash)
+	if len(trash) != 2 {
+		t.Fatalf("trash = %d, want 2", len(trash))
+	}
+	a.db.Exec("update assets set missing_at = unixepoch() - 31*86400 where path like '%IMG_0002.jpg'")
+	a.purgeTrash()
+	get(t, ann, srv.URL+"/api/trash", &trash)
+	if len(trash) != 1 {
+		t.Fatalf("after the 30-day purge trash = %d, want 1", len(trash))
+	}
+	if code := del(t, ann, srv.URL+"/api/trash", ``); code != 200 {
+		t.Fatalf("empty trash = %d", code)
+	}
+	get(t, ann, srv.URL+"/api/trash", &trash)
+	if len(trash) != 0 {
+		t.Fatalf("trash after emptying = %d", len(trash))
+	}
+	if _, err := os.Stat(filepath.Join(lib, "IMG_0001.jpg")); err != nil {
+		t.Fatal("a photo file was touched")
+	}
+
+	// family accounts
+	for body, want := range map[string]int{
+		`{"username":"bob","password":"short","path":"` + bobLib + `"}`:             400,
+		`{"username":"bob","password":"long enough","path":"/nope"}`:                400,
+		`{"username":"ann","password":"long enough","path":"` + bobLib + `"}`:       409,
+		`{"username":"two words","password":"long enough","path":"` + bobLib + `"}`: 400,
+		`{"username":"bob","password":"long enough","path":"` + bobLib + `"}`:       200,
+	} {
+		if code := post(t, ann, srv.URL+"/api/users", body); code != want {
+			t.Errorf("POST /api/users %s = %d, want %d", body, code, want)
+		}
+	}
+	waitScan(t, a)
+	bob := client(t)
+	if code := post(t, bob, srv.URL+"/api/login", `{"username":"bob","password":"long enough"}`); code != 200 {
+		t.Fatalf("bob login: %d", code)
+	}
+	get(t, bob, srv.URL+"/api/timeline/buckets", &buckets)
+	if len(buckets) != 1 || buckets[0]["count"].(float64) != 1 {
+		t.Fatalf("bob's timeline = %v, want only his one photo", buckets)
+	}
+	if code := post(t, bob, srv.URL+"/api/users", `{"username":"eve","password":"long enough","path":"`+bobLib+`"}`); code != 403 {
+		t.Errorf("non-admin creating users = %d", code)
+	}
+	var users []userRow
+	get(t, ann, srv.URL+"/api/users", &users)
+	bobID := itoa(users[1].ID)
+	if code := patch(t, ann, srv.URL+"/api/users/"+bobID, `{"password":"brand new pass"}`); code != 204 {
+		t.Fatalf("reset password = %d", code)
+	}
+	if r, _ := bob.Get(srv.URL + "/api/me"); r.StatusCode != 401 {
+		t.Errorf("bob still signed in after a password reset: %d", r.StatusCode)
+	}
+	if code := post(t, client(t), srv.URL+"/api/login", `{"username":"bob","password":"brand new pass"}`); code != 200 {
+		t.Errorf("login with the new password = %d", code)
+	}
+	if code := del(t, ann, srv.URL+"/api/users/"+itoa(users[0].ID), ``); code != 400 {
+		t.Errorf("deleting yourself = %d", code)
+	}
+	if code := del(t, ann, srv.URL+"/api/users/"+bobID, ``); code != 204 {
+		t.Fatalf("delete bob = %d", code)
+	}
+	var n int
+	a.db.QueryRow("select count(*) from assets a join libraries l on l.id = a.library_id where l.owner_id = ?", users[1].ID).Scan(&n)
+	if _, err := os.Stat(filepath.Join(bobLib, "bob.jpg")); n != 0 || err != nil {
+		t.Fatalf("after deleting bob: %d indexed photos left, file err %v", n, err)
+	}
+}
+
+// Live pairing by Apple's content id (real iPhones), which generated test files can't carry on the still.
+func TestPairLiveByContentID(t *testing.T) {
+	a, _ := newTestApp(t)
+	a.db.Exec("insert into users (username, password_hash) values ('ann', 'x')")
+	a.db.Exec(`insert into libraries (owner_id, name) values (1, 'l')`)
+	ins := `insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, duration_ms, content_id) values (1, ?, '/p', 1, 1, x'00', ?, 'x', ?, ?)`
+	a.db.Exec(ins, "/p/IMG_E0001.HEIC", "image", nil, "ABC") // edited copy, different name, same id
+	a.db.Exec(ins, "/p/IMG_0001.MOV", "video", 3000, "ABC")
+	a.db.Exec(ins, "/p/other.jpg", "image", nil, "XYZ")
+	if err := a.pairLive(1); err != nil {
+		t.Fatal(err)
+	}
+	var live *int64
+	a.db.QueryRow("select live_video_id from assets where path = '/p/IMG_E0001.HEIC'").Scan(&live)
+	if live == nil || *live != 2 {
+		t.Fatalf("paired by content id = %v, want 2", live)
+	}
+	a.db.QueryRow("select live_video_id from assets where path = '/p/other.jpg'").Scan(&live)
+	if live != nil {
+		t.Fatal("unrelated photo paired")
+	}
 }

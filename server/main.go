@@ -92,6 +92,7 @@ func (a *App) housekeeping(ctx context.Context) {
 		case <-time.After(time.Until(next)):
 			a.db.Exec("delete from sessions where expires_at < unixepoch()")
 			a.scanAll()
+			a.purgeTrash()
 		}
 	}
 }
