@@ -61,3 +61,10 @@ Picburrow is free software: you can use, study, share and change it under the
 including over the network, you must offer them your changed source; the "Source code" link in the app
 (`web/src/lib/source.ts`) is where it points. The libraries built into each release are listed with their licences
 in `/usr/share/doc/picburrow/THIRD_PARTY_NOTICES` (made by `packaging/notices.sh`).
+
+## Privacy
+
+Picburrow makes no outbound connections: no telemetry, no update checks, no accounts with us. Photos, previews,
+accounts and sessions stay in your photo folders and `/var/lib/picburrow`. The only cookie is the sign-in session
+(plus one per unlocked share link), which the app needs to work. Whoever runs a Picburrow server is responsible for the
+people they give accounts or share links to.
