@@ -63,13 +63,13 @@ Ranked by evidence times cheapness. Already done in this gallery is marked so: t
 | # | what | evidence | size | status / skill |
 | --- | --- | --- | --- | --- |
 | 1 | **No Docker, no Postgres, no Redis**: one binary + SQLite | H1, U2 | — | done (architecture) |
-| 2 | **One-command install on Raspberry Pi OS**: a `.deb` with a systemd unit that pulls in libvips, exiftool and ffmpeg | H1 | S | to build: `/replica-deploy` |
+| 2 | **One-command install on Raspberry Pi OS**: a `.deb` with a systemd unit that pulls in libvips, exiftool and ffmpeg | H1 | S | **done**: `make deb-pi`, `sudo apt install ./homeroll_<v>_arm64.deb` |
 | 3 | **Runs in 1 GB**, measured: 98-136 MB on a typical library, ~385 MB worst case (48 MP HEIC) | H2 | — | done; the real-Pi test is still open |
-| 4 | **Warn when the database or thumbnails sit on the SD card**, on setup and the Indexing page, with a one-line fix | H2 (SD-card quote) | S | to build: `/replica-build` |
-| 5 | **Automatic database backup before every upgrade**, kept next to the database, plus a documented one-file restore | H3 | S | to build: `/replica-build` (the migration framework is there) |
+| 4 | **Warn when the database or thumbnails sit on the SD card**, on setup and the Indexing page, with a one-line fix | H2 (SD-card quote) | S | **done**: Indexing and Libraries pages + log |
+| 5 | **Automatic database backup before every upgrade**, kept next to the database, plus a documented one-file restore | H3 | S | **done**: `homeroll.db.v<N>-<time>.bak`, newest 3 |
 | 6 | **Family accounts free**, each with their own folder | H4, M1 | — | done (People page) |
-| 7 | **Full capture details**: aperture, shutter speed, ISO, focal length, flash, in the info panel | M2 | S | to build: `/replica-build` (one exiftool tag list) |
-| 8 | **Batch rating** from the selection bar | M3 (thin) | S | to build: `/replica-build` |
+| 7 | **Full capture details**: aperture, shutter speed, ISO, focal length, flash, in the info panel | M2 | S | **done**: read on demand, no rescan |
+| 8 | **Batch rating** from the selection bar | M3 (thin) | S | **done**: Rate in the selection bar |
 | — | Folders indexed as they are, files never moved or rewritten | U1, M4 | — | done (read-only by design) |
 
 Faces and smart search stay out (they need the RAM this product exists to avoid). Pricing: the gallery is free and open source, so H4 is a positioning point for `/replica-launch`, not a billing change.
