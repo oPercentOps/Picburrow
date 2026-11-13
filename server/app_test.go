@@ -1139,3 +1139,34 @@ func TestSlideshow(t *testing.T) {
 		t.Errorf("signed out: %d, want 401", r.StatusCode)
 	}
 }
+
+// Behind a proxy on the same machine, wrong passwords are counted per visitor, not for everyone at once.
+func TestLoginRateLimitBehindProxy(t *testing.T) {
+	a, srv := newTestApp(t)
+	a.loginLimit = newLimiter(3)
+	try := func(xff string) int {
+		req, _ := http.NewRequest("POST", srv.URL+"/api/login", strings.NewReader(`{"username":"x","password":"y"}`))
+		req.Header.Set("Content-Type", "application/json")
+		if xff != "" {
+			req.Header.Set("X-Forwarded-For", xff)
+		}
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.Body.Close()
+		return r.StatusCode
+	}
+	for i := 0; i < 3; i++ {
+		try("6.6.6.6, 203.0.113.5") // the proxy appends the address it saw; the left part is whatever the visitor sent
+	}
+	if code := try("203.0.113.5"); code != 429 {
+		t.Fatalf("4th attempt from the same visitor = %d, want 429", code)
+	}
+	if code := try("198.51.100.7"); code != 401 {
+		t.Fatalf("another visitor = %d, want 401 (not locked out by someone else)", code)
+	}
+	if code := try("9.9.9.9, 198.51.100.7"); code != 401 {
+		t.Fatalf("faking an earlier hop must not matter: %d", code)
+	}
+}

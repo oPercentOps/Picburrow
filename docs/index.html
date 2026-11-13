@@ -178,7 +178,7 @@
   <details><summary>How do photos get from my phone to the Pi?</summary><p>With the sync app you already use: Syncthing, your NAS's app, anything that copies files into a folder. Picburrow shows whatever lands there.</p></details>
   <details><summary>Can I move over from another photo app?</summary><p>If that app keeps your originals in normal folders, point Picburrow at them. Albums and faces from other apps are not imported.</p></details>
   <details><summary>Does it recognise faces, or search for "beach"?</summary><p>No, on purpose. Those need several gigabytes of memory, which is exactly what Picburrow exists to avoid.</p></details>
-  <details><summary>Can I see my photos away from home?</summary><p>Yes, through a VPN such as WireGuard or Tailscale, or behind a web server that adds HTTPS. Picburrow has no HTTPS of its own, so don't open its port straight to the internet.</p></details>
+  <details><summary>Can I see my photos away from home?</summary><p>Yes. The easiest safe way is Tailscale: a free app on the Pi and on your phone, about ten minutes, and nothing is opened to the internet. Picburrow has no HTTPS of its own, so don't open its port straight to the internet. <a href="https://github.com/oPercentOps/Picburrow/blob/main/docs/remote-access.md">Step-by-step guide</a>.</p></details>
   <details><summary>iPhone photos (HEIC) and live photos?</summary><p>Yes. HEIC previews are made with libvips, and live photos play their motion clip. So far this is tested with generated files; reports from real iPhone libraries are very welcome.</p></details>
   <details><summary>What does it cost to run?</summary><p>Nothing beyond your Pi and your disk. There is no paid plan.</p></details>
 </section>

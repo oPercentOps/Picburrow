@@ -95,6 +95,24 @@ func checkPassword(hash, pw string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(pw)) == nil
 }
 
+// clientIP is the visitor's address. Behind a proxy on this machine (Caddy, Tailscale Serve or Funnel) every request
+// comes from loopback, so the address the proxy saw, the last X-Forwarded-For entry, is used instead; a connection
+// from anywhere else can't set it.
+func clientIP(r *http.Request) string {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		ip = r.RemoteAddr
+	}
+	if p := net.ParseIP(ip); p != nil && p.IsLoopback() {
+		if parts := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ","); len(parts) > 0 {
+			if last := strings.TrimSpace(parts[len(parts)-1]); last != "" {
+				return last
+			}
+		}
+	}
+	return ip
+}
+
 // limiter allows n attempts per IP per minute (login, share-link unlock): stops LAN brute force.
 type limiter struct {
 	mu   sync.Mutex
@@ -105,10 +123,7 @@ type limiter struct {
 func newLimiter(n int) *limiter { return &limiter{n: n, hits: map[string][]time.Time{}} }
 
 func (l *limiter) allow(r *http.Request) bool {
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		ip = r.RemoteAddr
-	}
+	ip := clientIP(r)
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	cut := time.Now().Add(-time.Minute)

@@ -33,6 +33,8 @@ Build the package on any machine with `make deb-pi`.
 - **Upgrades**: install the newer `.deb` the same way. Before changing its database, Picburrow saves a copy next to it
   (`picburrow.db.v<N>-<date>.bak`, newest 3 kept). To go back: `sudo systemctl stop picburrow`, copy the backup over
   `picburrow.db`, reinstall the older package, start again.
+- **Away from home**: [docs/remote-access.md](docs/remote-access.md) walks through Tailscale (about ten minutes, nothing opened
+  to the internet), your own VPN, or a public HTTPS address. Don't open port 8080 on your router: Picburrow has no HTTPS of its own.
 - **Uninstalling** never deletes `/var/lib/picburrow` (albums, favourites, previews) and never touches your photos.
 
 ## Run it anywhere else
