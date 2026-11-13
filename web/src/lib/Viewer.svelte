@@ -151,8 +151,11 @@
     else if (scale > 1) { tx = start.tx + e.clientX - start.x; ty = start.ty + e.clientY - start.y; }
   }
   function up(e: PointerEvent) {
-    if (!pointers.delete(e.pointerId) || pointers.size > 0 || scale > 1 || start.dist) return;
+    if (!pointers.delete(e.pointerId) || pointers.size > 0 || start.dist) return;
     const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    // a tap or click on the photo closes the details, like tapping outside any sheet
+    if (showInfo && e.type === 'pointerup' && Math.hypot(dx, dy) < 10) { showInfo = false; return; }
+    if (scale > 1) return;
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? nextId : prevId);
     else if (dy > 100 && dy > Math.abs(dx)) onclose();
   }
