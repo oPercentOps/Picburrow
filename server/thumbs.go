@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -132,22 +133,31 @@ func (a *App) makeThumbs(id int64, src, typ string) error {
 
 // run starts a low-priority child with a hard timeout; a decoder crash or leak dies with the child.
 func (a *App) run(name string, args ...string) error {
-	return a.runFor(context.Background(), 3*time.Minute, name, args...)
+	return a.runFor(context.Background(), 3*time.Minute, nil, name, args...)
 }
 
-func (a *App) runFor(ctx context.Context, limit time.Duration, name string, args ...string) error {
+// watch, if set, runs beside the child (and gets a context that ends with it): the thermal guard of long jobs.
+func (a *App) runFor(ctx context.Context, limit time.Duration, watch func(context.Context, *os.Process), name string, args ...string) error {
 	ctx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	argv := append([]string{"-n", "10"}, a.ionice...)
 	cmd := exec.CommandContext(ctx, "nice", append(append(argv, name), args...)...)
 	cmd.Env = append(os.Environ(), "VIPS_CONCURRENCY=1", "VIPS_DISC_THRESHOLD=100m")
-	out, err := cmd.CombinedOutput()
+	var out bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &out
+	err := cmd.Start()
+	if err == nil {
+		if watch != nil {
+			go watch(ctx, cmd.Process)
+		}
+		err = cmd.Wait()
+	}
 	if err != nil {
 		var ee *exec.Error
 		if errors.As(err, &ee) {
 			return fmt.Errorf("%s not installed", name)
 		}
-		return fmt.Errorf("%s: %v: %s", name, err, strings.TrimSpace(string(out)))
+		return fmt.Errorf("%s: %v: %s", name, err, strings.TrimSpace(out.String()))
 	}
 	return nil
 }

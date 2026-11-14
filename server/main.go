@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -28,6 +29,8 @@ type App struct {
 	loginLimit *limiter
 	ionice     []string
 	decodeSem  chan struct{}
+	playWant   atomic.Int64                       // video to convert next: the last one played without a playback copy
+	playStop   atomic.Pointer[context.CancelFunc] // stops the conversion that is running
 }
 
 func main() {

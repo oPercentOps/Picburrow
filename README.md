@@ -57,9 +57,11 @@ On Debian 12 or older, leave out `libheif-plugin-libde265`: the decoder is built
 
 **Videos.** Phones and browsers play plain H.264 videos (up to 1080p) straight from the original file. Videos they
 stutter on (iPhone HEVC, 4K, HDR, AVI/MKV: the picture freezes while the sound goes on) get a 720p H.264 playback copy,
-made in the background in `<data-dir>/play` once all previews are done. A Pi 3 converts roughly as fast as the video
-plays for 1080p and several times slower for 4K, so a big library takes days; until a copy is ready the video plays from
-the original. Copies take about 15 MB per minute of video and stop being made when the data disk has under 2 GB free.
+made in the background in `<data-dir>/play` once all previews are done. This is slow on a Pi 3 (count on two or three
+videos an hour: decoding HEVC in software is the limit), so a big library takes weeks; until a copy is ready the video
+plays from the original, and a video you open is converted next. The conversion pauses above 75 °C and goes on below
+65 °C, so a Pi without a heatsink or fan converts slower still. If every device you
+use plays your videos fine, an admin can turn the conversion off under Indexing; copies already made keep being used. Copies take about 15 MB per minute of video and stop being made when the data disk has under 2 GB free.
 Downloads always give the original. Needs ffmpeg 5.1 or newer.
 
 ## Develop
