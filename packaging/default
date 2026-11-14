@@ -6,6 +6,3 @@
 #
 # Address to serve on.
 #PICBURROW_LISTEN=:8080
-#
-# 0 = stop converting videos for smooth playback (hours of CPU on a Pi 3). Copies already made keep being used.
-#PICBURROW_VIDEO_COPIES=1

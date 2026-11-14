@@ -1328,3 +1328,24 @@ func TestKeepCool(t *testing.T) {
 	os.WriteFile(zone, []byte("64000\n"), 0o644)
 	waitFor(false, "resumed at 64 °C")
 }
+
+// The admin switch stops the running conversion, keeps the worker idle, and comes back on.
+func TestVideoCopiesSwitch(t *testing.T) {
+	a := &App{dataDir: t.TempDir()}
+	stopped := false
+	stop := context.CancelFunc(func() { stopped = true })
+	a.playStop.Store(&stop)
+	set := func(body string) int {
+		r := httptest.NewRequest("PATCH", "/api/jobs", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		a.patchJobs(w, r)
+		return w.Code
+	}
+	if set(`{"video_copies":false}`) != 204 || !fileExists(a.copiesOffFile()) || !stopped {
+		t.Fatalf("off: file %v, running conversion stopped %v", fileExists(a.copiesOffFile()), stopped)
+	}
+	if set(`{"video_copies":true}`) != 204 || set(`{"video_copies":true}`) != 204 || fileExists(a.copiesOffFile()) {
+		t.Fatal("on: the switch file is still there")
+	}
+}

@@ -19,6 +19,15 @@
     poll();
     return () => clearTimeout(timer);
   });
+  async function setCopies(on: boolean) {
+    try {
+      await api('/api/jobs', { method: 'PATCH', body: { video_copies: on } });
+      if (jobs) jobs.video_copies = on;
+      error = '';
+    } catch (e) {
+      error = (e as Error).message;
+    }
+  }
   const total = $derived(jobs ? jobs.thumbs_done + jobs.thumbs_todo : 0);
 </script>
 
@@ -40,7 +49,12 @@
       <div class="progress" role="progressbar" aria-label={t('Previews made')} aria-valuenow={jobs.thumbs_done} aria-valuemax={total}>
         <div style:width="{total ? (100 * jobs.thumbs_done) / total : 100}%"></div>
       </div>
-      {#if jobs.videos_todo}<p class="muted">{t('{n} videos still to check or convert for smooth playback. Until then they play from the original file.', { n: jobs.videos_todo.toLocaleString() })}</p>{/if}
+    </section>
+    <section aria-labelledby="vid-h">
+      <h2 id="vid-h">{t('Videos')}</h2>
+      <label class="check"><input type="checkbox" checked={jobs.video_copies} onchange={(e) => setCopies(e.currentTarget.checked)} /> {t('Convert videos for smooth playback')}</label>
+      <p class="muted">{t("Makes a lighter copy of the videos some browsers can't play (the picture freezes while the sound goes on). It is slow and heats up a small Raspberry Pi: turn it off if your devices play your videos fine. Copies already made keep being used.")}</p>
+      {#if jobs.video_copies && jobs.videos_todo}<p class="muted">{t('{n} videos still to check or convert for smooth playback. Until then they play from the original file.', { n: jobs.videos_todo.toLocaleString() })}</p>{/if}
     </section>
     <section aria-labelledby="err-h">
       <h2 id="err-h">{t('Files without a preview ({n})', { n: jobs.thumb_errors.toLocaleString() })}</h2>
@@ -59,6 +73,8 @@
 <style>
   .page { padding: var(--space-5) var(--space-4) var(--space-7); max-width: 900px; }
   section { margin-top: var(--space-6); }
+  .check { display: flex; gap: var(--space-3); align-items: center; font: var(--text-sm) var(--font-sans); min-height: var(--touch-target); }
+  .check input { width: 20px; height: 20px; accent-color: var(--accent); }
   h2 { margin-bottom: var(--space-3); }
   p { margin: 0 0 var(--space-3); }
   .progress { height: 6px; background: var(--border); border-radius: var(--radius-pill); overflow: hidden; }

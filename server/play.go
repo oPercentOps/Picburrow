@@ -112,6 +112,33 @@ func keepCool(ctx context.Context, p *os.Process) {
 	}
 }
 
+// The admin's off switch is a file in the data folder: no schema change for one yes/no.
+func (a *App) copiesOffFile() string { return filepath.Join(a.dataDir, "video-copies-off") }
+
+func (a *App) patchJobs(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		VideoCopies bool `json:"video_copies"`
+	}
+	if !readJSON(w, r, &in) {
+		return
+	}
+	var err error
+	if in.VideoCopies {
+		if err = os.Remove(a.copiesOffFile()); os.IsNotExist(err) {
+			err = nil
+		}
+	} else if err = os.WriteFile(a.copiesOffFile(), []byte("off\n"), 0o644); err == nil {
+		if stop := a.playStop.Load(); stop != nil {
+			(*stop)() // the video being converted is redone when the switch goes back on
+		}
+	}
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // playWorker makes playback copies one at a time, the video someone just tried to watch first, then newest first, and only while no thumbnail is waiting:
 // previews matter more and a 1 GB Pi shouldn't decode a photo and a 4K video together for long.
 func (a *App) playWorker(ctx context.Context) {
@@ -134,7 +161,7 @@ func (a *App) playWorker(ctx context.Context) {
 		var src string
 		var thumbsTodo int
 		a.db.QueryRow("select count(*) from assets where thumbs_at is null and thumb_error is null and missing_at is null").Scan(&thumbsTodo)
-		if thumbsTodo > 0 || a.db.QueryRow(`select id, path from assets where type = 'video' and play_at is null and missing_at is null
+		if fileExists(a.copiesOffFile()) || thumbsTodo > 0 || a.db.QueryRow(`select id, path from assets where type = 'video' and play_at is null and missing_at is null
 			order by id = ? desc, taken_local desc limit 1`, a.playWant.Load()).Scan(&id, &src) != nil {
 			if !wait(time.Minute) {
 				return
@@ -149,9 +176,16 @@ func (a *App) playWorker(ctx context.Context) {
 			}
 			continue
 		}
-		err := a.makePlay(ctx, id, src)
+		job, stop := context.WithCancel(ctx)
+		a.playStop.Store(&stop)
+		err := a.makePlay(job, id, src)
+		stopped := job.Err() != nil
+		stop()
 		if ctx.Err() != nil {
 			return // shutting down: this video is redone next start
+		}
+		if stopped {
+			continue // switched off by the admin
 		}
 		if err != nil { // not retried: the viewer falls back to the original
 			log.Printf("playback copy %d: %v", id, err)

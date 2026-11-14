@@ -153,6 +153,8 @@ export const fr: Record<string, string> = {
   "Preview not ready, try again": "Aperçu pas encore prêt, réessayez",
   "Previews": "Aperçus",
   "Previews made": "Aperçus créés",
+  "Convert videos for smooth playback": "Convertir les vidéos pour une lecture fluide",
+  "Makes a lighter copy of the videos some browsers can't play (the picture freezes while the sound goes on). It is slow and heats up a small Raspberry Pi: turn it off if your devices play your videos fine. Copies already made keep being used.": "Crée une copie plus légère des vidéos que certains navigateurs ne savent pas lire (l'image se fige alors que le son continue). C'est lent et ça fait chauffer un petit Raspberry Pi : désactivez-la si vos appareils lisent bien vos vidéos. Les copies déjà créées restent utilisées.",
   "{n} videos still to check or convert for smooth playback. Until then they play from the original file.": "{n} vidéos restent à vérifier ou à convertir pour une lecture fluide. En attendant, elles sont lues depuis le fichier d'origine.",
   "Previews {done} of {total}": "Aperçus : {done} sur {total}",
   "Previous": "Précédente",
