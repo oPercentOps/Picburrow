@@ -247,6 +247,8 @@
         <dt>{t('Taken')}</dt><dd>{formatDay(asset.taken)} {time(asset.taken)}{offset(asset.tz_offset_min)}</dd>
         <dt>{t('File')}</dt><dd class="wrap">{asset.name}</dd>
         {#if asset.dir}<dt>{t('Folder')}</dt><dd class="wrap">{asset.dir}</dd>{/if}
+        {#if asset.description}<dt>{t('Description')}</dt><dd class="wrap">{asset.description}</dd>{/if}
+        {#if asset.keywords}<dt>{t('Keywords')}</dt><dd class="wrap">{asset.keywords}</dd>{/if}
         {#if asset.size}<dt>{t('Size')}</dt><dd>{mb(asset.size)}{asset.w && asset.h ? ` · ${asset.w} × ${asset.h}` : ''}</dd>{/if}
         {#if camera}<dt>{t('Camera')}</dt><dd>{camera}</dd>{/if}
         {#if asset.lens}<dt>{t('Lens')}</dt><dd>{asset.lens}</dd>{/if}

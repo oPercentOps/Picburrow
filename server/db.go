@@ -28,6 +28,8 @@ var migrations = []string{
 	`alter table assets add column play_at integer;
 	 create index assets_play on assets(id) where type = 'video' and play_at is null;`,
 	`alter table assets add column rotation integer not null default 0;`,
+	`alter table assets add column keywords text;
+	 alter table assets add column sidecar_mtime integer;`,
 }
 
 var schemaVersion = len(migrations) + 1

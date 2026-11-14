@@ -590,6 +590,94 @@ func TestHEICThumbnail(t *testing.T) {
 	}
 }
 
+// XMP sidecars: keywords, description and stars other tools wrote next to a photo are read, searchable, and follow
+// the sidecar when it appears, changes or goes away, without touching the photo's previews or a rating set in the app.
+func TestSidecars(t *testing.T) {
+	if _, err := exec.LookPath("exiftool"); err != nil {
+		t.Skip("exiftool not installed")
+	}
+	xmp := func(rating int, desc string, tags, subjects []string) []byte {
+		li := func(xs []string) (s string) {
+			for _, x := range xs {
+				s += "<rdf:li>" + x + "</rdf:li>"
+			}
+			return
+		}
+		return []byte(`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/">
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about=""
+ xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:digiKam="http://www.digikam.org/ns/1.0/"
+ xmp:Rating="` + strconv.Itoa(rating) + `">
+<dc:description><rdf:Alt><rdf:li xml:lang="x-default">` + desc + `</rdf:li></rdf:Alt></dc:description>
+<dc:subject><rdf:Bag>` + li(subjects) + `</rdf:Bag></dc:subject>
+<digiKam:TagsList><rdf:Seq>` + li(tags) + `</rdf:Seq></digiKam:TagsList>
+</rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>`)
+	}
+	lib := t.TempDir()
+	for _, n := range []string{"a.jpg", "b.jpg", "raw.dng", "plain.jpg"} {
+		os.WriteFile(filepath.Join(lib, n), []byte(n), 0o644)
+	}
+	os.WriteFile(filepath.Join(lib, "a.jpg.xmp"), xmp(4, "Grandma's garden", []string{"People/Ann", "Places/Lyon"}, []string{"Ann", "Lyon", "summer"}), 0o644)
+	os.WriteFile(filepath.Join(lib, "a.xmp"), xmp(1, "the other sidecar", nil, []string{"wrong"}), 0o644) // a.jpg.xmp wins
+	os.WriteFile(filepath.Join(lib, "raw.XMP"), xmp(2, "", nil, []string{"sunset"}), 0o644)               // Lightroom style, upper case
+	a, srv := newTestApp(t)
+	ann := client(t)
+	if code := post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	row := func(name string) (kw, desc string, rating int) {
+		a.db.QueryRow("select coalesce(keywords, ''), coalesce(description, ''), coalesce(rating, 0) from assets where path = ?",
+			filepath.Join(lib, name)).Scan(&kw, &desc, &rating)
+		return
+	}
+	if kw, desc, r := row("a.jpg"); kw != "People/Ann, Places/Lyon, summer" || desc != "Grandma's garden" || r != 4 {
+		t.Fatalf("a.jpg: %q, %q, %d stars", kw, desc, r)
+	}
+	if kw, _, r := row("raw.dng"); kw != "sunset" || r != 2 {
+		t.Fatalf("raw.dng: %q, %d stars", kw, r)
+	}
+	if n, _ := queryIDs(a.db, "select id from assets"); len(n) != 4 {
+		t.Fatalf("%d assets, want 4 (sidecars are not photos)", len(n))
+	}
+	found := func(q string) int {
+		var tiles []tile
+		get(t, ann, srv.URL+"/api/search?q="+q, &tiles)
+		return len(tiles)
+	}
+	if found("lyon") != 1 || found("garden") != 1 || found("sunset") != 1 || found("nothing") != 0 {
+		t.Fatalf("search: lyon %d, garden %d, sunset %d, nothing %d", found("lyon"), found("garden"), found("sunset"), found("nothing"))
+	}
+
+	// later, without touching the photos: b.jpg gets a sidecar, a.jpg's changes, raw.dng's is deleted;
+	// a.jpg was given 5 stars in the app meanwhile, and its previews exist
+	a.db.Exec("update assets set rating = 5, thumbs_at = 123 where path = ?", filepath.Join(lib, "a.jpg"))
+	os.WriteFile(filepath.Join(lib, "b.jpg.xmp"), xmp(3, "", nil, []string{"birthday"}), 0o644)
+	os.WriteFile(filepath.Join(lib, "a.jpg.xmp"), xmp(1, "Edited", nil, []string{"autumn"}), 0o644)
+	os.Chtimes(filepath.Join(lib, "a.jpg.xmp"), time.Now(), time.Now().Add(time.Hour))
+	os.Remove(filepath.Join(lib, "raw.XMP"))
+	a.scanAll()
+	if kw, desc, r := row("a.jpg"); kw != "autumn" || desc != "Edited" || r != 5 {
+		t.Fatalf("a.jpg after its sidecar changed: %q, %q, %d stars (the app's 5 must stay)", kw, desc, r)
+	}
+	var thumbs int
+	if a.db.QueryRow("select coalesce(thumbs_at, 0) from assets where path = ?", filepath.Join(lib, "a.jpg")).Scan(&thumbs); thumbs != 123 {
+		t.Fatal("a sidecar change threw away the photo's previews")
+	}
+	if kw, _, r := row("b.jpg"); kw != "birthday" || r != 3 {
+		t.Fatalf("b.jpg after getting a sidecar: %q, %d stars", kw, r)
+	}
+	if kw, _, _ := row("raw.dng"); kw != "" {
+		t.Fatalf("raw.dng after its sidecar was deleted: %q", kw)
+	}
+	var id int64
+	a.db.QueryRow("select id from assets where path = ?", filepath.Join(lib, "a.jpg")).Scan(&id)
+	var x assetRow
+	get(t, ann, srv.URL+"/api/assets/"+itoa(id), &x)
+	if x.Keywords == nil || *x.Keywords != "autumn" || x.Description == nil || *x.Description != "Edited" {
+		t.Fatalf("the photo's details carry the wrong keywords or description: %v, %v", x.Keywords, x.Description)
+	}
+}
+
 // Rotate: the turn is kept in the database, previews are remade turned clockwise, the file is not touched.
 func TestRotate(t *testing.T) {
 	for _, tool := range []string{"vipsthumbnail", "vips", "exiftool"} {
@@ -894,7 +982,9 @@ func TestMigrateFromV1(t *testing.T) {
 		"create index assets_content  on assets(content_id) where content_id is not null;\n", "",
 		"  play_at       integer,                             -- videos: null = not yet checked for a playback copy (play/<id>.mp4)\n", "",
 		"create index assets_play     on assets(id) where type = 'video' and play_at is null;\n", "",
-		"  rotation      integer not null default 0,          -- degrees clockwise the person turned the photo; previews are made turned, the file is untouched\n", "").Replace(schemaSQL)
+		"  rotation      integer not null default 0,          -- degrees clockwise the person turned the photo; previews are made turned, the file is untouched\n", "",
+		"  keywords      text,                                -- from the XMP sidecar next to the file: \"People/Ann, Holidays\", as other tools wrote them\n", "",
+		"  sidecar_mtime integer,                             -- modified time of the sidecar when it was read; null = no sidecar\n", "").Replace(schemaSQL)
 	if v1 == schemaSQL {
 		t.Fatal("couldn't rebuild the v1 schema from schema.sql")
 	}

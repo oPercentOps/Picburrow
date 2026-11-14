@@ -370,6 +370,8 @@ type assetRow struct {
 	tile
 	Archived    bool     `json:"archived"`
 	Rotation    int      `json:"rotation"` // degrees clockwise the person turned it; the file is untouched
+	Keywords    *string  `json:"keywords"` // from the XMP sidecar
+	Description *string  `json:"description"`
 	Rating      *int     `json:"rating"`
 	Path        string   `json:"path"`
 	Dir         string   `json:"dir"`
@@ -392,10 +394,10 @@ func (a *App) loadAsset(userID, id int64) (*assetRow, error) {
 	var x assetRow
 	err := a.db.QueryRow(`select a.id, `+dims+`, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
 		a.thumb_error is not null, a.path, a.dir, a.size, a.mime, a.tz_offset_min, a.camera_make, a.camera_model, a.lens,
-		a.lat, a.lon, a.library_id, a.is_archived, a.rating, a.live_video_id, a.play_at, a.rotation
+		a.lat, a.lon, a.library_id, a.is_archived, a.rating, a.live_video_id, a.play_at, a.rotation, a.keywords, a.description
 		from assets a join libraries l on l.id = a.library_id where a.id = ? and l.id in `+mine, id, userID).
 		Scan(&x.ID, &x.W, &x.H, &x.Type, &x.Taken, &x.Fav, &x.Duration, &x.V, &x.Err, &x.Path, &x.Dir, &x.Size, &x.Mime,
-			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived, &x.Rating, &x.Live, &x.playAt, &x.Rotation)
+			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived, &x.Rating, &x.Live, &x.playAt, &x.Rotation, &x.Keywords, &x.Description)
 	if err != nil {
 		return nil, err
 	}

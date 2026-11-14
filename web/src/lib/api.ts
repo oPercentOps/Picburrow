@@ -18,6 +18,8 @@ export type Tile = {
 export type Asset = Tile & {
   archived: boolean;
   rotation: number; // degrees clockwise it was turned in the app; the file itself is untouched
+  keywords: string | null; // from the XMP sidecar next to the file
+  description: string | null;
   rating: number | null;
   path: string;
   dir: string;

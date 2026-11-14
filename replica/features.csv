@@ -25,7 +25,7 @@ Live/motion photos (still + short video pair),view,should,yes,yes,"paired by App
 Public share link for an album (optional expiry/password),sharing,should,yes,yes,"S12: random 256-bit token, optional password (per-browser unlock), expiry, view-only mode; visitors see only the album"
 Multiple users with own libraries,auth,should,yes,yes,"People page: admins add family members with their own folder, share libraries with them, reset passwords (signs them out), delete; nobody sees photos of a library they are not in"
 Keep metadata stable when a file moves (content hash),library,should,no,yes,tested: favourite survives a move
-XMP sidecar read (description rating date GPS tags),library,could,yes,no,Immich xmp-sidecars.md; IMG.jpg.xmp preferred over IMG.xmp
+XMP sidecar read (description rating date GPS tags),library,could,yes,partial,"IMG.jpg.xmp preferred over IMG.xmp, as in Immich's xmp-sidecars.md. Read: keywords (digiKam TagsList, Lightroom hierarchicalSubject, dc:subject), description, stars (a rating set in the app wins). Shown in Details, found by Search; a sidecar that appears, changes or goes away later is followed without remaking previews. Not read from the sidecar: date and GPS"
 Write favourites/albums back to XMP sidecars,library,could,yes,no,"Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise"
 Map of geotagged photos,browse,could,yes,no,needs map tiles from an external provider
 Reverse geocoding (place names) from offline dataset,search,could,yes,no,Immich uses GeoNames loaded locally; a city-level extract keeps it small
@@ -41,7 +41,7 @@ Server-side video transcoding,view,should,yes,yes,"was skip (thought impossible 
 Native mobile apps,clients,skip,yes,skip,responsive web app first
 Paid-member features (PhotoPrism interactive world maps),billing,skip,yes,skip,PhotoPrism README: members get interactive world maps; free here via could-row map
 Installable PWA (add to home screen),clients,should,yes,yes,"manifest + own icons (192/512, maskable, apple-touch); no offline service worker (LAN app)"
-Hierarchical tags (read from XMP/IPTC),organize,could,yes,no,Immich tags.md
+Hierarchical tags (read from XMP/IPTC),organize,could,yes,partial,"Immich tags.md. Tag paths from sidecars (People/Ann) are kept and searchable; no tag tree to browse, and tags stored inside the photo file are not read"
 Locked folder behind a PIN,organize,could,yes,no,Immich locked-folder.md: 15 min unlocked session
 Star rating,organize,could,yes,yes,"0-5 in the viewer (stars or keys), read from XMP/EXIF Rating; the app wins on rescan"
 Partner sharing (whole library to another user),sharing,could,yes,yes,"People page: an admin shares a library they see with any account, new or existing, and can stop; a person keeps their own folder too. Unlike Immich's one-way partner sharing, everyone in a library can favourite, rate and archive in it; albums stay personal. Stopping takes that library's photos out of the person's albums"
@@ -57,4 +57,4 @@ Slideshow,view,could,yes,yes,"Immich: slideshow from the viewer, shuffle optiona
 Interface in the user's language,clients,could,yes,partial,"Immich: dozens of community translations. Here: English and French, chosen by the browser language; no in-app switch"
 Sleep mode: slideshow starts when the screen is left alone (photo frame),view,could,no,yes,"per device, 30 s-15 min; never while a video plays; any touch goes back"
 "New photos appear within minutes of landing in the folder (no cron, no button)",library,should,yes,yes,"every 15 minutes the server stats each folder seen by the last scan and rescans only if one changed (a file added, removed or renamed), or a file that was still being written grew; full scan at start-up and 03:00. An old file rewritten in place waits for 03:00; an open page shows new photos after a reload. Immich: nightly scan plus an experimental watcher (recon.md, its libraries doc); PhotoPrism users script it (fixes.md M5)"
-Tested guide for getting phone photos into the folder (iPhone and Android),install,should,no,no,fixes.md fix 10: answers the people who find a separate sync tool too fiddly for the family
+Tested guide for getting phone photos into the folder (iPhone and Android),install,should,no,partial,"docs/phone-to-folder.md, linked from the empty timeline, the README and the landing page: Syncthing on Android, a photo-transfer app on iPhone, the NAS's own app. A draft: not tested on real phones (fixes.md fix 10)"

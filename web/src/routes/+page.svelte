@@ -5,6 +5,7 @@
   import IndexingBanner from '$lib/IndexingBanner.svelte';
   import Scrubber from '$lib/Scrubber.svelte';
   import { History, Images, MonitorPlay } from '@lucide/svelte';
+  import { SOURCE_URL } from '$lib/source';
 
   let buckets = $state<Bucket[] | null>(null);
   let error = $state('');
@@ -51,6 +52,7 @@
       <Images aria-hidden="true" />
       <strong>{t('No photos yet')}</strong>
       <span class="muted">{t('They appear here as soon as the first scan finds them. If nothing shows up, check the folder under Libraries.')}</span>
+      <a href="{SOURCE_URL}/blob/main/docs/phone-to-folder.md" rel="noreferrer">{t('How to get photos from a phone into the folder')}</a>
     </div>
   {:else if buckets}
     <div bind:clientWidth={width}>

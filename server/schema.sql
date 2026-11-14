@@ -66,7 +66,7 @@ create table assets (
   lon           real,
   city          text,
   country       text,
-  description   text,
+  description   text,                                -- from the XMP sidecar next to the file
   rating        integer check (rating between 0 and 5),
   live_video_id integer references assets(id) on delete set null,  -- still -> its motion clip
   content_id    text,                                -- Apple live-photo pairing id (still and clip share it)
@@ -77,6 +77,8 @@ create table assets (
   thumb_error   text,                                -- unreadable/unsupported file; shown, not retried forever
   play_at       integer,                             -- videos: null = not yet checked for a playback copy (play/<id>.mp4)
   rotation      integer not null default 0,          -- degrees clockwise the person turned the photo; previews are made turned, the file is untouched
+  keywords      text,                                -- from the XMP sidecar next to the file: "People/Ann, Holidays", as other tools wrote them
+  sidecar_mtime integer,                             -- modified time of the sidecar when it was read; null = no sidecar
   missing_at    integer,                             -- file gone on rescan = in trash; purged after 30 days
   created_at    integer not null default (unixepoch()),
   updated_at    integer not null default (unixepoch()),
