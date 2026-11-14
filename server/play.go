@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -71,7 +72,7 @@ func (a *App) makePlay(ctx context.Context, id int64, src string) error {
 	defer os.Remove(tmp)
 	// 2 threads each way: half the Pi stays free for browsing and a 4K decode stays near 300 MB.
 	// 720p/30 veryfast is what a Pi 3 encodes at a bearable speed; ffmpeg applies the rotation itself.
-	if err := a.runFor(ctx, 12*time.Hour, "ffmpeg", "-v", "error", "-y", "-threads", "2", "-i", src,
+	if err := a.runFor(ctx, 12*time.Hour, keepCool, "ffmpeg", "-v", "error", "-y", "-threads", "2", "-i", src,
 		"-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn", "-fpsmax", "30",
 		"-vf", "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
 		"-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-pix_fmt", "yuv420p", "-threads", "2",
@@ -81,7 +82,37 @@ func (a *App) makePlay(ctx context.Context, id int64, src string) error {
 	return os.Rename(tmp, final) // never serve a half-written file
 }
 
-// playWorker makes playback copies one at a time, newest first, and only while no thumbnail is waiting:
+// A Pi 3 without a fan reaches 82 °C converting video and the firmware then slows the whole board down.
+var (
+	thermalZone = "/sys/class/thermal/thermal_zone0/temp" // millidegrees
+	thermalTick = 10 * time.Second
+)
+
+const pauseAbove, resumeBelow = 75_000, 65_000
+
+// keepCool freezes the conversion while the CPU is too hot and lets it go on once it has cooled down.
+func keepCool(ctx context.Context, p *os.Process) {
+	paused := false
+	for {
+		select {
+		case <-ctx.Done(): // the child is gone or being killed (a kill also ends a frozen one)
+			return
+		case <-time.After(thermalTick):
+		}
+		b, err := os.ReadFile(thermalZone)
+		temp, err2 := strconv.Atoi(strings.TrimSpace(string(b)))
+		if err != nil || err2 != nil {
+			return // no sensor on this machine
+		}
+		if !paused && temp >= pauseAbove {
+			paused = p.Signal(syscall.SIGSTOP) == nil
+		} else if paused && temp <= resumeBelow {
+			paused = p.Signal(syscall.SIGCONT) != nil
+		}
+	}
+}
+
+// playWorker makes playback copies one at a time, the video someone just tried to watch first, then newest first, and only while no thumbnail is waiting:
 // previews matter more and a 1 GB Pi shouldn't decode a photo and a 4K video together for long.
 func (a *App) playWorker(ctx context.Context) {
 	wait := func(d time.Duration) bool {
@@ -104,7 +135,7 @@ func (a *App) playWorker(ctx context.Context) {
 		var thumbsTodo int
 		a.db.QueryRow("select count(*) from assets where thumbs_at is null and thumb_error is null and missing_at is null").Scan(&thumbsTodo)
 		if thumbsTodo > 0 || a.db.QueryRow(`select id, path from assets where type = 'video' and play_at is null and missing_at is null
-			order by taken_local desc limit 1`).Scan(&id, &src) != nil {
+			order by id = ? desc, taken_local desc limit 1`, a.playWant.Load()).Scan(&id, &src) != nil {
 			if !wait(time.Minute) {
 				return
 			}
@@ -141,6 +172,9 @@ func (a *App) servePlay(w http.ResponseWriter, r *http.Request, x *assetRow) {
 				return
 			}
 		}
+	}
+	if !x.playAt.Valid {
+		a.playWant.Store(x.ID) // someone is watching it: convert it next
 	}
 	a.serveOriginal(w, r, x, false)
 }

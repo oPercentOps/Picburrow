@@ -1289,3 +1289,42 @@ func TestPlaybackCopy(t *testing.T) {
 		t.Fatalf("play: %d %s", w.Code, w.Header().Get("Content-Type"))
 	}
 }
+
+// The thermal guard freezes a conversion while the CPU is hot and lets it go on once it has cooled.
+func TestKeepCool(t *testing.T) {
+	zone := filepath.Join(t.TempDir(), "temp")
+	defer func(z string, d time.Duration) { thermalZone, thermalTick = z, d }(thermalZone, thermalTick)
+	thermalZone, thermalTick = zone, 10*time.Millisecond
+	os.WriteFile(zone, []byte("82000\n"), 0o644)
+	cmd := exec.Command("sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Skip(err)
+	}
+	defer cmd.Process.Kill()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go keepCool(ctx, cmd.Process)
+	state := func() string { // third field of /proc/<pid>/stat: T = stopped
+		b, _ := os.ReadFile(fmt.Sprintf("/proc/%d/stat", cmd.Process.Pid))
+		f := strings.Fields(string(b))
+		if len(f) < 3 {
+			t.Skip("no /proc")
+		}
+		return f[2]
+	}
+	waitFor := func(want bool, what string) {
+		for i := 0; i < 200; i++ {
+			if (state() == "T") == want {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		t.Fatalf("conversion not %s (state %s)", what, state())
+	}
+	waitFor(true, "paused at 82 °C")
+	os.WriteFile(zone, []byte("70000\n"), 0o644) // between the two limits: stays paused
+	time.Sleep(50 * time.Millisecond)
+	waitFor(true, "still paused at 70 °C")
+	os.WriteFile(zone, []byte("64000\n"), 0o644)
+	waitFor(false, "resumed at 64 °C")
+}

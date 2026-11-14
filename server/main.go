@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -28,12 +29,14 @@ type App struct {
 	loginLimit *limiter
 	ionice     []string
 	decodeSem  chan struct{}
+	playWant   atomic.Int64 // video to convert next: the last one played without a playback copy
 }
 
 func main() {
 	dataDir := flag.String("data-dir", envOr("PICBURROW_DATA", "/var/lib/picburrow"), "database and thumbnails")
 	listen := flag.String("listen", envOr("PICBURROW_LISTEN", ":8080"), "address to serve on")
 	workers := flag.Int("workers", 1, "parallel thumbnail decodes (1 for a 1 GB Pi; 2-4 with more RAM)")
+	copies := flag.Bool("video-copies", os.Getenv("PICBURROW_VIDEO_COPIES") != "0", "make 720p playback copies of videos browsers stutter on")
 	flag.Parse()
 
 	if abs, err := filepath.Abs(*dataDir); err == nil {
@@ -62,7 +65,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go a.thumbWorker(ctx)
-	go a.playWorker(ctx)
+	if *copies {
+		go a.playWorker(ctx)
+	}
 	go a.housekeeping(ctx)
 
 	srv := &http.Server{Addr: *listen, Handler: a.routes(), ReadHeaderTimeout: 10 * time.Second}
