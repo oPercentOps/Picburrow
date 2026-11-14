@@ -156,7 +156,7 @@ Ranked by evidence times cheapness.
 | --- | --- | --- | --- | --- |
 | 9 | **New photos appear within minutes**: every 15 minutes, a scan if any folder's modified time changed; the 03:00 full scan stays | M5, U1 | S | **done** 2026-11-14 (`TestFoldersChanged`) |
 | 10 | **A tested guide for getting phone photos into the folder**, iPhone and Android, one sync tool each, linked from the empty timeline after setup | the evidence against our approach, H5 | S (writing) + phones to test on | `/replica-launch` docs; can't be tested from a build box |
-| 11 | **On this day**: a row at the top of the timeline when earlier years have photos from today | M6, U3 (thin) | S | `/replica-build` |
+| 11 | **On this day**: a button on the timeline when earlier years have photos from today, opening a page of them | M6, U3 (thin) | S | **done** 2026-11-14 (`TestOnThisDay`) |
 | 12 | **Share a library with an account that already exists**, and let a person have their own folder plus a shared one | M1 (thin, 3 sources) | S | `/replica-build` |
 | 13 | **Rotate**, stored in the database and applied to previews (files stay untouched) | M7 (thin) | S | `/replica-build` |
 | 14 | **Read XMP sidecars**: keywords, ratings and descriptions written by digiKam and others, searchable | M8 (thin) | M | `/replica-build` |

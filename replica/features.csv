@@ -29,7 +29,7 @@ XMP sidecar read (description rating date GPS tags),library,could,yes,no,Immich 
 Write favourites/albums back to XMP sidecars,library,could,yes,no,"Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise"
 Map of geotagged photos,browse,could,yes,no,needs map tiles from an external provider
 Reverse geocoding (place names) from offline dataset,search,could,yes,no,Immich uses GeoNames loaded locally; a city-level extract keeps it small
-On this day / memories,browse,could,yes,no,
+On this day / memories,browse,could,yes,yes,"S20: an On this day button on the timeline when earlier years have photos from today's date (the browser's date); opens them grouped by year, viewer steps through them. No generated clips or themed memories"
 Duplicate finder (exact hash),organize,could,yes,no,Immich uses ML similarity; exact content hash is our 1 GB substitute
 Trash with 30-day restore,organize,could,yes,yes,S15: missing files listed; putting the file back restores it with albums/favourites; forgotten after 30 days or on demand; files never touched
 RAW (DNG/CR2/ARW) previews,view,could,yes,no,use embedded JPEG preview only; full RAW decode is too heavy for 1 GB

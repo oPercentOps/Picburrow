@@ -1189,6 +1189,42 @@ func TestSlideshow(t *testing.T) {
 	}
 }
 
+// On this day: photos from the same day of earlier years, and only the ones this person may see on the timeline.
+func TestOnThisDay(t *testing.T) {
+	a, srv := newTestApp(t)
+	ann := client(t)
+	post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+t.TempDir()+`"}`)
+	waitScan(t, a)
+	add := func(lib int, name, taken, extra string) {
+		a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local, thumbs_at)
+			values (?, ?, '/p', 1, 1, x'00', 'image', 'image/jpeg', ?, 1)`, lib, "/p/"+name, taken)
+		if extra != "" {
+			a.db.Exec("update assets set "+extra+" where path = ?", "/p/"+name)
+		}
+	}
+	add(1, "2019.jpg", "2019-05-17 08:00:00", "")
+	add(1, "2023.jpg", "2023-05-17 23:59:59", "")
+	add(1, "today.jpg", "2024-05-17 10:00:00", "")    // this year: not a memory yet
+	add(1, "later.jpg", "2025-05-17 10:00:00", "")    // a camera with a wrong clock
+	add(1, "daybefore.jpg", "2023-05-16 23:59:59", "")
+	add(1, "othermonth.jpg", "2023-06-17 10:00:00", "")
+	add(1, "archived.jpg", "2022-05-17 10:00:00", "is_archived = 1")
+	add(1, "gone.jpg", "2021-05-17 10:00:00", "missing_at = 1")
+	hash, _ := hashPassword("another pass")
+	a.db.Exec("insert into users (username, password_hash) values ('bob', ?)", hash)
+	a.db.Exec(`insert into libraries (owner_id, name, import_paths) values (2, 'bob', '[]')`)
+	add(2, "bobs.jpg", "2020-05-17 10:00:00", "")
+
+	var got []tile
+	get(t, ann, srv.URL+"/api/assets?onthisday=2024-05-17", &got)
+	if len(got) != 2 || got[0].Taken[:4] != "2023" || got[1].Taken[:4] != "2019" {
+		t.Fatalf("got %+v, want the 2023 and 2019 photos, newest first", got)
+	}
+	if r, _ := ann.Get(srv.URL + "/api/assets?onthisday=17/05"); r.StatusCode != 400 {
+		t.Errorf("bad date: %d, want 400", r.StatusCode)
+	}
+}
+
 // Behind a proxy on the same machine, wrong passwords are counted per visitor, not for everyone at once.
 func TestLoginRateLimitBehindProxy(t *testing.T) {
 	a, srv := newTestApp(t)

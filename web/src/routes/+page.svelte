@@ -1,10 +1,10 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
-  import { api, formatMonth, type Bucket } from '$lib/api';
+  import { api, formatMonth, today, type Bucket, type Tile } from '$lib/api';
   import MonthSection from '$lib/MonthSection.svelte';
   import IndexingBanner from '$lib/IndexingBanner.svelte';
   import Scrubber from '$lib/Scrubber.svelte';
-  import { Images, MonitorPlay } from '@lucide/svelte';
+  import { History, Images, MonitorPlay } from '@lucide/svelte';
 
   let buckets = $state<Bucket[] | null>(null);
   let error = $state('');
@@ -18,6 +18,9 @@
       .catch((e) => (error = e.message));
   }
   load();
+
+  let memories = $state(0); // photos from this day in earlier years
+  api<Tile[]>(`/api/assets?onthisday=${today()}`).then((t) => (memories = t.length)).catch(() => {});
 
   $effect(() => {
     const mq = matchMedia('(min-width: 768px)');
@@ -33,7 +36,12 @@
 <div class="page">
   <header>
     <h1>{t('Photos')}</h1>
-    {#if buckets?.length}<a class="btn secondary" href="/slideshow"><MonitorPlay aria-hidden="true" />{t('Slideshow')}</a>{/if}
+    {#if buckets?.length}
+      <div class="actions">
+        {#if memories}<a class="btn secondary" href="/onthisday"><History aria-hidden="true" />{t('On this day')}</a>{/if}
+        <a class="btn secondary" href="/slideshow"><MonitorPlay aria-hidden="true" />{t('Slideshow')}</a>
+      </div>
+    {/if}
   </header>
   <IndexingBanner onscandone={load} />
   {#if error}
@@ -57,7 +65,8 @@
 
 <style>
   .page { padding: 0 var(--space-1) var(--space-6); }
-  header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-5) var(--space-4) 0; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-5) var(--space-4) 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   header a :global(svg) { width: 20px; height: 20px; }
   header a { text-decoration: none; }
   @media (min-width: 768px) {
