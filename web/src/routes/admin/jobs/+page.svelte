@@ -19,10 +19,10 @@
     poll();
     return () => clearTimeout(timer);
   });
-  async function setCopies(on: boolean) {
+  async function setVideo(change: { video_copies?: boolean; video_one_thread?: boolean }) {
     try {
-      await api('/api/jobs', { method: 'PATCH', body: { video_copies: on } });
-      if (jobs) jobs.video_copies = on;
+      await api('/api/jobs', { method: 'PATCH', body: change });
+      if (jobs) Object.assign(jobs, change);
       error = '';
     } catch (e) {
       error = (e as Error).message;
@@ -52,8 +52,10 @@
     </section>
     <section aria-labelledby="vid-h">
       <h2 id="vid-h">{t('Videos')}</h2>
-      <label class="check"><input type="checkbox" checked={jobs.video_copies} onchange={(e) => setCopies(e.currentTarget.checked)} /> {t('Convert videos for smooth playback')}</label>
+      <label class="check"><input type="checkbox" checked={jobs.video_copies} onchange={(e) => setVideo({ video_copies: e.currentTarget.checked })} /> {t('Convert videos for smooth playback')}</label>
       <p class="muted">{t("Makes a lighter copy of the videos some browsers can't play (the picture freezes while the sound goes on). It is slow and heats up a small Raspberry Pi: turn it off if your devices play your videos fine. Copies already made keep being used.")}</p>
+      <label class="check"><input type="checkbox" checked={jobs.video_one_thread} disabled={!jobs.video_copies} onchange={(e) => setVideo({ video_one_thread: e.currentTarget.checked })} /> {t('Convert on a single processor thread')}</label>
+      <p class="muted">{t('About half as fast, but the Raspberry Pi stays cooler and more responsive. Applies from the next video.')}</p>
       {#if jobs.video_copies && jobs.videos_todo}<p class="muted">{t('{n} videos still to check or convert for smooth playback. Until then they play from the original file.', { n: jobs.videos_todo.toLocaleString() })}</p>{/if}
     </section>
     <section aria-labelledby="err-h">

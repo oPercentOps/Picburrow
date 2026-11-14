@@ -1293,9 +1293,13 @@ func TestPlaybackCopy(t *testing.T) {
 // The thermal guard freezes a conversion while the CPU is hot and lets it go on once it has cooled.
 func TestKeepCool(t *testing.T) {
 	zone := filepath.Join(t.TempDir(), "temp")
+	setTemp := func(milli string) { // renamed into place: the guard never reads a half-written file
+		os.WriteFile(zone+".new", []byte(milli+"\n"), 0o644)
+		os.Rename(zone+".new", zone)
+	}
 	defer func(z string, d time.Duration) { thermalZone, thermalTick = z, d }(thermalZone, thermalTick)
 	thermalZone, thermalTick = zone, 10*time.Millisecond
-	os.WriteFile(zone, []byte("82000\n"), 0o644)
+	setTemp("82000")
 	cmd := exec.Command("sleep", "30")
 	if err := cmd.Start(); err != nil {
 		t.Skip(err)
@@ -1322,10 +1326,10 @@ func TestKeepCool(t *testing.T) {
 		t.Fatalf("conversion not %s (state %s)", what, state())
 	}
 	waitFor(true, "paused at 82 °C")
-	os.WriteFile(zone, []byte("70000\n"), 0o644) // between the two limits: stays paused
+	setTemp("70000") // between the two limits: stays paused
 	time.Sleep(50 * time.Millisecond)
 	waitFor(true, "still paused at 70 °C")
-	os.WriteFile(zone, []byte("64000\n"), 0o644)
+	setTemp("64000")
 	waitFor(false, "resumed at 64 °C")
 }
 
@@ -1345,7 +1349,14 @@ func TestVideoCopiesSwitch(t *testing.T) {
 	if set(`{"video_copies":false}`) != 204 || !fileExists(a.copiesOffFile()) || !stopped {
 		t.Fatalf("off: file %v, running conversion stopped %v", fileExists(a.copiesOffFile()), stopped)
 	}
-	if set(`{"video_copies":true}`) != 204 || set(`{"video_copies":true}`) != 204 || fileExists(a.copiesOffFile()) {
-		t.Fatal("on: the switch file is still there")
+	// the other switch leaves this one alone
+	if set(`{"video_one_thread":true}`) != 204 || !fileExists(a.oneThreadFile()) || !fileExists(a.copiesOffFile()) {
+		t.Fatal("one thread on: wrong switch files")
+	}
+	if set(`{"video_copies":true}`) != 204 || set(`{"video_copies":true}`) != 204 || fileExists(a.copiesOffFile()) || !fileExists(a.oneThreadFile()) {
+		t.Fatal("on: the switch file is still there, or one thread was reset")
+	}
+	if set(`{"video_one_thread":false}`) != 204 || fileExists(a.oneThreadFile()) {
+		t.Fatal("one thread off: the switch file is still there")
 	}
 }

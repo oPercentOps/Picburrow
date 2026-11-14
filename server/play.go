@@ -71,11 +71,16 @@ func (a *App) makePlay(ctx context.Context, id int64, src string) error {
 	tmp := strings.TrimSuffix(final, ".mp4") + ".tmp.mp4"
 	defer os.Remove(tmp)
 	// 2 threads each way: half the Pi stays free for browsing and a 4K decode stays near 300 MB.
+	// The admin can ask for 1: about half the speed, but a cooler Pi.
+	threads := "2"
+	if fileExists(a.oneThreadFile()) {
+		threads = "1"
+	}
 	// 720p/30 veryfast is what a Pi 3 encodes at a bearable speed; ffmpeg applies the rotation itself.
-	if err := a.runFor(ctx, 12*time.Hour, keepCool, "ffmpeg", "-v", "error", "-y", "-threads", "2", "-i", src,
+	if err := a.runFor(ctx, 12*time.Hour, keepCool, "ffmpeg", "-v", "error", "-y", "-threads", threads, "-filter_threads", threads, "-i", src,
 		"-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn", "-fpsmax", "30",
 		"-vf", "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
-		"-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-pix_fmt", "yuv420p", "-threads", "2",
+		"-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-pix_fmt", "yuv420p", "-threads", threads,
 		"-c:a", "aac", "-b:a", "128k", "-ac", "2", "-movflags", "+faststart", tmp); err != nil {
 		return err
 	}
@@ -101,8 +106,11 @@ func keepCool(ctx context.Context, p *os.Process) {
 		}
 		b, err := os.ReadFile(thermalZone)
 		temp, err2 := strconv.Atoi(strings.TrimSpace(string(b)))
-		if err != nil || err2 != nil {
-			return // no sensor on this machine
+		if err != nil || err2 != nil { // no sensor on this machine, or it stopped answering
+			if paused {
+				p.Signal(syscall.SIGCONT) // never leave the conversion frozen with nobody watching
+			}
+			return
 		}
 		if !paused && temp >= pauseAbove {
 			paused = p.Signal(syscall.SIGSTOP) == nil
@@ -112,24 +120,38 @@ func keepCool(ctx context.Context, p *os.Process) {
 	}
 }
 
-// The admin's off switch is a file in the data folder: no schema change for one yes/no.
+// The admin's video switches are files in the data folder: no schema change for a yes/no.
 func (a *App) copiesOffFile() string { return filepath.Join(a.dataDir, "video-copies-off") }
+func (a *App) oneThreadFile() string { return filepath.Join(a.dataDir, "video-one-thread") }
 
+func setSwitchFile(path string, on bool) error {
+	if on {
+		return os.WriteFile(path, []byte("on\n"), 0o644)
+	}
+	if err := os.Remove(path); !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+// patchJobs changes only the switches present in the request.
 func (a *App) patchJobs(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		VideoCopies bool `json:"video_copies"`
+		VideoCopies    *bool `json:"video_copies"`
+		VideoOneThread *bool `json:"video_one_thread"`
 	}
 	if !readJSON(w, r, &in) {
 		return
 	}
 	var err error
-	if in.VideoCopies {
-		if err = os.Remove(a.copiesOffFile()); os.IsNotExist(err) {
-			err = nil
-		}
-	} else if err = os.WriteFile(a.copiesOffFile(), []byte("off\n"), 0o644); err == nil {
-		if stop := a.playStop.Load(); stop != nil {
-			(*stop)() // the video being converted is redone when the switch goes back on
+	if in.VideoOneThread != nil { // used from the next video on
+		err = setSwitchFile(a.oneThreadFile(), *in.VideoOneThread)
+	}
+	if err == nil && in.VideoCopies != nil {
+		if err = setSwitchFile(a.copiesOffFile(), !*in.VideoCopies); err == nil && !*in.VideoCopies {
+			if stop := a.playStop.Load(); stop != nil {
+				(*stop)() // the video being converted is redone when the switch goes back on
+			}
 		}
 	}
 	if err != nil {

@@ -542,7 +542,7 @@ func (a *App) getJobs(w http.ResponseWriter, r *http.Request) {
 	var videos int
 	a.db.QueryRow("select count(*) from assets where type = 'video' and play_at is null and missing_at is null").Scan(&videos)
 	a.scan.mu.Lock()
-	res := map[string]any{"videos_todo": videos, "video_copies": !fileExists(a.copiesOffFile()), "scanning": a.scan.running, "scan_found": a.scan.found, "scan_error": a.scan.lastErr,
+	res := map[string]any{"videos_todo": videos, "video_copies": !fileExists(a.copiesOffFile()), "video_one_thread": fileExists(a.oneThreadFile()), "scanning": a.scan.running, "scan_found": a.scan.found, "scan_error": a.scan.lastErr,
 		"thumbs_done": done, "thumbs_todo": todo, "thumb_errors": errs}
 	a.scan.mu.Unlock()
 	if userFrom(r).IsAdmin { // file paths are admin-only detail
