@@ -1,6 +1,6 @@
 # Parity report: Picburrow vs Immich / PhotoPrism (browse + view slice)
 
-Build: 0.1.8 + the round 2 fixes from `replica/fixes.md` (quick rescan, On this day, sharing with existing accounts, rotate, XMP sidecars). Date: 2026-11-14.
+Build: 0.1.10 (0.1.9 + the round 2 fixes from `replica/fixes.md` (quick rescan, On this day, sharing with existing accounts, rotate, XMP sidecars)). Date: 2026-11-14.
 
 | | score |
 | --- | --- |
