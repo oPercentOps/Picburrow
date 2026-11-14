@@ -48,7 +48,7 @@
   <h1>{t('Search')}</h1>
   <form onsubmit={submit} role="search" aria-label={t('Photos')}>
     <div class="field grow">
-      <label for="sq">{t('Words in the file name, folder or camera')}</label>
+      <label for="sq">{t('Words in the file name, folder, camera or keywords')}</label>
       <input id="sq" type="search" bind:value={q} placeholder={t('beach, 2023, Pixel 8')} />
     </div>
     <div class="field"><label for="sf">{t('From')}</label><input id="sf" type="date" bind:value={from} /></div>

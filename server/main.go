@@ -84,22 +84,34 @@ func main() {
 	}
 }
 
-// housekeeping: scan at start and nightly at 03:00 local; daily cleanup of expired sessions.
+// housekeeping: scan at start and nightly at 03:00 local; every 15 minutes in between, scan again only if a
+// folder changed, so photos a sync tool drops in show up soon; daily cleanup of expired sessions.
 func (a *App) housekeeping(ctx context.Context) {
 	a.scanAll()
-	for {
+	quick := time.NewTicker(15 * time.Minute)
+	defer quick.Stop()
+	next3 := func() time.Time {
 		now := time.Now()
 		next := time.Date(now.Year(), now.Month(), now.Day(), 3, 0, 0, 0, now.Location())
 		if !next.After(now) {
 			next = next.AddDate(0, 0, 1)
 		}
+		return next
+	}
+	next := next3() // kept across quick checks: one that runs past 03:00 must not skip the night's work
+	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-quick.C:
+			if a.foldersChanged() {
+				a.scanAll()
+			}
 		case <-time.After(time.Until(next)):
 			a.db.Exec("delete from sessions where expires_at < unixepoch()")
 			a.scanAll()
 			a.purgeTrash()
+			next = next3()
 		}
 	}
 }

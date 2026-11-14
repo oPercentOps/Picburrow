@@ -50,8 +50,9 @@ func (a *App) ensureThumbs(ctx context.Context, id int64) error {
 	}()
 
 	var path, typ string
+	var rot int
 	var done sql.NullInt64
-	if err := a.db.QueryRow("select path, type, thumbs_at from assets where id = ?", id).Scan(&path, &typ, &done); err != nil {
+	if err := a.db.QueryRow("select path, type, thumbs_at, rotation from assets where id = ?", id).Scan(&path, &typ, &done, &rot); err != nil {
 		return err
 	}
 	if done.Valid {
@@ -63,7 +64,7 @@ func (a *App) ensureThumbs(ctx context.Context, id int64) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	err := a.makeThumbs(id, path, typ)
+	err := a.makeThumbs(id, path, typ, rot)
 	<-a.decodeSem
 	if err != nil {
 		msg := err.Error()
@@ -77,7 +78,8 @@ func (a *App) ensureThumbs(ctx context.Context, id int64) error {
 	return err
 }
 
-func (a *App) makeThumbs(id int64, src, typ string) error {
+// rot: degrees clockwise the person turned the photo, on top of what its EXIF says.
+func (a *App) makeThumbs(id int64, src, typ string, rot int) error {
 	dir := filepath.Dir(a.thumbPath(id, "s"))
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -105,7 +107,17 @@ func (a *App) makeThumbs(id int64, src, typ string) error {
 		}
 		// vipsthumbnail decodes with shrink-on-load and auto-rotates from EXIF; strip drops metadata (GPS) from thumbs;
 		// effort=0 encodes WebP ~2x faster for ~30% bigger files: CPU is the scarce resource on a Pi
-		if err := a.run("vipsthumbnail", src, "--size", box, "-o", tmp+"[Q=75,strip,effort=0]"); err != nil {
+		out := tmp + "[Q=75,strip,effort=0]"
+		flat := strings.TrimSuffix(tmp, ".webp") + ".v" // uncompressed, so turning costs no second lossy encode
+		if size == "l" && rot != 0 {
+			out = flat
+		}
+		err = a.run("vipsthumbnail", src, "--size", box, "-o", out)
+		if err == nil && out == flat {
+			err = a.run("vips", "rot", flat, tmp+"[Q=75,strip,effort=0]", fmt.Sprintf("d%d", rot))
+			os.Remove(flat)
+		}
+		if err != nil {
 			os.Remove(tmp)
 			return err
 		}

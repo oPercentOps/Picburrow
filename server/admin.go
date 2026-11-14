@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -71,13 +72,15 @@ func (a *App) purgeTrash() {
 
 type userRow struct {
 	User
-	Created int64 `json:"created_at"`
-	Assets  int   `json:"assets"`
+	Created   int64   `json:"created_at"`
+	Assets    int     `json:"assets"`
+	Libraries []int64 `json:"libraries"` // the libraries this person sees
 }
 
 func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := a.db.Query(`select u.id, u.username, u.is_admin, u.created_at,
-		(select count(*) from assets x where x.library_id in (select library_id from library_members where user_id = u.id) and x.missing_at is null)
+		(select count(*) from assets x where x.library_id in (select library_id from library_members where user_id = u.id) and x.missing_at is null),
+		(select json_group_array(library_id) from library_members where user_id = u.id)
 		from users u order by u.id`)
 	if err != nil {
 		serverError(w, err)
@@ -87,10 +90,12 @@ func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 	out := []userRow{}
 	for rows.Next() {
 		var u userRow
-		if err := rows.Scan(&u.ID, &u.Username, &u.IsAdmin, &u.Created, &u.Assets); err != nil {
+		var libs string
+		if err := rows.Scan(&u.ID, &u.Username, &u.IsAdmin, &u.Created, &u.Assets, &libs); err != nil {
 			serverError(w, err)
 			return
 		}
+		json.Unmarshal([]byte(libs), &u.Libraries)
 		out = append(out, u)
 	}
 	writeJSON(w, out)
@@ -178,11 +183,17 @@ func (a *App) patchUser(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(r)
 	var in struct {
 		Password string `json:"password"`
+		Library  int64  `json:"library_id"` // with shared: let this person see one of the admin's libraries, or stop
+		Shared   *bool  `json:"shared"`
 	}
 	if !ok || !readJSON(w, r, &in) {
 		if !ok {
 			httpError(w, http.StatusNotFound, "No such user")
 		}
+		return
+	}
+	if in.Shared != nil {
+		a.shareLibrary(w, userFrom(r).ID, id, in.Library, *in.Shared)
 		return
 	}
 	if len(in.Password) < 8 {
@@ -200,6 +211,53 @@ func (a *App) patchUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.db.Exec("delete from sessions where user_id = ? and user_id != ?", id, userFrom(r).ID) // sign them out everywhere
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// shareLibrary lets an existing person see a library the admin sees (as postUser does for a new person), or
+// stops it. They keep their own folder. Stopping also takes that library's photos out of their albums.
+func (a *App) shareLibrary(w http.ResponseWriter, admin, id, lib int64, shared bool) {
+	var owner int64
+	if err := a.db.QueryRow(`select l.owner_id from libraries l join library_members m on m.library_id = l.id
+		where l.id = ? and m.user_id = ?`, lib, admin).Scan(&owner); err != nil {
+		httpError(w, http.StatusNotFound, "No such library")
+		return
+	}
+	var exists int
+	if a.db.QueryRow("select 1 from users where id = ?", id).Scan(&exists) != nil {
+		httpError(w, http.StatusNotFound, "No such user")
+		return
+	}
+	var err error
+	switch {
+	case shared:
+		_, err = a.db.Exec("insert or ignore into library_members (library_id, user_id) values (?, ?)", lib, id)
+	case id == owner:
+		httpError(w, http.StatusBadRequest, "The person who owns a library always sees it")
+		return
+	default:
+		var tx *sql.Tx
+		if tx, err = a.db.Begin(); err != nil {
+			break
+		}
+		defer tx.Rollback()
+		if _, err = tx.Exec("delete from library_members where library_id = ? and user_id = ?", lib, id); err != nil {
+			break
+		}
+		if _, err = tx.Exec(`delete from album_assets where album_id in (select id from albums where owner_id = ?)
+			and asset_id in (select id from assets where library_id = ?)`, id, lib); err != nil {
+			break
+		}
+		if _, err = tx.Exec(`update albums set cover_asset_id = null where owner_id = ?
+			and cover_asset_id in (select id from assets where library_id = ?)`, id, lib); err != nil {
+			break
+		}
+		err = tx.Commit()
+	}
+	if err != nil {
+		serverError(w, err)
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

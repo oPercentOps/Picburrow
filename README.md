@@ -4,14 +4,14 @@ The photo folders you already have, as a timeline on your phone. Picburrow is on
 a timeline by day, a fast fullscreen viewer, and photo details. It runs on a Pi 3, 4 or 5 with **1 GB RAM**
 and 64-bit Raspberry Pi OS, and only reads your photo folders, never changes them.
 
-Status: timeline with date scrubber, viewer, live photos, random slideshow with a sleep mode (starts by itself when the screen is left alone), English and French (follows the browser language), star ratings, folders, favourites, archive, trash, albums, multi-select, search, share links, family accounts, library settings; installable on a phone's home screen. Feature parity 87/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
+Status: timeline with date scrubber, viewer, live photos, random slideshow with a sleep mode (starts by itself when the screen is left alone), On this day (photos from today's date in earlier years), English and French (follows the browser language), star ratings, keywords and descriptions from XMP sidecars (digiKam, darktable, Lightroom), rotate (kept in the app, files untouched), folders, favourites, archive, trash, albums, multi-select, search, share links, family accounts, library settings; installable on a phone's home screen. Feature parity 87/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
 
 To hear about new versions: **Watch → Custom → Releases** on GitHub. The project page is `docs/index.html`.
 
 ## Install on a Raspberry Pi (64-bit Raspberry Pi OS)
 
 ```bash
-sudo apt install ./picburrow_0.1.6_arm64.deb
+sudo apt install ./picburrow_0.1.10_arm64.deb
 ```
 
 That one command pulls in libvips (with the HEVC decoder iPhone HEIC photos need), exiftool and ffmpeg, creates a `picburrow` system user and starts the service.
@@ -35,6 +35,8 @@ Build the package on any machine with `make deb-pi`.
 - **Upgrades**: install the newer `.deb` the same way. Before changing its database, Picburrow saves a copy next to it
   (`picburrow.db.v<N>-<date>.bak`, newest 3 kept). To go back: `sudo systemctl stop picburrow`, copy the backup over
   `picburrow.db`, reinstall the older package, start again.
+- **Getting phone photos into the folder**: [docs/phone-to-folder.md](docs/phone-to-folder.md) (a draft, not yet tested
+  on real phones): Syncthing on Android, a photo-transfer app on iPhone, or your NAS's own app.
 - **Away from home**: [docs/remote-access.md](docs/remote-access.md) walks through Tailscale (about ten minutes, nothing opened
   to the internet), your own VPN, or a public HTTPS address. Don't open port 8080 on your router: Picburrow has no HTTPS of its own.
 - **Uninstalling** never deletes `/var/lib/picburrow` (albums, favourites, previews) and never touches your photos.

@@ -472,8 +472,9 @@ func (a *App) getSearch(w http.ResponseWriter, r *http.Request) {
 	if text := strings.TrimSpace(q.Get("q")); text != "" {
 		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(text) + "%"
 		where = append(where, `(a.path like ? escape '\' or coalesce(a.camera_make, '') || ' ' || coalesce(a.camera_model, '') like ? escape '\'
-			or coalesce(a.lens, '') like ? escape '\')`)
-		args = append(args, like, like, like)
+			or coalesce(a.lens, '') like ? escape '\' or coalesce(a.keywords, '') like ? escape '\'
+			or coalesce(a.description, '') like ? escape '\')`)
+		args = append(args, like, like, like, like, like)
 	}
 	for param, cond := range map[string]string{"from": "a.taken_local >= ?", "to": "a.taken_local < ?"} {
 		v := q.Get(param)

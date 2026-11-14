@@ -14,20 +14,29 @@ import (
 
 // Meta is what the scanner needs from a media file.
 type Meta struct {
-	Mime        string
-	Type        string // image | video
-	Width       int
-	Height      int
-	Orientation int
-	DurationMs  int
-	TakenLocal  string // "YYYY-MM-DD HH:MM:SS" wall clock, "" if unknown
-	TzOffsetMin *int
-	Make        string
-	Model       string
-	Lens        string
-	Lat, Lon    *float64
-	ContentID   string // Apple live photo: the still and its clip share it
-	Rating      *int   // 1-5 from XMP/EXIF, nil if unrated
+	Mime         string
+	Type         string // image | video
+	Width        int
+	Height       int
+	Orientation  int
+	DurationMs   int
+	TakenLocal   string // "YYYY-MM-DD HH:MM:SS" wall clock, "" if unknown
+	TzOffsetMin  *int
+	Make         string
+	Model        string
+	Lens         string
+	Lat, Lon     *float64
+	ContentID    string // Apple live photo: the still and its clip share it
+	Rating       *int   // 1-5 from XMP/EXIF, nil if unrated
+	Sidecar             // words from the XMP file next to it, if there is one
+	SidecarMtime int64  // 0 = no sidecar
+}
+
+// Sidecar is what an XMP file next to a photo adds: what digiKam, darktable, Lightroom and others wrote there.
+type Sidecar struct {
+	Keywords    string // "People/Ann, Holidays": tags with their path first, then plain keywords not already among them
+	Description string
+	Stars       *int // 1-5; wins over the rating inside the file
 }
 
 // exifTool keeps one exiftool process alive (-stay_open) instead of paying Perl start-up per file.
@@ -82,6 +91,49 @@ func (e *exifTool) Read(paths []string) ([]Meta, error) {
 		}
 	}
 	return res, nil
+}
+
+// Sidecars reads XMP sidecar files; the result is keyed by sidecar path. One that can't be read is left out.
+func (e *exifTool) Sidecars(paths []string) (map[string]Sidecar, error) {
+	raw, err := e.run([]string{"-n", "-XMP:TagsList", "-XMP:HierarchicalSubject", "-XMP:Subject", "-XMP:Description", "-XMP:Rating"}, paths)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]Sidecar, len(raw))
+	for p, r := range raw {
+		out[p] = parseSidecar(r)
+	}
+	return out, nil
+}
+
+func parseSidecar(r map[string]any) Sidecar {
+	var words []string
+	have := map[string]bool{}                                                  // lower-cased tags and their last parts
+	for _, k := range []string{"TagsList", "HierarchicalSubject", "Subject"} { // digiKam, Lightroom, everyone
+		var list []any
+		switch v := r[k].(type) {
+		case []any:
+			list = v
+		case nil:
+		default:
+			list = []any{v}
+		}
+		for _, v := range list {
+			w := strings.TrimSpace(strings.ReplaceAll(str(v), "|", "/")) // Lightroom separates levels with |
+			leaf := strings.ToLower(w[strings.LastIndex(w, "/")+1:])
+			if w == "" || have[strings.ToLower(w)] || (k == "Subject" && have[leaf]) {
+				continue // "Ann" again, when "People/Ann" is already there
+			}
+			have[strings.ToLower(w)], have[leaf] = true, true
+			words = append(words, w)
+		}
+	}
+	s := Sidecar{Keywords: strings.Join(words, ", "), Description: strings.TrimSpace(str(r["Description"]))}
+	if rt, ok := r["Rating"].(float64); ok && rt >= 1 && rt <= 5 {
+		v := int(rt)
+		s.Stars = &v
+	}
+	return s
 }
 
 // detailTags are shown in the info panel, as exiftool words them ("1/120", "f/1.8"... no -n).

@@ -2,9 +2,9 @@
   import { t } from '$lib/i18n';
   import { api, formatWhen, type User } from '$lib/api';
   import { say } from '$lib/state.svelte';
-  import { UserPlus, KeyRound, Trash2 } from '@lucide/svelte';
+  import { UserPlus, KeyRound, Trash2, Users } from '@lucide/svelte';
 
-  type Row = User & { created_at: number; assets: number };
+  type Row = User & { created_at: number; assets: number; libraries: number[] };
   let users = $state<Row[] | null>(null);
   let me = $state<User | null>(null);
   let error = $state('');
@@ -44,6 +44,18 @@
       say((err as Error).message);
     }
   }
+  // let someone who already has an account see one of my libraries too, or stop
+  async function share(u: Row, lib: { id: number; name: string }) {
+    const shared = !u.libraries.includes(lib.id);
+    if (!shared && !confirm(t('Stop sharing {lib} with {name}? Its photos also leave their albums.', { lib: lib.name, name: u.username }))) return;
+    try {
+      await api(`/api/users/${u.id}`, { method: 'PATCH', body: { library_id: lib.id, shared } });
+      say(shared ? t('{name} now sees {lib} too', { name: u.username, lib: lib.name }) : t('{name} no longer sees {lib}', { name: u.username, lib: lib.name }));
+      load();
+    } catch (err) {
+      say((err as Error).message);
+    }
+  }
   async function remove(u: Row) {
     if (!confirm(t('Delete {name}? Their albums and share links go too. Their photo files stay on disk.', { name: u.username }))) return;
     await api(`/api/users/${u.id}`, { method: 'DELETE' });
@@ -56,7 +68,7 @@
 
 <div class="page">
   <h1>{t('People')}</h1>
-  <p class="muted intro">{t("Everyone gets their own sign-in and their own photo folder. Nobody sees another person's photos unless they share an album.")}</p>
+  <p class="muted intro">{t("Everyone gets their own sign-in. People see their own photo folder, plus any library you share with them here.")}</p>
   {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
   {#if users}
     <ul class="people">
@@ -65,6 +77,11 @@
           <div><strong>{u.username}</strong>{#if u.is_admin}{' '}<span class="tag">{t('admin')}</span>{/if}
             <div class="muted">{u.assets.toLocaleString()} photos · since {formatWhen(u.created_at)}</div></div>
           <div class="actions">
+            {#if u.id !== me?.id}
+              {#each libs as l (l.id)}
+                <button class="btn ghost" onclick={() => share(u, l)} aria-pressed={u.libraries.includes(l.id)}><Users aria-hidden="true" />{u.libraries.includes(l.id) ? t('Stop sharing ({name})', { name: l.name }) : t('Share my photos ({name})', { name: l.name })}</button>
+              {/each}
+            {/if}
             <button class="btn ghost" onclick={() => reset(u)}><KeyRound aria-hidden="true" />{t('New password')}</button>
             {#if u.id !== me?.id}<button class="btn ghost" onclick={() => remove(u)} aria-label={t('Delete {name}', { name: u.username })}><Trash2 aria-hidden="true" /></button>{/if}
           </div>
@@ -101,7 +118,7 @@
   .people { list-style: none; padding: 0; margin: 0 0 var(--space-7); }
   .people li { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; align-items: center; padding: var(--space-4) 0; border-bottom: 1px solid var(--border); }
   .tag { font: 600 var(--text-xs) var(--font-sans); color: var(--accent); }
-  .actions { display: flex; gap: var(--space-1); }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
   .actions :global(svg), form :global(svg) { width: 18px; height: 18px; }
   .card { display: grid; gap: var(--space-5); padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-lg); }
   .check { display: flex; gap: var(--space-3); align-items: center; font: var(--text-sm) var(--font-sans); min-height: var(--touch-target); }

@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,6 +32,7 @@ type scanState struct {
 	again   bool // a scan was requested while one was running
 	found   int
 	lastErr string
+	watch   map[string]int64 // folders (and files still being written) -> modified time at the last scan
 }
 
 type existing struct {
@@ -38,6 +40,12 @@ type existing struct {
 	size       int64
 	mtime      int64
 	wasMissing bool
+	xmp        int64 // modified time of the sidecar when it was last read; 0 = none
+}
+
+type sidecarFile struct {
+	path  string
+	mtime int64
 }
 
 type newFile struct {
@@ -66,14 +74,14 @@ func (a *App) scanLibrary(libID int64) error {
 	}
 
 	known := map[string]existing{}
-	rows, err := a.db.Query("select id, path, size, mtime, missing_at is not null from assets where library_id = ?", libID)
+	rows, err := a.db.Query("select id, path, size, mtime, missing_at is not null, coalesce(sidecar_mtime, 0) from assets where library_id = ?", libID)
 	if err != nil {
 		return err
 	}
 	for rows.Next() {
 		var p string
 		var e existing
-		if err := rows.Scan(&e.id, &p, &e.size, &e.mtime, &e.wasMissing); err != nil {
+		if err := rows.Scan(&e.id, &p, &e.size, &e.mtime, &e.wasMissing, &e.xmp); err != nil {
 			rows.Close()
 			return err
 		}
@@ -82,7 +90,8 @@ func (a *App) scanLibrary(libID int64) error {
 	rows.Close()
 
 	seen := map[string]bool{}
-	var changed []newFile // new or modified files, metadata read in batches
+	xmps := map[string]int64{} // XMP files found: path -> modified time
+	var changed []newFile      // new or modified files, metadata read in batches
 	var walkErrs []string
 	var offline []string // roots that look unmounted: never mark their files missing
 	for _, root := range roots {
@@ -106,12 +115,28 @@ func (a *App) scanLibrary(libID int64) error {
 				}
 				return nil
 			}
-			if d.IsDir() || !d.Type().IsRegular() || !mediaExt[strings.ToLower(filepath.Ext(p))] {
+			if d.IsDir() {
+				if info, err := d.Info(); err == nil {
+					a.noteWatch(p, info.ModTime())
+				}
+				return nil
+			}
+			if d.Type().IsRegular() && strings.EqualFold(filepath.Ext(p), ".xmp") {
+				if info, err := d.Info(); err == nil {
+					xmps[p] = info.ModTime().Unix()
+				}
+				return nil
+			}
+			if !d.Type().IsRegular() || !mediaExt[strings.ToLower(filepath.Ext(p))] {
 				return nil
 			}
 			info, err := d.Info()
 			if err != nil {
 				return nil
+			}
+			// a file a sync tool may still be writing: growing in place doesn't touch its folder's time
+			if time.Since(info.ModTime()) < 10*time.Minute {
+				a.noteWatch(p, info.ModTime())
 			}
 			seen[p] = true
 			files++
@@ -130,6 +155,9 @@ func (a *App) scanLibrary(libID int64) error {
 		})
 		if err != nil {
 			walkErrs = append(walkErrs, err.Error())
+		}
+		if rootErr {
+			a.noteWatch(root, time.Time{}) // so the quick check notices when it comes back
 		}
 		// An unmounted share is usually an empty mount-point dir: zero files where we had some = offline.
 		if rootErr || (files == 0 && hasKnownUnder(known, root)) {
@@ -155,16 +183,35 @@ func (a *App) scanLibrary(libID int64) error {
 		}
 	}
 
+	sidecars := pairSidecars(xmps, seen)
+	isChanged := map[string]bool{}
+	for _, f := range changed {
+		isChanged[f.path] = true
+	}
+	if err := a.refreshSidecars(known, seen, isChanged, sidecars); err != nil {
+		return err
+	}
+
 	relinked := map[int64]bool{}
 	for start := 0; start < len(changed); start += 50 {
 		batch := changed[start:min(start+50, len(changed))]
 		paths := make([]string, len(batch))
+		var xpaths []string
 		for i, f := range batch {
 			paths[i] = f.path
+			if sc, ok := sidecars[f.path]; ok {
+				xpaths = append(xpaths, sc.path)
+			}
 		}
 		metas, err := a.exif.Read(paths)
 		if err != nil {
 			return err
+		}
+		var read map[string]Sidecar
+		if len(xpaths) > 0 {
+			if read, err = a.exif.Sidecars(xpaths); err != nil {
+				return err
+			}
 		}
 		for i, f := range batch {
 			h, err := quickHash(f.path, f.size)
@@ -178,6 +225,12 @@ func (a *App) scanLibrary(libID int64) error {
 			}
 			if m.TakenLocal == "" { // no EXIF date: fall back to file time
 				m.TakenLocal = time.Unix(f.mtime, 0).Format("2006-01-02 15:04:05")
+			}
+			if sc, ok := sidecars[f.path]; ok {
+				m.Sidecar, m.SidecarMtime = read[sc.path], sc.mtime
+				if m.Stars != nil {
+					m.Rating = m.Stars
+				}
 			}
 			var relinkID int64
 			if _, isKnown := known[f.path]; !isKnown {
@@ -214,23 +267,89 @@ func (a *App) scanLibrary(libID int64) error {
 func (a *App) upsertAsset(libID int64, f newFile, h [32]byte, m Meta, relinkID int64) error {
 	args := []any{f.path, filepath.Dir(f.path), f.size, f.mtime, h[:], m.Type, m.Mime, nz(m.Width), nz(m.Height),
 		nz(m.Orientation), nz(m.DurationMs), m.TakenLocal, m.TzOffsetMin, ns(m.Make), ns(m.Model), ns(m.Lens), m.Lat, m.Lon,
-		ns(m.ContentID), m.Rating}
+		ns(m.ContentID), m.Rating, ns(m.Keywords), ns(m.Description), nz64(m.SidecarMtime)}
 	if relinkID != 0 { // moved file: keep id, so favourites/albums/tags survive
 		_, err := a.db.Exec(`update assets set path=?, dir=?, size=?, mtime=?, quick_hash=?, type=?, mime=?, width=?, height=?,
 			orientation=?, duration_ms=?, taken_local=?, tz_offset_min=?, camera_make=?, camera_model=?, lens=?, lat=?, lon=?,
-			content_id=?, rating=coalesce(rating, ?), missing_at=null, updated_at=unixepoch() where id=?`, append(args, relinkID)...)
+			content_id=?, rating=coalesce(rating, ?), keywords=?, description=?, sidecar_mtime=?, missing_at=null,
+			updated_at=unixepoch() where id=?`, append(args, relinkID)...)
 		return err
 	}
 	_, err := a.db.Exec(`insert into assets (path, dir, size, mtime, quick_hash, type, mime, width, height, orientation,
-			duration_ms, taken_local, tz_offset_min, camera_make, camera_model, lens, lat, lon, content_id, rating, library_id)
-		values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			duration_ms, taken_local, tz_offset_min, camera_make, camera_model, lens, lat, lon, content_id, rating,
+			keywords, description, sidecar_mtime, library_id)
+		values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		on conflict (library_id, path) do update set size=excluded.size, mtime=excluded.mtime, quick_hash=excluded.quick_hash,
 			type=excluded.type, mime=excluded.mime, width=excluded.width, height=excluded.height, orientation=excluded.orientation,
 			duration_ms=excluded.duration_ms, taken_local=excluded.taken_local, tz_offset_min=excluded.tz_offset_min,
 			camera_make=excluded.camera_make, camera_model=excluded.camera_model, lens=excluded.lens, lat=excluded.lat,
 			lon=excluded.lon, content_id=excluded.content_id, rating=coalesce(assets.rating, excluded.rating),
+			keywords=excluded.keywords, description=excluded.description, sidecar_mtime=excluded.sidecar_mtime,
 			missing_at=null, thumbs_at=null, thumb_error=null, play_at=null, updated_at=unixepoch()`, append(args, libID)...)
 	return err
+}
+
+// pairSidecars matches XMP files to the photos they describe: IMG.jpg.xmp (digiKam, darktable) wins over IMG.xmp
+// (Lightroom), which goes to the photo with the same name whatever its extension.
+func pairSidecars(xmps map[string]int64, media map[string]bool) map[string]sidecarFile {
+	out := map[string]sidecarFile{}
+	var stems map[string]string // name without extension -> photo, built only if an IMG.xmp needs it
+	for x, mtime := range xmps {
+		if m := strings.TrimSuffix(x, filepath.Ext(x)); media[m] {
+			out[m] = sidecarFile{x, mtime}
+			continue
+		}
+		if stems == nil {
+			stems = map[string]string{}
+			for m := range media {
+				if cur, ok := stems[stemKey(m)]; !ok || m < cur { // IMG.HEIC before IMG.MOV, the same on every scan
+					stems[stemKey(m)] = m
+				}
+			}
+		}
+		if m, ok := stems[stemKey(x)]; ok {
+			if _, taken := out[m]; !taken {
+				out[m] = sidecarFile{x, mtime}
+			}
+		}
+	}
+	return out
+}
+
+// refreshSidecars updates the words of photos that did not change themselves but whose sidecar appeared, changed or
+// went away. Only those columns are written: previews stay. A rating set in the app is kept.
+func (a *App) refreshSidecars(known map[string]existing, seen, isChanged map[string]bool, sidecars map[string]sidecarFile) error {
+	var stale []string
+	for p, e := range known {
+		if seen[p] && !isChanged[p] && e.xmp != sidecars[p].mtime { // no sidecar = zero mtime on both sides
+			stale = append(stale, p)
+		}
+	}
+	for start := 0; start < len(stale); start += 50 {
+		batch := stale[start:min(start+50, len(stale))]
+		var xpaths []string
+		for _, p := range batch {
+			if sc, ok := sidecars[p]; ok {
+				xpaths = append(xpaths, sc.path)
+			}
+		}
+		var read map[string]Sidecar
+		if len(xpaths) > 0 {
+			var err error
+			if read, err = a.exif.Sidecars(xpaths); err != nil {
+				return err
+			}
+		}
+		for _, p := range batch {
+			sc := read[sidecars[p].path]
+			if _, err := a.db.Exec(`update assets set keywords = ?, description = ?, rating = coalesce(rating, ?),
+				sidecar_mtime = ?, updated_at = unixepoch() where id = ?`,
+				ns(sc.Keywords), ns(sc.Description), sc.Stars, nz64(sidecars[p].mtime), known[p].id); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // quickHash = sha256(size || first 64 KiB || last 64 KiB). Cheap on SD/USB; enough to recognise a moved file.
@@ -363,6 +482,9 @@ func (a *App) claimScan() bool {
 func (a *App) runScans() {
 	defer a.wakeThumbs()
 	for {
+		a.scan.mu.Lock()
+		a.scan.watch = nil
+		a.scan.mu.Unlock()
 		ids, err := queryIDs(a.db, "select id from libraries")
 		if err != nil {
 			log.Printf("scan: %v", err)
@@ -386,6 +508,46 @@ func (a *App) runScans() {
 	}
 }
 
+func (a *App) noteWatch(p string, mod time.Time) {
+	a.scan.mu.Lock()
+	defer a.scan.mu.Unlock()
+	if a.scan.watch == nil {
+		a.scan.watch = map[string]int64{}
+	}
+	a.scan.watch[p] = modNano(mod)
+}
+
+func modNano(t time.Time) int64 {
+	if t.IsZero() {
+		return 0
+	}
+	return t.UnixNano()
+}
+
+// foldersChanged reports whether anything noted by the last scan has a different modified time now: a file
+// was added to, removed from or renamed in a folder, or a file that was being written has grown. It is one
+// stat per folder and reads no folder, so it can run every few minutes on a Pi without keeping disks busy.
+// shortcut: an old file rewritten in place, or a filesystem that doesn't update folder times, waits for the 03:00 scan.
+func (a *App) foldersChanged() bool {
+	a.scan.mu.Lock()
+	if a.scan.running {
+		a.scan.mu.Unlock()
+		return false
+	}
+	watch := maps.Clone(a.scan.watch)
+	a.scan.mu.Unlock()
+	for p, was := range watch {
+		var now int64 // 0 = not there, same as an offline folder
+		if info, err := os.Lstat(p); err == nil {
+			now = modNano(info.ModTime())
+		}
+		if now != was {
+			return true
+		}
+	}
+	return false
+}
+
 func queryIDs(db *sql.DB, q string, args ...any) ([]int64, error) {
 	rows, err := db.Query(q, args...)
 	if err != nil {
@@ -404,6 +566,13 @@ func queryIDs(db *sql.DB, q string, args ...any) ([]int64, error) {
 }
 
 func nz(i int) any {
+	if i == 0 {
+		return nil
+	}
+	return i
+}
+
+func nz64(i int64) any {
 	if i == 0 {
 		return nil
 	}

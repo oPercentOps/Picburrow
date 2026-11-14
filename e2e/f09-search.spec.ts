@@ -4,7 +4,7 @@ import { test, expect, axe, SHOTS, tiles, api } from './helpers';
 test('S11-H1 search by name, date range and kind; the URL keeps the search @mobile', async ({ page }) => {
   const mobile = page.viewportSize()!.width < 768;
   await page.goto('/search');
-  await page.getByLabel('Words in the file name, folder or camera').fill('plage');
+  await page.getByLabel('Words in the file name, folder, camera or keywords').fill('plage');
   await page.getByRole('button', { name: 'Search' }).click();
   await expect(page).toHaveURL(/\?q=plage$/);
   await expect(page.getByRole('status').filter({ hasText: '1 found' })).toBeVisible();
@@ -14,7 +14,7 @@ test('S11-H1 search by name, date range and kind; the URL keeps the search @mobi
   if (mobile) return;
   await page.reload(); // the query survives a reload
   await expect(tiles(page)).toHaveCount(1);
-  await expect(page.getByLabel('Words in the file name, folder or camera')).toHaveValue('plage');
+  await expect(page.getByLabel('Words in the file name, folder, camera or keywords')).toHaveValue('plage');
 
   await page.goto('/search?from=2026-09-01&to=2026-09-30');
   await expect(page.getByRole('status').filter({ hasText: /found$/ })).toHaveText('16 found');

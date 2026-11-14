@@ -1,10 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -299,6 +304,49 @@ func waitScan(t *testing.T, a *App) {
 	t.Fatal("scan did not finish in 30 s")
 }
 
+// A photo a sync tool drops into a folder is noticed by the quick check (one stat per folder), and so is a
+// file that was still being written when it was first indexed.
+func TestFoldersChanged(t *testing.T) {
+	if _, err := exec.LookPath("exiftool"); err != nil {
+		t.Skip("exiftool not installed")
+	}
+	lib := t.TempDir()
+	sub := filepath.Join(lib, "2024")
+	os.MkdirAll(sub, 0o755)
+	os.WriteFile(filepath.Join(sub, "a.jpg"), []byte("x"), 0o644)
+	a, srv := newTestApp(t)
+	if code := post(t, client(t), srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	count := func() (n int) {
+		a.db.QueryRow("select count(*) from assets where missing_at is null").Scan(&n)
+		return
+	}
+	if a.foldersChanged() {
+		t.Fatal("nothing changed, but the quick check asks for a scan")
+	}
+	time.Sleep(20 * time.Millisecond) // file systems stamp times in coarse steps
+	os.WriteFile(filepath.Join(sub, "b.jpg"), []byte("y"), 0o644)
+	if !a.foldersChanged() {
+		t.Fatal("a new file in a subfolder was not noticed")
+	}
+	a.scanAll()
+	if count() != 2 || a.foldersChanged() {
+		t.Fatalf("after the scan: %d photos (want 2), still changed: %v", count(), a.foldersChanged())
+	}
+	time.Sleep(20 * time.Millisecond)
+	os.WriteFile(filepath.Join(sub, "b.jpg"), []byte("yyyy"), 0o644) // grows in place: the folder's time stays
+	if !a.foldersChanged() {
+		t.Fatal("a file that was still being written was not noticed")
+	}
+	a.scanAll()
+	os.RemoveAll(sub)
+	if !a.foldersChanged() {
+		t.Fatal("a removed folder was not noticed")
+	}
+}
+
 // TestScanRequestDuringScanIsNotLost: the bug where a library edited mid-scan was ignored until the nightly scan.
 func TestScanRequestDuringScanIsNotLost(t *testing.T) {
 	a, _ := newTestApp(t)
@@ -542,6 +590,164 @@ func TestHEICThumbnail(t *testing.T) {
 	}
 }
 
+// XMP sidecars: keywords, description and stars other tools wrote next to a photo are read, searchable, and follow
+// the sidecar when it appears, changes or goes away, without touching the photo's previews or a rating set in the app.
+func TestSidecars(t *testing.T) {
+	if _, err := exec.LookPath("exiftool"); err != nil {
+		t.Skip("exiftool not installed")
+	}
+	xmp := func(rating int, desc string, tags, subjects []string) []byte {
+		li := func(xs []string) (s string) {
+			for _, x := range xs {
+				s += "<rdf:li>" + x + "</rdf:li>"
+			}
+			return
+		}
+		return []byte(`<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/">
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about=""
+ xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:digiKam="http://www.digikam.org/ns/1.0/"
+ xmp:Rating="` + strconv.Itoa(rating) + `">
+<dc:description><rdf:Alt><rdf:li xml:lang="x-default">` + desc + `</rdf:li></rdf:Alt></dc:description>
+<dc:subject><rdf:Bag>` + li(subjects) + `</rdf:Bag></dc:subject>
+<digiKam:TagsList><rdf:Seq>` + li(tags) + `</rdf:Seq></digiKam:TagsList>
+</rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>`)
+	}
+	lib := t.TempDir()
+	for _, n := range []string{"a.jpg", "b.jpg", "raw.dng", "plain.jpg"} {
+		os.WriteFile(filepath.Join(lib, n), []byte(n), 0o644)
+	}
+	os.WriteFile(filepath.Join(lib, "a.jpg.xmp"), xmp(4, "Grandma's garden", []string{"People/Ann", "Places/Lyon"}, []string{"Ann", "Lyon", "summer"}), 0o644)
+	os.WriteFile(filepath.Join(lib, "a.xmp"), xmp(1, "the other sidecar", nil, []string{"wrong"}), 0o644) // a.jpg.xmp wins
+	os.WriteFile(filepath.Join(lib, "raw.XMP"), xmp(2, "", nil, []string{"sunset"}), 0o644)               // Lightroom style, upper case
+	a, srv := newTestApp(t)
+	ann := client(t)
+	if code := post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	row := func(name string) (kw, desc string, rating int) {
+		a.db.QueryRow("select coalesce(keywords, ''), coalesce(description, ''), coalesce(rating, 0) from assets where path = ?",
+			filepath.Join(lib, name)).Scan(&kw, &desc, &rating)
+		return
+	}
+	if kw, desc, r := row("a.jpg"); kw != "People/Ann, Places/Lyon, summer" || desc != "Grandma's garden" || r != 4 {
+		t.Fatalf("a.jpg: %q, %q, %d stars", kw, desc, r)
+	}
+	if kw, _, r := row("raw.dng"); kw != "sunset" || r != 2 {
+		t.Fatalf("raw.dng: %q, %d stars", kw, r)
+	}
+	if n, _ := queryIDs(a.db, "select id from assets"); len(n) != 4 {
+		t.Fatalf("%d assets, want 4 (sidecars are not photos)", len(n))
+	}
+	found := func(q string) int {
+		var tiles []tile
+		get(t, ann, srv.URL+"/api/search?q="+q, &tiles)
+		return len(tiles)
+	}
+	if found("lyon") != 1 || found("garden") != 1 || found("sunset") != 1 || found("nothing") != 0 {
+		t.Fatalf("search: lyon %d, garden %d, sunset %d, nothing %d", found("lyon"), found("garden"), found("sunset"), found("nothing"))
+	}
+
+	// later, without touching the photos: b.jpg gets a sidecar, a.jpg's changes, raw.dng's is deleted;
+	// a.jpg was given 5 stars in the app meanwhile, and its previews exist
+	a.db.Exec("update assets set rating = 5, thumbs_at = 123 where path = ?", filepath.Join(lib, "a.jpg"))
+	os.WriteFile(filepath.Join(lib, "b.jpg.xmp"), xmp(3, "", nil, []string{"birthday"}), 0o644)
+	os.WriteFile(filepath.Join(lib, "a.jpg.xmp"), xmp(1, "Edited", nil, []string{"autumn"}), 0o644)
+	os.Chtimes(filepath.Join(lib, "a.jpg.xmp"), time.Now(), time.Now().Add(time.Hour))
+	os.Remove(filepath.Join(lib, "raw.XMP"))
+	a.scanAll()
+	if kw, desc, r := row("a.jpg"); kw != "autumn" || desc != "Edited" || r != 5 {
+		t.Fatalf("a.jpg after its sidecar changed: %q, %q, %d stars (the app's 5 must stay)", kw, desc, r)
+	}
+	var thumbs int
+	if a.db.QueryRow("select coalesce(thumbs_at, 0) from assets where path = ?", filepath.Join(lib, "a.jpg")).Scan(&thumbs); thumbs != 123 {
+		t.Fatal("a sidecar change threw away the photo's previews")
+	}
+	if kw, _, r := row("b.jpg"); kw != "birthday" || r != 3 {
+		t.Fatalf("b.jpg after getting a sidecar: %q, %d stars", kw, r)
+	}
+	if kw, _, _ := row("raw.dng"); kw != "" {
+		t.Fatalf("raw.dng after its sidecar was deleted: %q", kw)
+	}
+	var id int64
+	a.db.QueryRow("select id from assets where path = ?", filepath.Join(lib, "a.jpg")).Scan(&id)
+	var x assetRow
+	get(t, ann, srv.URL+"/api/assets/"+itoa(id), &x)
+	if x.Keywords == nil || *x.Keywords != "autumn" || x.Description == nil || *x.Description != "Edited" {
+		t.Fatalf("the photo's details carry the wrong keywords or description: %v, %v", x.Keywords, x.Description)
+	}
+}
+
+// Rotate: the turn is kept in the database, previews are remade turned clockwise, the file is not touched.
+func TestRotate(t *testing.T) {
+	for _, tool := range []string{"vipsthumbnail", "vips", "exiftool"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	lib := t.TempDir()
+	img := image.NewRGBA(image.Rect(0, 0, 300, 200)) // left half red, right half blue
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 300; x++ {
+			if x < 150 {
+				img.Set(x, y, color.RGBA{255, 0, 0, 255})
+			} else {
+				img.Set(x, y, color.RGBA{0, 0, 255, 255})
+			}
+		}
+	}
+	var buf bytes.Buffer
+	jpeg.Encode(&buf, img, nil)
+	file := filepath.Join(lib, "a.jpg")
+	os.WriteFile(file, buf.Bytes(), 0o644)
+	a, srv := newTestApp(t)
+	ann := client(t)
+	if code := post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local, thumbs_at)
+		values (1, '/p/clip.mp4', '/p', 1, 1, x'00', 'video', 'video/mp4', '2024-01-01 00:00:00', 1)`)
+	if err := a.ensureThumbs(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if code := patch(t, ann, srv.URL+"/api/assets", `{"ids":[1],"rotate":45}`); code != 400 {
+		t.Fatalf("rotate by 45 = %d, want 400", code)
+	}
+	if code := patch(t, ann, srv.URL+"/api/assets", `{"ids":[1,2],"rotate":90}`); code != 200 {
+		t.Fatalf("rotate: %d", code)
+	}
+	var x assetRow
+	get(t, ann, srv.URL+"/api/assets/1", &x)
+	if x.Rotation != 90 || *x.W != 200 || *x.H != 300 || x.V != nil {
+		t.Fatalf("after rotating: turn %d, %dx%d, preview version %v; want 90, 200x300, none yet", x.Rotation, *x.W, *x.H, x.V)
+	}
+	var clip int
+	if a.db.QueryRow("select rotation from assets where id = 2").Scan(&clip); clip != 0 {
+		t.Fatalf("the video was turned by %d", clip)
+	}
+	if err := a.ensureThumbs(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	png := filepath.Join(t.TempDir(), "l.png")
+	mustRun(t, "vips", "copy", a.thumbPath(1, "l"), png)
+	f, _ := os.Open(png)
+	defer f.Close()
+	got, _, err := image.Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := got.Bounds()
+	top, _, bottom, _ := got.At(b.Dx()/2, b.Dy()/4).RGBA()
+	_, _, low, _ := got.At(b.Dx()/2, 3*b.Dy()/4).RGBA()
+	if b.Dx() >= b.Dy() || top < 0x8000 || bottom > 0x8000 || low < 0x8000 {
+		t.Fatalf("large preview %dx%d, red at top %x, blue at top %x, blue at bottom %x: want upright, red (the left side) on top", b.Dx(), b.Dy(), top, bottom, low)
+	}
+	if after, _ := os.ReadFile(file); !bytes.Equal(after, buf.Bytes()) {
+		t.Fatal("the photo file was changed")
+	}
+}
+
 func TestAlbumsLinksSearch(t *testing.T) {
 	for _, tool := range []string{"exiftool", "ffmpeg", "vipsthumbnail"} {
 		if _, err := exec.LookPath(tool); err != nil {
@@ -775,7 +981,10 @@ func TestMigrateFromV1(t *testing.T) {
 		"  content_id    text,                                -- Apple live-photo pairing id (still and clip share it)\n", "",
 		"create index assets_content  on assets(content_id) where content_id is not null;\n", "",
 		"  play_at       integer,                             -- videos: null = not yet checked for a playback copy (play/<id>.mp4)\n", "",
-		"create index assets_play     on assets(id) where type = 'video' and play_at is null;\n", "").Replace(schemaSQL)
+		"create index assets_play     on assets(id) where type = 'video' and play_at is null;\n", "",
+		"  rotation      integer not null default 0,          -- degrees clockwise the person turned the photo; previews are made turned, the file is untouched\n", "",
+		"  keywords      text,                                -- from the XMP sidecar next to the file: \"People/Ann, Holidays\", as other tools wrote them\n", "",
+		"  sidecar_mtime integer,                             -- modified time of the sidecar when it was read; null = no sidecar\n", "").Replace(schemaSQL)
 	if v1 == schemaSQL {
 		t.Fatal("couldn't rebuild the v1 schema from schema.sql")
 	}
@@ -1146,6 +1355,42 @@ func TestSlideshow(t *testing.T) {
 	}
 }
 
+// On this day: photos from the same day of earlier years, and only the ones this person may see on the timeline.
+func TestOnThisDay(t *testing.T) {
+	a, srv := newTestApp(t)
+	ann := client(t)
+	post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+t.TempDir()+`"}`)
+	waitScan(t, a)
+	add := func(lib int, name, taken, extra string) {
+		a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local, thumbs_at)
+			values (?, ?, '/p', 1, 1, x'00', 'image', 'image/jpeg', ?, 1)`, lib, "/p/"+name, taken)
+		if extra != "" {
+			a.db.Exec("update assets set "+extra+" where path = ?", "/p/"+name)
+		}
+	}
+	add(1, "2019.jpg", "2019-05-17 08:00:00", "")
+	add(1, "2023.jpg", "2023-05-17 23:59:59", "")
+	add(1, "today.jpg", "2024-05-17 10:00:00", "") // this year: not a memory yet
+	add(1, "later.jpg", "2025-05-17 10:00:00", "") // a camera with a wrong clock
+	add(1, "daybefore.jpg", "2023-05-16 23:59:59", "")
+	add(1, "othermonth.jpg", "2023-06-17 10:00:00", "")
+	add(1, "archived.jpg", "2022-05-17 10:00:00", "is_archived = 1")
+	add(1, "gone.jpg", "2021-05-17 10:00:00", "missing_at = 1")
+	hash, _ := hashPassword("another pass")
+	a.db.Exec("insert into users (username, password_hash) values ('bob', ?)", hash)
+	a.db.Exec(`insert into libraries (owner_id, name, import_paths) values (2, 'bob', '[]')`)
+	add(2, "bobs.jpg", "2020-05-17 10:00:00", "")
+
+	var got []tile
+	get(t, ann, srv.URL+"/api/assets?onthisday=2024-05-17", &got)
+	if len(got) != 2 || got[0].Taken[:4] != "2023" || got[1].Taken[:4] != "2019" {
+		t.Fatalf("got %+v, want the 2023 and 2019 photos, newest first", got)
+	}
+	if r, _ := ann.Get(srv.URL + "/api/assets?onthisday=17/05"); r.StatusCode != 400 {
+		t.Errorf("bad date: %d, want 400", r.StatusCode)
+	}
+}
+
 // Behind a proxy on the same machine, wrong passwords are counted per visitor, not for everyone at once.
 func TestLoginRateLimitBehindProxy(t *testing.T) {
 	a, srv := newTestApp(t)
@@ -1174,6 +1419,82 @@ func TestLoginRateLimitBehindProxy(t *testing.T) {
 	}
 	if code := try("9.9.9.9, 198.51.100.7"); code != 401 {
 		t.Fatalf("faking an earlier hop must not matter: %d", code)
+	}
+}
+
+// Someone who already has an account and a folder of their own is given the family library too, then loses it again.
+func TestShareWithExistingAccount(t *testing.T) {
+	a, srv := newTestApp(t)
+	ann := client(t)
+	post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+t.TempDir()+`"}`)
+	waitScan(t, a)
+	for _, body := range []string{
+		`{"username":"carl","password":"another pass","path":"` + t.TempDir() + `"}`,
+		`{"username":"dora","password":"another pass","is_admin":true,"path":"` + t.TempDir() + `"}`,
+	} {
+		if code := post(t, ann, srv.URL+"/api/users", body); code != 200 {
+			t.Fatalf("add %s: %d", body, code)
+		}
+	}
+	waitScan(t, a) // adding someone with a folder starts a scan, which would drop rows that have no file
+	for i := 0; i < 3; i++ {
+		a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local, thumbs_at)
+			values (1, ?, '/p', 1, 1, x'00', 'image', 'image/jpeg', '2024-01-01 00:00:00', 1)`, fmt.Sprintf("/p/%d.jpg", i))
+	}
+	carl, dora := client(t), client(t)
+	post(t, carl, srv.URL+"/api/login", `{"username":"carl","password":"another pass"}`)
+	post(t, dora, srv.URL+"/api/login", `{"username":"dora","password":"another pass"}`)
+	sees := func() int {
+		var month []tile
+		get(t, carl, srv.URL+"/api/timeline?month=2024-01", &month)
+		return len(month)
+	}
+	if sees() != 0 {
+		t.Fatal("carl sees ann's photos before anything is shared")
+	}
+	users := srv.URL + "/api/users/"
+	if code := patch(t, dora, users+"2", `{"library_id":1,"shared":true}`); code != 404 {
+		t.Fatalf("an admin sharing a library she can't see herself = %d, want 404", code)
+	}
+	if code := patch(t, carl, users+"2", `{"library_id":2,"shared":true}`); code != 403 {
+		t.Fatalf("a non-admin sharing = %d, want 403", code)
+	}
+	if code := patch(t, ann, users+"99", `{"library_id":1,"shared":true}`); code != 404 {
+		t.Fatalf("sharing with nobody = %d, want 404", code)
+	}
+	if code := patch(t, ann, users+"2", `{"library_id":1,"shared":true}`); code != 204 || sees() != 3 {
+		t.Fatalf("share: %d, carl sees %d photos, want 204 and 3", code, sees())
+	}
+	var libs int
+	a.db.QueryRow("select count(*) from library_members where user_id = 2").Scan(&libs)
+	if libs != 2 {
+		t.Fatalf("carl is in %d libraries, want his own and ann's", libs)
+	}
+	var list []userRow
+	get(t, ann, srv.URL+"/api/users", &list)
+	if len(list) != 3 || len(list[1].Libraries) != 2 {
+		t.Fatalf("people list: %+v, want carl with 2 libraries", list)
+	}
+	// carl puts a shared photo in an album of his; when sharing stops it leaves the album
+	var month []tile
+	get(t, carl, srv.URL+"/api/timeline?month=2024-01", &month)
+	if code := post(t, carl, srv.URL+"/api/albums", `{"name":"trip","ids":[`+itoa(month[0].ID)+`]}`); code != 200 && code != 201 {
+		t.Fatalf("album: %d", code)
+	}
+	var inAlbums, kept int
+	if a.db.QueryRow("select count(*) from album_assets").Scan(&inAlbums); inAlbums != 1 {
+		t.Fatalf("%d photos in carl's album, want 1", inAlbums)
+	}
+	if code := patch(t, ann, users+"1", `{"library_id":1,"shared":false}`); code != 400 {
+		t.Fatalf("taking the library from its owner = %d, want 400", code)
+	}
+	if code := patch(t, ann, users+"2", `{"library_id":1,"shared":false}`); code != 204 || sees() != 0 {
+		t.Fatalf("stop sharing: %d, carl still sees %d photos", code, sees())
+	}
+	a.db.QueryRow("select count(*) from album_assets").Scan(&inAlbums)
+	a.db.QueryRow("select count(*) from assets where library_id = 1").Scan(&kept)
+	if inAlbums != 0 || kept != 3 {
+		t.Fatalf("after stopping: %d photos left in carl's album (want 0), ann has %d photos (want 3)", inAlbums, kept)
 	}
 }
 

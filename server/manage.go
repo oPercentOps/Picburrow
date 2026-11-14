@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // ---- favourites / archive
@@ -20,8 +21,18 @@ func (a *App) getAssets(w http.ResponseWriter, r *http.Request) {
 			order by a.taken_local desc, a.id desc limit 5000`, userFrom(r).ID)
 	case q.Get("archived") == "1":
 		a.writeTiles(w, `select `+tileCols+` `+own+` and a.is_archived = 1 order by a.taken_local desc, a.id desc limit 5000`, userFrom(r).ID)
+	case q.Get("onthisday") != "":
+		// today's date as the browser sees it (the server's clock may be in another time zone)
+		day, err := time.Parse("2006-01-02", q.Get("onthisday"))
+		if err != nil {
+			httpError(w, http.StatusBadRequest, "onthisday must look like 2024-05-17")
+			return
+		}
+		a.writeTiles(w, `select `+tileCols+` `+own+` and a.is_archived = 0 and substr(a.taken_local, 6, 5) = ?
+			and a.taken_local < ? order by a.taken_local desc, a.id desc limit 5000`,
+			userFrom(r).ID, day.Format("01-02"), day.Format("2006"))
 	default:
-		httpError(w, http.StatusBadRequest, "Ask for favorite=1 or archived=1")
+		httpError(w, http.StatusBadRequest, "Ask for favorite=1, archived=1 or onthisday=<date>")
 	}
 }
 
@@ -31,6 +42,7 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 		Favorite *bool   `json:"favorite"`
 		Archived *bool   `json:"archived"`
 		Rating   *int    `json:"rating"` // 0 clears
+		Rotate   int     `json:"rotate"` // 90, 180 or 270 degrees clockwise, added to the turn it already has
 	}
 	if !readJSON(w, r, &in) {
 		return
@@ -39,7 +51,11 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusBadRequest, "Rating is 0 to 5 stars")
 		return
 	}
-	if len(in.IDs) == 0 || len(in.IDs) > 5000 || (in.Favorite == nil && in.Archived == nil && in.Rating == nil) {
+	if in.Rotate != 0 && in.Rotate != 90 && in.Rotate != 180 && in.Rotate != 270 {
+		httpError(w, http.StatusBadRequest, "Rotate by 90, 180 or 270 degrees")
+		return
+	}
+	if len(in.IDs) == 0 || len(in.IDs) > 5000 || (in.Favorite == nil && in.Archived == nil && in.Rating == nil && in.Rotate == 0) {
 		httpError(w, http.StatusBadRequest, "Send 1 to 5000 ids and a field to change")
 		return
 	}
@@ -53,6 +69,12 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Rating != nil {
 		set, args = append(set, "rating = nullif(?, 0)"), append(args, *in.Rating)
+	}
+	if in.Rotate != 0 { // photos only: a turned poster over an unturned video would mislead. Previews are remade turned.
+		set = append(set, "rotation = case when type = 'image' then (rotation + ?) % 360 else rotation end",
+			"thumbs_at = case when type = 'image' then null else thumbs_at end")
+		args = append(args, in.Rotate)
+		defer a.wakeThumbs()
 	}
 	for _, id := range in.IDs {
 		args = append(args, id)

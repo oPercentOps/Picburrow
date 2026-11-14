@@ -77,7 +77,7 @@ Routes: 30 rows (36 endpoints counting each method).
 Webhooks in: none. Webhooks out: none.
 
 Jobs:
-- **scan**, on start, nightly 03:00 local, and on demand: walk import paths, skip exclusion globs, upsert by `(library_id, path)` when size/mtime changed, read metadata via exiftool, pair live photos, mark vanished files `missing_at`, relink moved files by quick_hash.
+- **scan**, on start, nightly 03:00 local, on demand, and every 15 minutes when a folder's modified time changed since the last scan (one stat per folder, no folder read): walk import paths, skip exclusion globs, upsert by `(library_id, path)` when size/mtime changed, read metadata via exiftool, read the XMP sidecar next to each file (keywords, description, stars; re-read alone when only the sidecar changed), pair live photos, mark vanished files `missing_at`, relink moved files by quick_hash.
 - **thumbs**, continuous at low priority (`nice 10`, `ionice idle`): take from `assets_todo`, newest first so the top of the timeline fills first; write small (~360 px) + large (~1440 px) WebP and the thumbhash.
 - **purge**, daily: delete DB rows (never files) and thumbnails for assets missing more than 30 days.
 - **sessions cleanup**, daily: delete expired sessions.
