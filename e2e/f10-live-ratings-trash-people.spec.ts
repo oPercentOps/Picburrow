@@ -104,6 +104,17 @@ test('P-1 an admin adds a family member with their own folder; they see only the
   await expect(lea.getByRole('link', { name: 'People' })).toHaveCount(0); // not an admin
   expect((await lea.request.get('/api/users')).status()).toBe(403);
 
+  // lea already has an account and a folder: the admin lets her see the family library too, then stops
+  const leaCount = async () => (await (await lea.request.get('/api/timeline/buckets')).json()).reduce((n: number, b: { count: number }) => n + b.count, 0);
+  const row = page.getByRole('listitem').filter({ hasText: 'lea' });
+  await row.getByRole('button', { name: /^Share my photos/ }).click();
+  await expect(page.getByRole('status').filter({ hasText: /lea now sees .+ too/ })).toBeVisible();
+  expect(await leaCount()).toBeGreaterThan(3);
+  await axe(page);
+  await row.getByRole('button', { name: /^Stop sharing/ }).click(); // the confirm is accepted by the guard
+  await expect(page.getByRole('status').filter({ hasText: /lea no longer sees/ })).toBeVisible();
+  expect(await leaCount()).toBe(3);
+
   answerPrompt(page, 'another password');
   await page.getByRole('listitem').filter({ hasText: 'lea' }).getByRole('button', { name: 'New password' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'New password set for lea' })).toBeVisible();

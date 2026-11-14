@@ -30,6 +30,7 @@ Checked by `server/app_test.go` (Go, real files), `e2e/slice.cjs` and `e2e/miles
 | — | live photos, ratings | 2026-11-13 | done | Google/Samsung motion photos (video embedded in the JPEG) | first schema migration; clips must be hidden from every list, and still reachable through share links |
 | — | new photos picked up within 15 minutes (fixes.md fix 9) | 2026-11-14 | done | an open timeline page shows them after a reload; the 15-minute timer itself is not exercised by a test, only the check it calls | a file still being uploaded grows without touching its folder's time, so recent files are watched too; a quick check running past 03:00 would have skipped the night's scan and trash purge |
 | S20 | On this day (fixes.md fix 11) | 2026-11-14 | done | no e2e spec (the fixture library has nothing dated today); checked by `TestOnThisDay` and by hand at 1440 and 390 px | "today" is the browser's date, not the server's: a Pi left on UTC would be a day off in the evening |
+| S16 | People: share a library with someone who already has an account, or stop (fixes.md fix 12) | 2026-11-14 | done | one-way partner sharing as Immich has it (here everyone in a library can favourite, rate and archive) | stopping must also take that library's photos out of the person's albums and album covers, or they would list photos they can no longer open |
 
 ## Backend findings
 

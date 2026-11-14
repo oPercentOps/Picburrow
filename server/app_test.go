@@ -1204,8 +1204,8 @@ func TestOnThisDay(t *testing.T) {
 	}
 	add(1, "2019.jpg", "2019-05-17 08:00:00", "")
 	add(1, "2023.jpg", "2023-05-17 23:59:59", "")
-	add(1, "today.jpg", "2024-05-17 10:00:00", "")    // this year: not a memory yet
-	add(1, "later.jpg", "2025-05-17 10:00:00", "")    // a camera with a wrong clock
+	add(1, "today.jpg", "2024-05-17 10:00:00", "") // this year: not a memory yet
+	add(1, "later.jpg", "2025-05-17 10:00:00", "") // a camera with a wrong clock
 	add(1, "daybefore.jpg", "2023-05-16 23:59:59", "")
 	add(1, "othermonth.jpg", "2023-06-17 10:00:00", "")
 	add(1, "archived.jpg", "2022-05-17 10:00:00", "is_archived = 1")
@@ -1253,6 +1253,82 @@ func TestLoginRateLimitBehindProxy(t *testing.T) {
 	}
 	if code := try("9.9.9.9, 198.51.100.7"); code != 401 {
 		t.Fatalf("faking an earlier hop must not matter: %d", code)
+	}
+}
+
+// Someone who already has an account and a folder of their own is given the family library too, then loses it again.
+func TestShareWithExistingAccount(t *testing.T) {
+	a, srv := newTestApp(t)
+	ann := client(t)
+	post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+t.TempDir()+`"}`)
+	waitScan(t, a)
+	for _, body := range []string{
+		`{"username":"carl","password":"another pass","path":"` + t.TempDir() + `"}`,
+		`{"username":"dora","password":"another pass","is_admin":true,"path":"` + t.TempDir() + `"}`,
+	} {
+		if code := post(t, ann, srv.URL+"/api/users", body); code != 200 {
+			t.Fatalf("add %s: %d", body, code)
+		}
+	}
+	waitScan(t, a) // adding someone with a folder starts a scan, which would drop rows that have no file
+	for i := 0; i < 3; i++ {
+		a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local, thumbs_at)
+			values (1, ?, '/p', 1, 1, x'00', 'image', 'image/jpeg', '2024-01-01 00:00:00', 1)`, fmt.Sprintf("/p/%d.jpg", i))
+	}
+	carl, dora := client(t), client(t)
+	post(t, carl, srv.URL+"/api/login", `{"username":"carl","password":"another pass"}`)
+	post(t, dora, srv.URL+"/api/login", `{"username":"dora","password":"another pass"}`)
+	sees := func() int {
+		var month []tile
+		get(t, carl, srv.URL+"/api/timeline?month=2024-01", &month)
+		return len(month)
+	}
+	if sees() != 0 {
+		t.Fatal("carl sees ann's photos before anything is shared")
+	}
+	users := srv.URL + "/api/users/"
+	if code := patch(t, dora, users+"2", `{"library_id":1,"shared":true}`); code != 404 {
+		t.Fatalf("an admin sharing a library she can't see herself = %d, want 404", code)
+	}
+	if code := patch(t, carl, users+"2", `{"library_id":2,"shared":true}`); code != 403 {
+		t.Fatalf("a non-admin sharing = %d, want 403", code)
+	}
+	if code := patch(t, ann, users+"99", `{"library_id":1,"shared":true}`); code != 404 {
+		t.Fatalf("sharing with nobody = %d, want 404", code)
+	}
+	if code := patch(t, ann, users+"2", `{"library_id":1,"shared":true}`); code != 204 || sees() != 3 {
+		t.Fatalf("share: %d, carl sees %d photos, want 204 and 3", code, sees())
+	}
+	var libs int
+	a.db.QueryRow("select count(*) from library_members where user_id = 2").Scan(&libs)
+	if libs != 2 {
+		t.Fatalf("carl is in %d libraries, want his own and ann's", libs)
+	}
+	var list []userRow
+	get(t, ann, srv.URL+"/api/users", &list)
+	if len(list) != 3 || len(list[1].Libraries) != 2 {
+		t.Fatalf("people list: %+v, want carl with 2 libraries", list)
+	}
+	// carl puts a shared photo in an album of his; when sharing stops it leaves the album
+	var month []tile
+	get(t, carl, srv.URL+"/api/timeline?month=2024-01", &month)
+	if code := post(t, carl, srv.URL+"/api/albums", `{"name":"trip","ids":[`+itoa(month[0].ID)+`]}`); code != 200 && code != 201 {
+		t.Fatalf("album: %d", code)
+	}
+	var inAlbums, kept int
+	if a.db.QueryRow("select count(*) from album_assets").Scan(&inAlbums); inAlbums != 1 {
+		t.Fatalf("%d photos in carl's album, want 1", inAlbums)
+	}
+	if code := patch(t, ann, users+"1", `{"library_id":1,"shared":false}`); code != 400 {
+		t.Fatalf("taking the library from its owner = %d, want 400", code)
+	}
+	if code := patch(t, ann, users+"2", `{"library_id":1,"shared":false}`); code != 204 || sees() != 0 {
+		t.Fatalf("stop sharing: %d, carl still sees %d photos", code, sees())
+	}
+	a.db.QueryRow("select count(*) from album_assets").Scan(&inAlbums)
+	a.db.QueryRow("select count(*) from assets where library_id = 1").Scan(&kept)
+	if inAlbums != 0 || kept != 3 {
+		t.Fatalf("after stopping: %d photos left in carl's album (want 0), ann has %d photos (want 3)", inAlbums, kept)
 	}
 }
 

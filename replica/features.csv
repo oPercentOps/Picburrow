@@ -23,7 +23,7 @@ Archive/hide from timeline,organize,should,yes,yes,viewer button moves on to the
 Multi-select in grid (shift-click / long-press),browse,should,yes,yes,"select circle (keyboard: Space), shift-click, long-press on phones; bar: favourite, add to album, archive / remove from album"
 Live/motion photos (still + short video pair),view,should,yes,yes,"paired by Apple content id, else same name + clip <= 5 s; one item with a Live badge; Play live photo (or L) plays the clip over the still; also through share links. Google/Samsung embedded motion photos not read"
 Public share link for an album (optional expiry/password),sharing,should,yes,yes,"S12: random 256-bit token, optional password (per-browser unlock), expiry, view-only mode; visitors see only the album"
-Multiple users with own libraries,auth,should,yes,yes,"People page: admins add family members with their own folder (or sharing one library), reset passwords (signs them out), delete; nobody sees photos of a library they are not in"
+Multiple users with own libraries,auth,should,yes,yes,"People page: admins add family members with their own folder, share libraries with them, reset passwords (signs them out), delete; nobody sees photos of a library they are not in"
 Keep metadata stable when a file moves (content hash),library,should,no,yes,tested: favourite survives a move
 XMP sidecar read (description rating date GPS tags),library,could,yes,no,Immich xmp-sidecars.md; IMG.jpg.xmp preferred over IMG.xmp
 Write favourites/albums back to XMP sidecars,library,could,yes,no,"Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise"
@@ -44,7 +44,7 @@ Installable PWA (add to home screen),clients,should,yes,yes,"manifest + own icon
 Hierarchical tags (read from XMP/IPTC),organize,could,yes,no,Immich tags.md
 Locked folder behind a PIN,organize,could,yes,no,Immich locked-folder.md: 15 min unlocked session
 Star rating,organize,could,yes,yes,"0-5 in the viewer (stars or keys), read from XMP/EXIF Rating; the app wins on rescan"
-Partner sharing (whole library to another user),sharing,could,yes,partial,"Immich partner-sharing.md is one-way between two accounts that keep their own libraries. Here: People -> Add someone -> Share my photos: one library, both see it, favourites/ratings/archive shared, albums personal. Only when the account is created; a person has a folder of their own or a shared one, not both"
+Partner sharing (whole library to another user),sharing,could,yes,yes,"People page: an admin shares a library they see with any account, new or existing, and can stop; a person keeps their own folder too. Unlike Immich's one-way partner sharing, everyone in a library can favourite, rate and archive in it; albums stay personal. Stopping takes that library's photos out of the person's albums"
 Blurred placeholder (thumbhash) while thumbnails load,browse,should,yes,yes,"a ~16 px WebP stored with each photo, blurred behind the tile until the thumbnail loads (not the ThumbHash algorithm)"
 WebDAV access to the library,sync,skip,yes,skip,PhotoPrism feature; out of browse+view slice
 OCR text search,search,skip,yes,skip,Immich searching.md; needs ML
