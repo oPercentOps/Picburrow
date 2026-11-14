@@ -28,6 +28,7 @@ Checked by `server/app_test.go` (Go, real files), `e2e/slice.cjs` and `e2e/miles
 | S17 | More (phones) | 2026-11-13 | done | — | BUG-011: half the app was unreachable on phones since milestone 2 |
 | — | fixes from user research (install, SD warning, backups, capture details, batch rating) | 2026-11-13 | done | service start on a real Pi; SD warning seen on a real SD card | capture details read on demand: storing them would force a re-read that also regenerates every preview |
 | — | live photos, ratings | 2026-11-13 | done | Google/Samsung motion photos (video embedded in the JPEG) | first schema migration; clips must be hidden from every list, and still reachable through share links |
+| — | new photos picked up within 15 minutes (fixes.md fix 9) | 2026-11-14 | done | an open timeline page shows them after a reload; the 15-minute timer itself is not exercised by a test, only the check it calls | a file still being uploaded grows without touching its folder's time, so recent files are watched too; a quick check running past 03:00 would have skipped the night's scan and trash purge |
 
 ## Backend findings
 

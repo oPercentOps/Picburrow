@@ -73,7 +73,7 @@ Second pass, 2026-11-14. The first pass (2026-11-13) had one source; this one ha
 - "A cron job that runs the `photoprism import` command every few minutes." https://midwest.social/comment/12517455
 - "I simply sync the Photos from my smartphone to a folder and make PhotoPrism scan it on a regular basis using ofelia." https://lemmy.sdf.org/comment/13463630
 - "I use a folder sync app, to upload all my pictures from my phone to a directory on my server, which PhotoPrism imports from every 15 mins(Might be a bit more or less)." https://endlesstalk.org/comment/6065284
-- **Picburrow has this gap today**: it scans at start-up, at 03:00 and when an admin presses Scan now (`server/main.go`). A photo synced at noon appears the next morning.
+- **Picburrow had this gap until 2026-11-14**: it scanned at start-up, at 03:00 and on Scan now, so a photo synced at noon appeared the next morning. Fixed by fix 9.
 
 **M1. A library the whole family sees** (3 sources, 1 comment each: thin)
 - "It only lets 2 users to share and view the photos in the same timeline, while the third user can only view photos from one another user in timeline." (1 star) https://apps.apple.com/in/app/immich/id1613945652?see-all=reviews#13851507950
@@ -154,7 +154,7 @@ Ranked by evidence times cheapness.
 
 | # | what | evidence | size | skill |
 | --- | --- | --- | --- | --- |
-| 9 | **New photos appear within minutes**: a light rescan every 15 minutes (only folders whose modified time changed), keeping the 03:00 full scan | M5, U1; the gap is real in today's code | S | `/replica-build` |
+| 9 | **New photos appear within minutes**: every 15 minutes, a scan if any folder's modified time changed; the 03:00 full scan stays | M5, U1 | S | **done** 2026-11-14 (`TestFoldersChanged`) |
 | 10 | **A tested guide for getting phone photos into the folder**, iPhone and Android, one sync tool each, linked from the empty timeline after setup | the evidence against our approach, H5 | S (writing) + phones to test on | `/replica-launch` docs; can't be tested from a build box |
 | 11 | **On this day**: a row at the top of the timeline when earlier years have photos from today | M6, U3 (thin) | S | `/replica-build` |
 | 12 | **Share a library with an account that already exists**, and let a person have their own folder plus a shared one | M1 (thin, 3 sources) | S | `/replica-build` |

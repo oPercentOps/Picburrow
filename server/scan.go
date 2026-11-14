@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,6 +32,7 @@ type scanState struct {
 	again   bool // a scan was requested while one was running
 	found   int
 	lastErr string
+	watch   map[string]int64 // folders (and files still being written) -> modified time at the last scan
 }
 
 type existing struct {
@@ -106,12 +108,22 @@ func (a *App) scanLibrary(libID int64) error {
 				}
 				return nil
 			}
-			if d.IsDir() || !d.Type().IsRegular() || !mediaExt[strings.ToLower(filepath.Ext(p))] {
+			if d.IsDir() {
+				if info, err := d.Info(); err == nil {
+					a.noteWatch(p, info.ModTime())
+				}
+				return nil
+			}
+			if !d.Type().IsRegular() || !mediaExt[strings.ToLower(filepath.Ext(p))] {
 				return nil
 			}
 			info, err := d.Info()
 			if err != nil {
 				return nil
+			}
+			// a file a sync tool may still be writing: growing in place doesn't touch its folder's time
+			if time.Since(info.ModTime()) < 10*time.Minute {
+				a.noteWatch(p, info.ModTime())
 			}
 			seen[p] = true
 			files++
@@ -130,6 +142,9 @@ func (a *App) scanLibrary(libID int64) error {
 		})
 		if err != nil {
 			walkErrs = append(walkErrs, err.Error())
+		}
+		if rootErr {
+			a.noteWatch(root, time.Time{}) // so the quick check notices when it comes back
 		}
 		// An unmounted share is usually an empty mount-point dir: zero files where we had some = offline.
 		if rootErr || (files == 0 && hasKnownUnder(known, root)) {
@@ -363,6 +378,9 @@ func (a *App) claimScan() bool {
 func (a *App) runScans() {
 	defer a.wakeThumbs()
 	for {
+		a.scan.mu.Lock()
+		a.scan.watch = nil
+		a.scan.mu.Unlock()
 		ids, err := queryIDs(a.db, "select id from libraries")
 		if err != nil {
 			log.Printf("scan: %v", err)
@@ -384,6 +402,46 @@ func (a *App) runScans() {
 		a.scan.again = false
 		a.scan.mu.Unlock()
 	}
+}
+
+func (a *App) noteWatch(p string, mod time.Time) {
+	a.scan.mu.Lock()
+	defer a.scan.mu.Unlock()
+	if a.scan.watch == nil {
+		a.scan.watch = map[string]int64{}
+	}
+	a.scan.watch[p] = modNano(mod)
+}
+
+func modNano(t time.Time) int64 {
+	if t.IsZero() {
+		return 0
+	}
+	return t.UnixNano()
+}
+
+// foldersChanged reports whether anything noted by the last scan has a different modified time now: a file
+// was added to, removed from or renamed in a folder, or a file that was being written has grown. It is one
+// stat per folder and reads no folder, so it can run every few minutes on a Pi without keeping disks busy.
+// shortcut: an old file rewritten in place, or a filesystem that doesn't update folder times, waits for the 03:00 scan.
+func (a *App) foldersChanged() bool {
+	a.scan.mu.Lock()
+	if a.scan.running {
+		a.scan.mu.Unlock()
+		return false
+	}
+	watch := maps.Clone(a.scan.watch)
+	a.scan.mu.Unlock()
+	for p, was := range watch {
+		var now int64 // 0 = not there, same as an offline folder
+		if info, err := os.Lstat(p); err == nil {
+			now = modNano(info.ModTime())
+		}
+		if now != was {
+			return true
+		}
+	}
+	return false
 }
 
 func queryIDs(db *sql.DB, q string, args ...any) ([]int64, error) {

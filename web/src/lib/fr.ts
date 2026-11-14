@@ -81,7 +81,7 @@ export const fr: Record<string, string> = {
   "Full screen": "Plein écran",
   "Give the album a name (up to 200 characters)": "Donnez un nom à l'album (200 caractères maximum)",
   "Give the library a name (up to 100 characters)": "Donnez un nom à la bibliothèque (100 caractères maximum)",
-  "Idle. Folders are scanned at start-up and every night at 03:00.": "Au repos. Les dossiers sont analysés au démarrage et chaque nuit à 03:00.",
+  "Idle. New photos are picked up within about 15 minutes. A full scan runs at start-up and every night at 03:00.": "Au repos. Les nouvelles photos sont détectées en 15 minutes environ. Une analyse complète a lieu au démarrage et chaque nuit à 03:00.",
   "Indexing": "Indexation",
   "Invalid JSON": "JSON invalide",
   "It may have expired, or the owner turned it off. Ask them for a new one.": "Il a peut-être expiré, ou son propriétaire l'a désactivé. Demandez-lui un nouveau lien.",

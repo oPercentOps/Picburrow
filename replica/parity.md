@@ -4,15 +4,15 @@ Build: 0.1.8 (028e65c): + video playback copies, shared family library, slidesho
 
 | | score |
 | --- | --- |
-| **Overall** | **86.8** (features only; layout not measured, see below) |
-| Features | 86.8 / 100, must-haves **18 of 18**, should-haves **11 of 12** (one partial) |
+| **Overall** | **87.9** (features only; layout not measured, see below) |
+| Features | 87.9 / 100, must-haves **18 of 18**, should-haves **12 of 12** |
 | Layout | not measured |
 | Open bugs | 0 S1, 0 S2 (`replica/bugs.md`) |
 | Tests at this build | `make test` green; e2e 60 passed (the 5 skips are phone-only tests skipped in the desktop run; they pass in the phone run) |
 
 **Verdict: shippable** by this report's bar: every must-have works, the feature score reaches 80, and no S1 or S2 bug is open (`replica/bugs.md`). That is a family/LAN release; the real-hardware checks below still decide whether it is a *Raspberry Pi 3* release.
 
-Down from 87.6 the same day: the review research (`replica/fixes.md`, M5) found a should-have the matrix lacked, and Picburrow only half does it: new photos are picked up at start-up, at 03:00 or on Scan now, not within minutes. The verdict does not change.
+Up from 86.8 the same day. The review research (`replica/fixes.md`, M5) found a should-have the matrix lacked: new photos picked up within minutes, not at 03:00. It was built the same day (a quick folder check every 15 minutes), so the row is now done.
 
 What moved between 87.1 and 87.6:
 
@@ -21,24 +21,23 @@ What moved between 87.1 and 87.6:
 - Two rows the matrix was missing, both in Immich: **slideshow** (done) and **interface languages** (partial: English and French against dozens).
 - **Sleep mode** (photo frame) is ours; not scored.
 
-Between those two reports the score barely moved: one should-have was added and done, the other new rows are could-haves, and two of those are partial. Apart from the rescan row above, everything still missing is a could-have.
+Between those two reports the score barely moved: one should-have was added and done, the other new rows are could-haves, and two of those are partial. Everything still missing is a could-have.
 
 ## Feature parity (parity.py)
 
-features 86.8  (44 counted, must-haves 18 of 18 done)
+features 87.9  (44 counted, must-haves 18 of 18 done)
 
 ## By area, weakest first
 - search                        66.7  (2 features)
 - organize                      75.0  (8 features)
 - sharing                       83.3  (2 features)
 - clients                       83.3  (2 features)
-- library                       86.4  (9 features)
 - browse                        88.9  (8 features)
+- library                       90.9  (9 features)
 - view                          92.0  (11 features)
 - auth                         100.0  (2 features)
 
 ## Missing, in build order
-- [should] library: New photos appear within minutes of landing in the folder (no cron, no button), partial  (scan at start-up, 03:00 and on Scan now only)
 - [could] browse: Map of geotagged photos, no  (needs map tiles from an external provider)
 - [could] browse: On this day / memories, no
 - [could] library: Write favourites/albums back to XMP sidecars, no  (Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise)
@@ -128,10 +127,10 @@ The 48 MP case is over the 350 MB target set in `architecture.md`. It still fits
 
 Reordered by what users of the originals say (`replica/fixes.md`, round 2):
 
-1. **New photos appear within minutes**: a light rescan every 15 minutes. The only should-have not fully done.
-2. **The real-hardware pass**: a 1 GB Pi 3 with real iPhone HEICs and live photos, memory during a video conversion, Safari on an iPhone, a screen reader. Still open in `deploy.md` and `test-plan.md`; it decides the release.
-3. **On this day**: a small row on the timeline.
-4. **Share a library with an account that already exists**: turns partner sharing from partial to done; the membership table is already there.
-5. **Rotate**, stored in the database and applied to previews.
+1. **The real-hardware pass**: a 1 GB Pi 3 with real iPhone HEICs and live photos, memory during a video conversion, Safari on an iPhone, a screen reader. Still open in `deploy.md` and `test-plan.md`; it decides the release.
+2. **On this day**: a small row on the timeline.
+3. **Share a library with an account that already exists**: turns partner sharing from partial to done; the membership table is already there.
+4. **Rotate**, stored in the database and applied to previews.
+5. **XMP sidecar read**: keywords, ratings and descriptions other tools wrote next to the photos.
 
-Then XMP sidecar read and the duplicate finder. Outside the code: a tested guide for getting phone photos into the folder.
+Then the duplicate finder. Outside the code: a tested guide for getting phone photos into the folder.

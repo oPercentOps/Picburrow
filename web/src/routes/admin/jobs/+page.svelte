@@ -40,7 +40,7 @@
   {#if jobs}
     <section aria-labelledby="scan-h">
       <h2 id="scan-h">{t('Folder scan')}</h2>
-      <p role="status">{jobs.scanning ? t('Scanning: {n} new or changed files so far', { n: jobs.scan_found.toLocaleString() }) : t('Idle. Folders are scanned at start-up and every night at 03:00.')}</p>
+      <p role="status">{jobs.scanning ? t('Scanning: {n} new or changed files so far', { n: jobs.scan_found.toLocaleString() }) : t('Idle. New photos are picked up within about 15 minutes. A full scan runs at start-up and every night at 03:00.')}</p>
       {#if jobs.scan_error}<p class="error-msg">{jobs.scan_error}</p>{/if}
     </section>
     <section aria-labelledby="th-h">

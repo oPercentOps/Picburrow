@@ -299,6 +299,49 @@ func waitScan(t *testing.T, a *App) {
 	t.Fatal("scan did not finish in 30 s")
 }
 
+// A photo a sync tool drops into a folder is noticed by the quick check (one stat per folder), and so is a
+// file that was still being written when it was first indexed.
+func TestFoldersChanged(t *testing.T) {
+	if _, err := exec.LookPath("exiftool"); err != nil {
+		t.Skip("exiftool not installed")
+	}
+	lib := t.TempDir()
+	sub := filepath.Join(lib, "2024")
+	os.MkdirAll(sub, 0o755)
+	os.WriteFile(filepath.Join(sub, "a.jpg"), []byte("x"), 0o644)
+	a, srv := newTestApp(t)
+	if code := post(t, client(t), srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	count := func() (n int) {
+		a.db.QueryRow("select count(*) from assets where missing_at is null").Scan(&n)
+		return
+	}
+	if a.foldersChanged() {
+		t.Fatal("nothing changed, but the quick check asks for a scan")
+	}
+	time.Sleep(20 * time.Millisecond) // file systems stamp times in coarse steps
+	os.WriteFile(filepath.Join(sub, "b.jpg"), []byte("y"), 0o644)
+	if !a.foldersChanged() {
+		t.Fatal("a new file in a subfolder was not noticed")
+	}
+	a.scanAll()
+	if count() != 2 || a.foldersChanged() {
+		t.Fatalf("after the scan: %d photos (want 2), still changed: %v", count(), a.foldersChanged())
+	}
+	time.Sleep(20 * time.Millisecond)
+	os.WriteFile(filepath.Join(sub, "b.jpg"), []byte("yyyy"), 0o644) // grows in place: the folder's time stays
+	if !a.foldersChanged() {
+		t.Fatal("a file that was still being written was not noticed")
+	}
+	a.scanAll()
+	os.RemoveAll(sub)
+	if !a.foldersChanged() {
+		t.Fatal("a removed folder was not noticed")
+	}
+}
+
 // TestScanRequestDuringScanIsNotLost: the bug where a library edited mid-scan was ignored until the nightly scan.
 func TestScanRequestDuringScanIsNotLost(t *testing.T) {
 	a, _ := newTestApp(t)
