@@ -4,38 +4,41 @@ Build: 0.1.8 (028e65c): + video playback copies, shared family library, slidesho
 
 | | score |
 | --- | --- |
-| **Overall** | **87.6** (features only; layout not measured, see below) |
-| Features | 87.6 / 100, must-haves **18 of 18**, should-haves **11 of 11** |
+| **Overall** | **86.8** (features only; layout not measured, see below) |
+| Features | 86.8 / 100, must-haves **18 of 18**, should-haves **11 of 12** (one partial) |
 | Layout | not measured |
 | Open bugs | 0 S1, 0 S2 (`replica/bugs.md`) |
 | Tests at this build | `make test` green; e2e 60 passed (the 5 skips are phone-only tests skipped in the desktop run; they pass in the phone run) |
 
 **Verdict: shippable** by this report's bar: every must-have works, the feature score reaches 80, and no S1 or S2 bug is open (`replica/bugs.md`). That is a family/LAN release; the real-hardware checks below still decide whether it is a *Raspberry Pi 3* release.
 
-Up from 87.1. What moved since the last report:
+Down from 87.6 the same day: the review research (`replica/fixes.md`, M5) found a should-have the matrix lacked, and Picburrow only half does it: new photos are picked up at start-up, at 03:00 or on Scan now, not within minutes. The verdict does not change.
+
+What moved between 87.1 and 87.6:
 
 - **Video transcoding** was "left out on purpose" (thought impossible in 1 GB). It now exists as background 720p H.264 playback copies, so the row is scored as a should-have, done.
 - **Partner sharing** went from no to partial: a family member can share one library, but only when the account is created, and a person has either a folder of their own or the shared one.
 - Two rows the matrix was missing, both in Immich: **slideshow** (done) and **interface languages** (partial: English and French against dozens).
 - **Sleep mode** (photo frame) is ours; not scored.
 
-The score barely moved: one should-have was added and done, the other new rows are could-haves, and two of those are partial. Everything still missing is a could-have.
+Between those two reports the score barely moved: one should-have was added and done, the other new rows are could-haves, and two of those are partial. Apart from the rescan row above, everything still missing is a could-have.
 
 ## Feature parity (parity.py)
 
-features 87.6  (43 counted, must-haves 18 of 18 done)
+features 86.8  (44 counted, must-haves 18 of 18 done)
 
 ## By area, weakest first
 - search                        66.7  (2 features)
 - organize                      75.0  (8 features)
 - sharing                       83.3  (2 features)
 - clients                       83.3  (2 features)
+- library                       86.4  (9 features)
 - browse                        88.9  (8 features)
-- library                       90.0  (8 features)
 - view                          92.0  (11 features)
 - auth                         100.0  (2 features)
 
 ## Missing, in build order
+- [should] library: New photos appear within minutes of landing in the folder (no cron, no button), partial  (scan at start-up, 03:00 and on Scan now only)
 - [could] browse: Map of geotagged photos, no  (needs map tiles from an external provider)
 - [could] browse: On this day / memories, no
 - [could] library: Write favourites/albums back to XMP sidecars, no  (Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise)
@@ -66,6 +69,7 @@ features 87.6  (43 counted, must-haves 18 of 18 done)
 - Full capture details (aperture, shutter, ISO, focal length, flash)
 - Batch rating from the selection bar
 - Sleep mode: slideshow starts when the screen is left alone (photo frame)
+- Tested guide for getting phone photos into the folder (iPhone and Android): not written yet
 
 ## Layout diff: not measured
 
@@ -120,12 +124,14 @@ Not measured: memory while ffmpeg makes a video playback copy. It runs after all
 
 The 48 MP case is over the 350 MB target set in `architecture.md`. It still fits a 1 GB Pi (about 750 MB usable) only because thumbnails are made one at a time (`--workers 1`). Keep that default. A real 1 GB Pi 3 with real iPhone files is still the deciding test.
 
-## Top five to build next (all could-haves)
+## Top five to build next
 
-1. **The real-hardware pass**: a 1 GB Pi 3 with real iPhone HEICs and live photos, memory during a video conversion, Safari on an iPhone, a screen reader. Still open in `deploy.md` and `test-plan.md`; it decides the release.
-2. **XMP sidecar read**: descriptions, ratings and tags that other tools wrote next to the photos.
-3. **Duplicate finder** by exact hash: cheap on a Pi, useful after years of phone backups.
-4. **On this day**: a small row on the timeline; families love it.
-5. **Share a library with an account that already exists**: turns partner sharing from partial to done; the membership table is already there.
+Reordered by what users of the originals say (`replica/fixes.md`, round 2):
 
-Then rotate (stored in the database, applied to thumbnails). Parity is there, so `/replica-entrepreneur` is the other way forward: the behaviour table shows wins on install, moved files, unmounted shares, read-only mounts, the trash and the photo frame.
+1. **New photos appear within minutes**: a light rescan every 15 minutes. The only should-have not fully done.
+2. **The real-hardware pass**: a 1 GB Pi 3 with real iPhone HEICs and live photos, memory during a video conversion, Safari on an iPhone, a screen reader. Still open in `deploy.md` and `test-plan.md`; it decides the release.
+3. **On this day**: a small row on the timeline.
+4. **Share a library with an account that already exists**: turns partner sharing from partial to done; the membership table is already there.
+5. **Rotate**, stored in the database and applied to previews.
+
+Then XMP sidecar read and the duplicate finder. Outside the code: a tested guide for getting phone photos into the folder.

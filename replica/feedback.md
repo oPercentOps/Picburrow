@@ -1,95 +1,96 @@
 # What users of the original hate and want
 
-383 reviews from 1 sources (hacker-news). 0 had star ratings.
+1197 reviews from 3 sources (app-store, hacker-news, lemmy). 221 had star ratings.
+1 duplicate reviews removed.
 
 ## What they hate
 
 | rank | theme | score | reviews | share | avg stars | sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Install and Docker/Postgres complexity (thin) | 43.5 | 91 | 24% | - | 1 |
-| 2 | Sync and lost data (thin) | 33.0 | 66 | 17% | - | 1 |
-| 3 | Too heavy: RAM, CPU, hardware (thin) | 28.8 | 60 | 16% | - | 1 |
-| 4 | Doesn't respect my existing folders / files (thin) | 23.1 | 44 | 12% | - | 1 |
-| 5 | Price and paywalls (thin) | 13.5 | 26 | 7% | - | 1 |
-| 6 | Breaking changes and risky upgrades (thin) | 11.7 | 25 | 6% | - | 1 |
-| 7 | Slow, laggy, heavy (thin) | 9.0 | 17 | 4% | - | 1 |
-| 8 | Privacy and permissions (thin) | 6.6 | 14 | 4% | - | 1 |
-| 9 | Paid tiers and licence (thin) | 5.1 | 12 | 3% | - | 1 |
-| 10 | Bugs and crashes (thin) | 4.8 | 10 | 3% | - | 1 |
-| 11 | Login and account problems (thin) | 3.6 | 7 | 2% | - | 1 |
-| 12 | Confusing or clunky to use (thin) | 3.6 | 7 | 2% | - | 1 |
-| 13 | A redesign or update made it worse (thin) | 1.5 | 3 | 1% | - | 1 |
+| 1 | Install and Docker/Postgres complexity | 128.8 | 274 | 23% | 4.3 | 3 |
+| 2 | Sync and lost data | 90.6 | 196 | 16% | 3.6 | 3 |
+| 3 | Too heavy: RAM, CPU, hardware | 79.4 | 171 | 14% | 4.8 | 3 |
+| 4 | Doesn't respect my existing folders / files | 47.3 | 100 | 8% | 4.5 | 3 |
+| 5 | Price and paywalls | 43.6 | 87 | 7% | 3.7 | 3 |
+| 6 | Breaking changes and risky upgrades | 33.9 | 73 | 6% | 4.3 | 3 |
+| 7 | Privacy and permissions | 32.5 | 67 | 6% | 4.2 | 3 |
+| 8 | Bugs and crashes | 29.5 | 58 | 5% | 2.7 | 3 |
+| 9 | Slow, laggy, heavy | 27.5 | 55 | 5% | 2.4 | 3 |
+| 10 | Login and account problems | 17.1 | 36 | 3% | 2.7 | 3 |
+| 11 | Paid tiers and licence | 16.0 | 39 | 3% | 4.2 | 3 |
+| 12 | Confusing or clunky to use | 10.0 | 19 | 2% | 1.0 | 3 |
+| 13 | A redesign or update made it worse | 5.9 | 11 | 1% | 3.0 | 3 |
 
 **Install and Docker/Postgres complexity**
-- "Postgres, SSD." (hacker-news, -) https://news.ycombinator.com/item?id=36689891
-- "- postgresql: 600MB" (hacker-news, -) https://news.ycombinator.com/item?id=50217316
-- "I don't hate docker." (hacker-news, -) https://news.ycombinator.com/item?id=50114669
+- "Also there’s a bug when we setup 3 users." (app-store, 1*) https://apps.apple.com/in/app/immich/id1613945652?see-all=reviews#13851507950
+- "This docker container and app has been the bomb on uploading your pictures & videos to your server anywhere at anytime with a Internet connection!" (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#11507929576
+- "I set up the server and all my family’s devices to sync as a move away from Apple and Google Photos but so far with a large library like 50,000 photos and videos it completely hangs when launching the app and navigating..." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#13005016050
 
 **Sync and lost data**
-- "- offlineimap sync from gmail" (hacker-news, -) https://news.ycombinator.com/item?id=41983651
-- "edit: syncthing for file sync" (hacker-news, -) https://news.ycombinator.com/item?id=41617008
-- "* Photo storage and backup with Immich" (hacker-news, -) https://news.ycombinator.com/item?id=50075464
+- "Won’t Sync." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#10910244277
+- "can not sync photo" (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#13818169432
+- "Terrible Photo Backup App" (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#13194004299
 
 **Too heavy: RAM, CPU, hardware**
-- "Screenshots are stored on my NAS." (hacker-news, -) https://news.ycombinator.com/item?id=49513878
-- "It's a basic N100 machine with 8GB RAM." (hacker-news, -) https://news.ycombinator.com/item?id=42513680
-- "Just the memory usage is still a bit high." (hacker-news, -) https://news.ycombinator.com/item?id=36681895
+- "- 8GB RAM" (lemmy, -) https://lemmy.world/comment/13514517
+- "256GB Boot drive" (lemmy, -) https://lemmy.dbzer0.com/comment/11680877
+- "- It feels bloated." (lemmy, -) https://slrpnk.net/comment/8983895
 
 **Doesn't respect my existing folders / files**
 - "Another gap is metadata." (hacker-news, -) https://news.ycombinator.com/item?id=49540322
 - "Shared network folder with spouse" (hacker-news, -) https://news.ycombinator.com/item?id=50014938
-- "Immich will also index your folders as they are." (hacker-news, -) https://news.ycombinator.com/item?id=49539299
+- "Personally I prefer FolderSync + SSH." (lemmy, -) https://feddit.nl/comment/28239130
 
 **Price and paywalls**
-- "What will it cost?" (hacker-news, -) https://news.ycombinator.com/item?id=49582212
-- "This pricing is ridiculous." (hacker-news, -) https://news.ycombinator.com/item?id=50120367
-- "They offer a lifetime price of $128." (hacker-news, -) https://news.ycombinator.com/item?id=39785497
+- "Only the mobile app is free, the desktop app costs $25." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#14625550665
+- "Best alternative to Google Photos BUT it’s now subscription based" (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#11507929576
+- "It's expensive." (lemmy, -) https://piefed.social/comment/13350267
 
 **Breaking changes and risky upgrades**
+- "It’s got a lot going for it, but just feels unstable and buggy." (app-store, 2*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#13636635790
 - "Immich constantly breaks." (hacker-news, -) https://news.ycombinator.com/item?id=36681133
-- "Auto-reestablishes on internal IP change or tunnel breaks." (hacker-news, -) https://news.ycombinator.com/item?id=50015087
-- "I literally just migrated from Photoprism to Immich 4 days ago." (hacker-news, -) https://news.ycombinator.com/item?id=45448837
+- "The only breaking update was from beta to stable." (lemmy, -) https://programming.dev/comment/25986001
 
 ## What they ask for
 
 | rank | theme | score | reviews | share | avg stars | sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Phone backup and mobile apps (thin) | 41.1 | 83 | 22% | - | 1 |
-| 2 | Faces, ML and smart search (thin) | 33.9 | 69 | 18% | - | 1 |
-| 3 | Leaving Google Photos / iCloud (thin) | 27.6 | 56 | 15% | - | 1 |
-| 4 | Teams and sharing (thin) | 19.8 | 38 | 10% | - | 1 |
-| 5 | Integrations, import and export (thin) | 14.4 | 29 | 8% | - | 1 |
-| 6 | Platforms, offline and mobile (thin) | 11.7 | 27 | 7% | - | 1 |
+| 1 | Phone backup and mobile apps | 127.8 | 278 | 23% | 3.6 | 3 |
+| 2 | Leaving Google Photos / iCloud | 66.0 | 150 | 12% | 4.5 | 3 |
+| 3 | Faces, ML and smart search | 63.4 | 138 | 12% | 4.9 | 3 |
+| 4 | Teams and sharing | 49.9 | 111 | 9% | 4.1 | 3 |
+| 5 | Platforms, offline and mobile | 41.2 | 89 | 7% | 3.0 | 3 |
+| 6 | Integrations, import and export | 34.2 | 71 | 6% | 4.5 | 3 |
 
 **Phone backup and mobile apps**
-- "SyncThing)" (hacker-news, -) https://news.ycombinator.com/item?id=47590989
-- "- Syncthing" (hacker-news, -) https://news.ycombinator.com/item?id=41983651
-- "edit: syncthing for file sync" (hacker-news, -) https://news.ycombinator.com/item?id=41617008
+- "ios 26.5 b4" (app-store, 1*) https://apps.apple.com/in/app/immich/id1613945652?see-all=reviews#14022499548
+- "Works great on android." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#10910244277
+- "Terrible Photo Backup App" (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#13194004299
+
+**Leaving Google Photos / iCloud**
+- "Best alternative to Google Photos BUT it’s now subscription based" (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#11507929576
+- "I set up the server and all my family’s devices to sync as a move away from Apple and Google Photos but so far with a large library like 50,000 photos and videos it completely hangs when launching the app and navigating..." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#13005016050
+- "Sorry but that’s not a possible replacement for my Apple Photos app." (app-store, 2*) https://apps.apple.com/gb/app/immich/id1613945652?see-all=reviews#14159193826
 
 **Faces, ML and smart search**
 - "- Without AI." (hacker-news, -) https://news.ycombinator.com/item?id=40743123
-- "Please no AI slop." (hacker-news, -) https://news.ycombinator.com/item?id=49791810
-- "- machine learning: 125MB" (hacker-news, -) https://news.ycombinator.com/item?id=50217316
-
-**Leaving Google Photos / iCloud**
-- "Google Photos -> Immich (better)" (hacker-news, -) https://news.ycombinator.com/item?id=49912007
-- "I've replaced Google Photos with it." (hacker-news, -) https://news.ycombinator.com/item?id=49539092
-- "I actually love Google Photos as a product." (hacker-news, -) https://news.ycombinator.com/item?id=49539836
+- "Drafted with AI." (lemmy, -) https://lemmy.world/comment/26391031
+- "### AI Pioneer 🤖" (lemmy, -) https://lemmy.dbzer0.com/comment/28346363
 
 **Teams and sharing**
-- "Roles currently available:" (hacker-news, -) https://news.ycombinator.com/item?id=49926618
-- "(- I'm on the Immich team)" (hacker-news, -) https://news.ycombinator.com/item?id=49789150
-- "Immich allows sharing links" (hacker-news, -) https://news.ycombinator.com/item?id=49538986
+- "Or $100 for access for multiple people." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#14625550665
+- "It only lets 2 users to share and view the photos in the same timeline, while the third user can only view photos from one another user in timeline." (app-store, 1*) https://apps.apple.com/in/app/immich/id1613945652?see-all=reviews#13851507950
+- "v.1.109.0 was recently released today and the Immich team mentioned there is a subscription to invidiual license for $25 per user OR $100 server license lifetime." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#11507929576
+
+**Platforms, offline and mobile**
+- "Works great on android." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#10910244277
+- "Only the mobile app is free, the desktop app costs $25." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#14625550665
+- "While the Immich web UI continues to work fine on my web browser, the iOS app has increasingly slowed to being unusable (not to mention offline uploading has almost never worked for me)." (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#12650359931
 
 **Integrations, import and export**
 - "Google Calendar -> Apple Calendar (better)" (hacker-news, -) https://news.ycombinator.com/item?id=49912007
 - "I used this guide [0] for the initial import." (hacker-news, -) https://news.ycombinator.com/item?id=49737709
 - "- Generates systemd Quadlet integration files" (hacker-news, -) https://news.ycombinator.com/item?id=47500163
-
-**Platforms, offline and mobile**
-- "It's a good Android app" (hacker-news, -) https://news.ycombinator.com/item?id=50436904
-- "-- Android -> GrapheneOS as well" (hacker-news, -) https://news.ycombinator.com/item?id=40635758
-- "Mac is totally Windows-ified now." (hacker-news, -) https://news.ycombinator.com/item?id=50405711
 
 ## Asked for in their own words
 
@@ -118,3 +119,26 @@
 - "Photoprism is lacking batch edit for tags/metadata  https://github.com/photoprism/photoprism/issues/271" (hacker-news, -) https://news.ycombinator.com/item?id=45169861
 - "Immich also supports singe sign on via OIDC easily, which I rather appreciate so my family doesn't have to remember 10 different passwords." (hacker-news, -) https://news.ycombinator.com/item?id=45169440
 - "But you only need to do this very rarely (change encoding settings and want to apply to the back catalog or switch AI search model)." (hacker-news, -) https://news.ycombinator.com/item?id=44426745
+
+## Read these by hand
+
+Low ratings that matched no theme. Either noise, or a theme themes.json does not have yet. Often the most useful part.
+
+- (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#13264766362: "Why do I need to allow reading all the Photos to download my own photos???
+
+Why do I need to allow reading all the Photos to download my own photos???"
+- (app-store, 1*) https://apps.apple.com/us/app/immich/id1613945652?see-all=reviews#13164201286: "真的肥沃
+
+wasabi"
+- (app-store, 1*) https://apps.apple.com/gb/app/immich/id1613945652?see-all=reviews#14248644911: "Janky ux
+
+I could tell there was something not quite right about this. Turns out it’s a flutter app. Everything made sense after that"
+- (app-store, 2*) https://apps.apple.com/gb/app/immich/id1613945652?see-all=reviews#12955917567: "Not good enough
+
+I had high hopes of this to replace Synology photos but it’s just frustrating in that it keeps reuploaded images that have been deleted from the server. For the love of god give us the option to upload o"
+- (app-store, 2*) https://apps.apple.com/ca/app/immich/id1613945652?see-all=reviews#14064332164: "UI kinda sucks
+
+Adding photos to an album is a two step process. To add photos to an album I first have to directly upload them into Immich. I then have to go to the album, click “add photos” and then go through all the "
+- (app-store, 1*) https://apps.apple.com/au/app/immich/id1613945652?see-all=reviews#14453133447: "Terrible Security options
+
+This app looks good on the surface and as a self hosted app it cannot handle most decent security and access - mtls for something like cloudflare etc - rejected and sitting open as a request fo"
