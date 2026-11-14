@@ -11,7 +11,7 @@ Folder view mirroring the disk tree,browse,must,yes,yes,URL mirrors the path; su
 Fullscreen viewer: next/prev swipe + keyboard,view,must,yes,yes,"swipe, arrows, Esc; overlay keeps timeline scroll; deep links work"
 Pinch/scroll zoom in viewer,view,must,yes,yes,"pinch, double-tap, ctrl+wheel, +/-; swaps in the original when the browser can decode it"
 Info panel (EXIF date camera lens size location),view,must,yes,yes,"drawer on desktop, bottom sheet on mobile; map is a could"
-Video playback of originals (no transcode),view,must,yes,yes,HTTP Range streaming; codec support is up to the browser
+Video playback of originals (no transcode),view,must,yes,yes,"HTTP Range streaming; the viewer plays /play: the playback copy when there is one, the original otherwise"
 HEIC/HEIF display,view,must,yes,yes,libheif via vips; tested with generated 12 MP and 48 MP HEIC (server/testdata + TestHEICThumbnail). 48 MP peaks at 341 MB in vipsthumbnail. Real iPhone files still to try
 Download original,view,must,yes,yes,
 Favourites,organize,must,yes,yes,heart / F key in the viewer; S09 page; viewer steps through favourites
@@ -23,7 +23,7 @@ Archive/hide from timeline,organize,should,yes,yes,viewer button moves on to the
 Multi-select in grid (shift-click / long-press),browse,should,yes,yes,"select circle (keyboard: Space), shift-click, long-press on phones; bar: favourite, add to album, archive / remove from album"
 Live/motion photos (still + short video pair),view,should,yes,yes,"paired by Apple content id, else same name + clip <= 5 s; one item with a Live badge; Play live photo (or L) plays the clip over the still; also through share links. Google/Samsung embedded motion photos not read"
 Public share link for an album (optional expiry/password),sharing,should,yes,yes,"S12: random 256-bit token, optional password (per-browser unlock), expiry, view-only mode; visitors see only the album"
-Multiple users with own libraries,auth,should,yes,yes,"People page: admins add family members with their own folder, reset passwords (signs them out), delete; nobody sees others' photos"
+Multiple users with own libraries,auth,should,yes,yes,"People page: admins add family members with their own folder (or sharing one library), reset passwords (signs them out), delete; nobody sees photos of a library they are not in"
 Keep metadata stable when a file moves (content hash),library,should,no,yes,tested: favourite survives a move
 XMP sidecar read (description rating date GPS tags),library,could,yes,no,Immich xmp-sidecars.md; IMG.jpg.xmp preferred over IMG.xmp
 Write favourites/albums back to XMP sidecars,library,could,yes,no,"Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise"
@@ -37,14 +37,14 @@ Basic edit (rotate),view,could,yes,no,
 Phone backup/upload,backup,skip,yes,skip,out of slice; existing sync tools (Syncthing/SMB/phone backup apps) already drop files on the NAS
 Face recognition / people,search,skip,yes,skip,needs ML container; Immich says ML needs RAM beyond 4 GB - impossible in 1 GB
 Smart (CLIP) search by content,search,skip,yes,skip,same ML limit
-Server-side video transcoding,view,skip,yes,skip,a Pi with 1 GB RAM can't transcode in reasonable time
+Server-side video transcoding,view,should,yes,yes,"was skip (thought impossible in 1 GB). Now: ffprobe checks each video; HEVC, 4K, 10-bit, AVI/MKV get a 720p H.264 playback copy made in the background, one at a time; paused above 75 C; a video being watched goes first; admin switch on the Indexing page. Not on the fly: until its copy exists a video plays as the original"
 Native mobile apps,clients,skip,yes,skip,responsive web app first
 Paid-member features (PhotoPrism interactive world maps),billing,skip,yes,skip,PhotoPrism README: members get interactive world maps; free here via could-row map
 Installable PWA (add to home screen),clients,should,yes,yes,"manifest + own icons (192/512, maskable, apple-touch); no offline service worker (LAN app)"
 Hierarchical tags (read from XMP/IPTC),organize,could,yes,no,Immich tags.md
 Locked folder behind a PIN,organize,could,yes,no,Immich locked-folder.md: 15 min unlocked session
 Star rating,organize,could,yes,yes,"0-5 in the viewer (stars or keys), read from XMP/EXIF Rating; the app wins on rescan"
-Partner sharing (whole library to another user),sharing,could,yes,no,Immich partner-sharing.md; one-way
+Partner sharing (whole library to another user),sharing,could,yes,partial,"Immich partner-sharing.md is one-way between two accounts that keep their own libraries. Here: People -> Add someone -> Share my photos: one library, both see it, favourites/ratings/archive shared, albums personal. Only when the account is created; a person has a folder of their own or a shared one, not both"
 Blurred placeholder (thumbhash) while thumbnails load,browse,should,yes,yes,"a ~16 px WebP stored with each photo, blurred behind the tile until the thumbnail loads (not the ThumbHash algorithm)"
 WebDAV access to the library,sync,skip,yes,skip,PhotoPrism feature; out of browse+view slice
 OCR text search,search,skip,yes,skip,Immich searching.md; needs ML
@@ -53,3 +53,6 @@ Warn when the database or thumbnails are on the SD card,library,should,no,yes,de
 Automatic database backup before every upgrade,library,should,no,yes,"VACUUM INTO picburrow.db.v<N>-<time>.bak before any migration, newest 3 kept; upgrade refused if the backup fails. Tested from a v1 database"
 "Full capture details (aperture, shutter, ISO, focal length, flash)",view,could,no,yes,"info panel: exposure (f/, shutter, ISO, EV), focal length with 35 mm equivalent, flash; read from the file on demand, so old libraries get it without a rescan"
 Batch rating from the selection bar,organize,could,no,yes,Rate in the selection bar: 1-5 stars or no rating for every selected photo
+Slideshow,view,could,yes,yes,"Immich: slideshow from the viewer, shuffle optional. Here: random, full screen from Photos; 5 s-1 min, pause, skip, keeps the screen awake; photos only (no videos)"
+Interface in the user's language,clients,could,yes,partial,"Immich: dozens of community translations. Here: English and French, chosen by the browser language; no in-app switch"
+Sleep mode: slideshow starts when the screen is left alone (photo frame),view,could,no,yes,"per device, 30 s-15 min; never while a video plays; any touch goes back"
