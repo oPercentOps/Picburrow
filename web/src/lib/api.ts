@@ -17,6 +17,7 @@ export type Tile = {
 };
 export type Asset = Tile & {
   archived: boolean;
+  rotation: number; // degrees clockwise it was turned in the app; the file itself is untouched
   rating: number | null;
   path: string;
   dir: string;

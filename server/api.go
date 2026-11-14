@@ -331,7 +331,11 @@ func (a *App) getSlideshow(w http.ResponseWriter, r *http.Request) {
 		and a.thumb_error is null order by random() limit 50`, userFrom(r).ID)
 }
 
-const tileCols = `a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at, a.thumb_error is not null, a.thumbhash, a.live_video_id`
+// dims = width and height as shown: swapped when the person turned the photo a quarter (assets.rotation).
+const dims = `case when a.rotation % 180 = 90 then a.height else a.width end,
+	case when a.rotation % 180 = 90 then a.width else a.height end`
+
+const tileCols = `a.id, ` + dims + `, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at, a.thumb_error is not null, a.thumbhash, a.live_video_id`
 
 func (a *App) queryTiles(q string, args ...any) ([]tile, error) {
 	rows, err := a.db.Query(q, args...)
@@ -365,6 +369,7 @@ func (a *App) writeTiles(w http.ResponseWriter, q string, args ...any) {
 type assetRow struct {
 	tile
 	Archived    bool     `json:"archived"`
+	Rotation    int      `json:"rotation"` // degrees clockwise the person turned it; the file is untouched
 	Rating      *int     `json:"rating"`
 	Path        string   `json:"path"`
 	Dir         string   `json:"dir"`
@@ -385,12 +390,12 @@ type assetRow struct {
 
 func (a *App) loadAsset(userID, id int64) (*assetRow, error) {
 	var x assetRow
-	err := a.db.QueryRow(`select a.id, a.width, a.height, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
+	err := a.db.QueryRow(`select a.id, `+dims+`, a.type, a.taken_local, a.is_favorite, a.duration_ms, a.thumbs_at,
 		a.thumb_error is not null, a.path, a.dir, a.size, a.mime, a.tz_offset_min, a.camera_make, a.camera_model, a.lens,
-		a.lat, a.lon, a.library_id, a.is_archived, a.rating, a.live_video_id, a.play_at
+		a.lat, a.lon, a.library_id, a.is_archived, a.rating, a.live_video_id, a.play_at, a.rotation
 		from assets a join libraries l on l.id = a.library_id where a.id = ? and l.id in `+mine, id, userID).
 		Scan(&x.ID, &x.W, &x.H, &x.Type, &x.Taken, &x.Fav, &x.Duration, &x.V, &x.Err, &x.Path, &x.Dir, &x.Size, &x.Mime,
-			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived, &x.Rating, &x.Live, &x.playAt)
+			&x.TzOffsetMin, &x.Make, &x.Model, &x.Lens, &x.Lat, &x.Lon, &x.libraryID, &x.Archived, &x.Rating, &x.Live, &x.playAt, &x.Rotation)
 	if err != nil {
 		return nil, err
 	}

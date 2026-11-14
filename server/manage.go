@@ -42,6 +42,7 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 		Favorite *bool   `json:"favorite"`
 		Archived *bool   `json:"archived"`
 		Rating   *int    `json:"rating"` // 0 clears
+		Rotate   int     `json:"rotate"` // 90, 180 or 270 degrees clockwise, added to the turn it already has
 	}
 	if !readJSON(w, r, &in) {
 		return
@@ -50,7 +51,11 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusBadRequest, "Rating is 0 to 5 stars")
 		return
 	}
-	if len(in.IDs) == 0 || len(in.IDs) > 5000 || (in.Favorite == nil && in.Archived == nil && in.Rating == nil) {
+	if in.Rotate != 0 && in.Rotate != 90 && in.Rotate != 180 && in.Rotate != 270 {
+		httpError(w, http.StatusBadRequest, "Rotate by 90, 180 or 270 degrees")
+		return
+	}
+	if len(in.IDs) == 0 || len(in.IDs) > 5000 || (in.Favorite == nil && in.Archived == nil && in.Rating == nil && in.Rotate == 0) {
 		httpError(w, http.StatusBadRequest, "Send 1 to 5000 ids and a field to change")
 		return
 	}
@@ -64,6 +69,12 @@ func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Rating != nil {
 		set, args = append(set, "rating = nullif(?, 0)"), append(args, *in.Rating)
+	}
+	if in.Rotate != 0 { // photos only: a turned poster over an unturned video would mislead. Previews are remade turned.
+		set = append(set, "rotation = case when type = 'image' then (rotation + ?) % 360 else rotation end",
+			"thumbs_at = case when type = 'image' then null else thumbs_at end")
+		args = append(args, in.Rotate)
+		defer a.wakeThumbs()
 	}
 	for _, id := range in.IDs {
 		args = append(args, id)

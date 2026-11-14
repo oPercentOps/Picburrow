@@ -76,6 +76,7 @@ create table assets (
   thumbs_at     integer,                             -- null = small/large thumbnails not generated yet
   thumb_error   text,                                -- unreadable/unsupported file; shown, not retried forever
   play_at       integer,                             -- videos: null = not yet checked for a playback copy (play/<id>.mp4)
+  rotation      integer not null default 0,          -- degrees clockwise the person turned the photo; previews are made turned, the file is untouched
   missing_at    integer,                             -- file gone on rescan = in trash; purged after 30 days
   created_at    integer not null default (unixepoch()),
   updated_at    integer not null default (unixepoch()),

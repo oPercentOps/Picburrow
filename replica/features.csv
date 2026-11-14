@@ -33,7 +33,7 @@ On this day / memories,browse,could,yes,yes,"S20: an On this day button on the t
 Duplicate finder (exact hash),organize,could,yes,no,Immich uses ML similarity; exact content hash is our 1 GB substitute
 Trash with 30-day restore,organize,could,yes,yes,S15: missing files listed; putting the file back restores it with albums/favourites; forgotten after 30 days or on demand; files never touched
 RAW (DNG/CR2/ARW) previews,view,could,yes,no,use embedded JPEG preview only; full RAW decode is too heavy for 1 GB
-Basic edit (rotate),view,could,yes,no,
+Basic edit (rotate),view,could,yes,yes,"viewer: Rotate button or R turns a photo a quarter clockwise; the turn is kept in the database and previews are remade turned, the file is never written. Photos only; downloads give the file as it is"
 Phone backup/upload,backup,skip,yes,skip,out of slice; existing sync tools (Syncthing/SMB/phone backup apps) already drop files on the NAS
 Face recognition / people,search,skip,yes,skip,needs ML container; Immich says ML needs RAM beyond 4 GB - impossible in 1 GB
 Smart (CLIP) search by content,search,skip,yes,skip,same ML limit

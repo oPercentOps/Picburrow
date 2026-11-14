@@ -27,6 +27,7 @@ var migrations = []string{
 	 insert or ignore into library_members (library_id, user_id) select id, owner_id from libraries;`,
 	`alter table assets add column play_at integer;
 	 create index assets_play on assets(id) where type = 'video' and play_at is null;`,
+	`alter table assets add column rotation integer not null default 0;`,
 }
 
 var schemaVersion = len(migrations) + 1

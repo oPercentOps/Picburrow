@@ -52,6 +52,7 @@ export const fr: Record<string, string> = {
   "Deleted the album {name}": "Album {name} supprimé",
   "Deleted {name}": "{name} supprimé(e)",
   "Details": "Détails",
+  "Rotate": "Faire pivoter",
   "Done": "Terminé",
   "Download original": "Télécharger l'original",
   "Downloads are turned off for this album": "Les téléchargements sont désactivés pour cet album",

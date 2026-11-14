@@ -1,8 +1,9 @@
 import { pushState } from '$app/navigation';
 import { SvelteSet } from 'svelte/reactivity';
 
-// Changes made in this session (viewer favourite/archive), applied over tiles loaded before the change.
-export const overrides = $state<Record<number, { fav?: boolean; archived?: boolean }>>({});
+// Changes made in this session (viewer favourite/archive/rotate), applied over tiles loaded before the change.
+// After a rotate: the new shape, and v = a fresh address for the preview so the browser drops the old one.
+export const overrides = $state<Record<number, { fav?: boolean; archived?: boolean; w?: number | null; h?: number | null; v?: number }>>({});
 
 // Multi-select: ids picked in any grid. While it is not empty, clicking a photo picks it instead of opening it.
 export const selection = new SvelteSet<number>();

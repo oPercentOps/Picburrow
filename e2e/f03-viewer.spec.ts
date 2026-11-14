@@ -117,3 +117,22 @@ test('F03-E6 swipe left moves to the next photo, swipe down closes @mobile', asy
   await swipe(0, 200);
   await expect(page).toHaveURL(/\/$/);
 });
+
+test('F03-R1 rotate turns the photo a quarter clockwise; the file is not touched', async ({ page }) => {
+  const [p] = (await photoIn(page, '2026-09')).filter((t) => !t.live && t.w > t.h);
+  await page.goto(`/photos/${p.id}`);
+  const img = viewer(page).getByRole('img');
+  await expect(img).toBeVisible();
+  const shape = () => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0 && el.naturalWidth > el.naturalHeight);
+  expect(await shape()).toBe(true); // landscape to start with
+  const size = (await api(page, `/api/assets/${p.id}`)).size;
+  await page.keyboard.press('Control+f'); // a browser shortcut must not act on the photo
+  await viewer(page).getByRole('button', { name: 'Rotate' }).click();
+  await expect.poll(shape).toBe(false); // the preview is now upright
+  await axe(page);
+  const a = await api(page, `/api/assets/${p.id}`);
+  expect([a.rotation, a.w, a.h, a.size, a.fav]).toEqual([90, p.h, p.w, size, p.fav]);
+  // put it back for the tests that follow
+  expect((await page.request.patch('/api/assets', { data: { ids: [p.id], rotate: 270 } })).status()).toBe(200);
+  expect((await api(page, `/api/assets/${p.id}`)).rotation).toBe(0);
+});

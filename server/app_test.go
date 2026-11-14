@@ -1,10 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -585,6 +590,76 @@ func TestHEICThumbnail(t *testing.T) {
 	}
 }
 
+// Rotate: the turn is kept in the database, previews are remade turned clockwise, the file is not touched.
+func TestRotate(t *testing.T) {
+	for _, tool := range []string{"vipsthumbnail", "vips", "exiftool"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	lib := t.TempDir()
+	img := image.NewRGBA(image.Rect(0, 0, 300, 200)) // left half red, right half blue
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 300; x++ {
+			if x < 150 {
+				img.Set(x, y, color.RGBA{255, 0, 0, 255})
+			} else {
+				img.Set(x, y, color.RGBA{0, 0, 255, 255})
+			}
+		}
+	}
+	var buf bytes.Buffer
+	jpeg.Encode(&buf, img, nil)
+	file := filepath.Join(lib, "a.jpg")
+	os.WriteFile(file, buf.Bytes(), 0o644)
+	a, srv := newTestApp(t)
+	ann := client(t)
+	if code := post(t, ann, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime, taken_local, thumbs_at)
+		values (1, '/p/clip.mp4', '/p', 1, 1, x'00', 'video', 'video/mp4', '2024-01-01 00:00:00', 1)`)
+	if err := a.ensureThumbs(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if code := patch(t, ann, srv.URL+"/api/assets", `{"ids":[1],"rotate":45}`); code != 400 {
+		t.Fatalf("rotate by 45 = %d, want 400", code)
+	}
+	if code := patch(t, ann, srv.URL+"/api/assets", `{"ids":[1,2],"rotate":90}`); code != 200 {
+		t.Fatalf("rotate: %d", code)
+	}
+	var x assetRow
+	get(t, ann, srv.URL+"/api/assets/1", &x)
+	if x.Rotation != 90 || *x.W != 200 || *x.H != 300 || x.V != nil {
+		t.Fatalf("after rotating: turn %d, %dx%d, preview version %v; want 90, 200x300, none yet", x.Rotation, *x.W, *x.H, x.V)
+	}
+	var clip int
+	if a.db.QueryRow("select rotation from assets where id = 2").Scan(&clip); clip != 0 {
+		t.Fatalf("the video was turned by %d", clip)
+	}
+	if err := a.ensureThumbs(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	png := filepath.Join(t.TempDir(), "l.png")
+	mustRun(t, "vips", "copy", a.thumbPath(1, "l"), png)
+	f, _ := os.Open(png)
+	defer f.Close()
+	got, _, err := image.Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := got.Bounds()
+	top, _, bottom, _ := got.At(b.Dx()/2, b.Dy()/4).RGBA()
+	_, _, low, _ := got.At(b.Dx()/2, 3*b.Dy()/4).RGBA()
+	if b.Dx() >= b.Dy() || top < 0x8000 || bottom > 0x8000 || low < 0x8000 {
+		t.Fatalf("large preview %dx%d, red at top %x, blue at top %x, blue at bottom %x: want upright, red (the left side) on top", b.Dx(), b.Dy(), top, bottom, low)
+	}
+	if after, _ := os.ReadFile(file); !bytes.Equal(after, buf.Bytes()) {
+		t.Fatal("the photo file was changed")
+	}
+}
+
 func TestAlbumsLinksSearch(t *testing.T) {
 	for _, tool := range []string{"exiftool", "ffmpeg", "vipsthumbnail"} {
 		if _, err := exec.LookPath(tool); err != nil {
@@ -818,7 +893,8 @@ func TestMigrateFromV1(t *testing.T) {
 		"  content_id    text,                                -- Apple live-photo pairing id (still and clip share it)\n", "",
 		"create index assets_content  on assets(content_id) where content_id is not null;\n", "",
 		"  play_at       integer,                             -- videos: null = not yet checked for a playback copy (play/<id>.mp4)\n", "",
-		"create index assets_play     on assets(id) where type = 'video' and play_at is null;\n", "").Replace(schemaSQL)
+		"create index assets_play     on assets(id) where type = 'video' and play_at is null;\n", "",
+		"  rotation      integer not null default 0,          -- degrees clockwise the person turned the photo; previews are made turned, the file is untouched\n", "").Replace(schemaSQL)
 	if v1 == schemaSQL {
 		t.Fatal("couldn't rebuild the v1 schema from schema.sql")
 	}

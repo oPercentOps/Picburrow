@@ -4,7 +4,7 @@ The photo folders you already have, as a timeline on your phone. Picburrow is on
 a timeline by day, a fast fullscreen viewer, and photo details. It runs on a Pi 3, 4 or 5 with **1 GB RAM**
 and 64-bit Raspberry Pi OS, and only reads your photo folders, never changes them.
 
-Status: timeline with date scrubber, viewer, live photos, random slideshow with a sleep mode (starts by itself when the screen is left alone), On this day (photos from today's date in earlier years), English and French (follows the browser language), star ratings, folders, favourites, archive, trash, albums, multi-select, search, share links, family accounts, library settings; installable on a phone's home screen. Feature parity 87/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
+Status: timeline with date scrubber, viewer, live photos, random slideshow with a sleep mode (starts by itself when the screen is left alone), On this day (photos from today's date in earlier years), English and French (follows the browser language), star ratings, rotate (kept in the app, files untouched), folders, favourites, archive, trash, albums, multi-select, search, share links, family accounts, library settings; installable on a phone's home screen. Feature parity 87/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
 
 To hear about new versions: **Watch → Custom → Releases** on GitHub. The project page is `docs/index.html`.
 

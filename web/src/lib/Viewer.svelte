@@ -3,7 +3,7 @@
   import { api, thumbURL, browserCanShow, formatDay, type Asset } from '$lib/api';
   import { overrides, picker } from '$lib/state.svelte';
   import { SvelteSet } from 'svelte/reactivity';
-  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore, BookPlus, CirclePlay, Star } from '@lucide/svelte';
+  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore, BookPlus, CirclePlay, RotateCw, Star } from '@lucide/svelte';
 
   // seq: ids to step through (a folder, favourites); without it prev/next follow the timeline.
   // base + readonly: a visitor on a shared album reads through the link and can't change anything.
@@ -67,6 +67,22 @@
     }
   }
 
+  // a quarter turn clockwise, kept in the app: previews are remade turned, the file stays as it is
+  const canRotate = $derived(!!asset && !readonly && asset.type === 'image' && !asset.live);
+  async function rotate() {
+    if (!asset || !ready || !canRotate) return;
+    saveError = '';
+    try {
+      await api('/api/assets', { method: 'PATCH', body: { ids: [asset.id], rotate: 90 } });
+      const a = await api<Asset>(`/api/assets/${asset.id}`);
+      a.v = Date.now(); // a new address for the previews: the old ones are cached under the old one
+      overrides[a.id] = { ...overrides[a.id], w: a.w, h: a.h, v: a.v };
+      if (a.id === id) { resetZoom(); previewFailed = false; asset = a; }
+    } catch (e) {
+      saveError = (e as Error).message;
+    }
+  }
+
   $effect(() => {
     const ctl = new AbortController();
     error = '';
@@ -111,16 +127,18 @@
   function zoomTo(s: number) {
     scale = Math.min(Math.max(s, 1), 5);
     if (scale === 1) resetZoom();
-    else if (asset && asset.type === 'image' && browserCanShow(asset.mime)) original = true;
+    else if (asset && asset.type === 'image' && browserCanShow(asset.mime) && !asset.rotation) original = true; // the file isn't turned
   }
 
   function onkey(e: KeyboardEvent) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // Ctrl+R reloads the page: it must not also rotate the photo
     if (e.key === 'Escape') { showInfo ? (showInfo = false) : onclose(); }
     else if (e.key === 'ArrowLeft') go(prevId);
     else if (e.key === 'ArrowRight') go(nextId);
     else if (e.key === 'f') save({ favorite: !fav });
     else if (/^[0-5]$/.test(e.key) && !readonly) rate(Number(e.key));
     else if (e.key === 'l' && asset?.live) playingLive = !playingLive;
+    else if (e.key === 'r') rotate();
     else if (e.key === 'i') showInfo = !showInfo;
     else if (e.key === '+' || e.key === '=') zoomTo(scale * 1.5);
     else if (e.key === '-') zoomTo(scale / 1.5);
@@ -208,6 +226,7 @@
           <Heart aria-hidden="true" fill={fav ? 'currentColor' : 'none'} /></button>
         <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? t('Unarchive') : t('Archive|verb')} disabled={!ready}>
           {#if archived}<ArchiveRestore aria-hidden="true" />{:else}<Archive aria-hidden="true" />{/if}</button>
+        {#if canRotate}<button class="btn icon-btn" onclick={rotate} aria-label={t('Rotate')} disabled={!ready}><RotateCw aria-hidden="true" /></button>{/if}
       {/if}
       {#if asset?.live && canDownload}
         <button class="btn icon-btn" onclick={() => (playingLive = !playingLive)} aria-label={t('Play live photo')} aria-pressed={playingLive}><CirclePlay aria-hidden="true" /></button>

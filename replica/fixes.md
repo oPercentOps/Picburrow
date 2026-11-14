@@ -158,7 +158,7 @@ Ranked by evidence times cheapness.
 | 10 | **A tested guide for getting phone photos into the folder**, iPhone and Android, one sync tool each, linked from the empty timeline after setup | the evidence against our approach, H5 | S (writing) + phones to test on | `/replica-launch` docs; can't be tested from a build box |
 | 11 | **On this day**: a button on the timeline when earlier years have photos from today, opening a page of them | M6, U3 (thin) | S | **done** 2026-11-14 (`TestOnThisDay`) |
 | 12 | **Share a library with an account that already exists**, and let a person have their own folder plus a shared one | M1 (thin, 3 sources) | S | **done** 2026-11-14 (`TestShareWithExistingAccount`, e2e P-1) |
-| 13 | **Rotate**, stored in the database and applied to previews (files stay untouched) | M7 (thin) | S | `/replica-build` |
+| 13 | **Rotate**, stored in the database and applied to previews (files stay untouched) | M7 (thin) | S | **done** 2026-11-14 (`TestRotate`, e2e F03-R1) |
 | 14 | **Read XMP sidecars**: keywords, ratings and descriptions written by digiKam and others, searchable | M8 (thin) | M | `/replica-build` |
 | 15 | **The real-hardware pass**: 1 GB Pi 3, real iPhone library, Safari | the H2 claim rests on it | — | `/replica-test` |
 
