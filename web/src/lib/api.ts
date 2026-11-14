@@ -42,6 +42,7 @@ export type Jobs = {
   thumb_errors: number;
   videos_todo: number;
   video_copies: boolean; // admin switch: convert videos for smooth playback
+  video_one_thread: boolean; // admin switch: convert on one CPU thread
   errors?: { path: string; error: string }[]; // admins only
   storage_warning?: string; // admins only: data on the SD card
 };
