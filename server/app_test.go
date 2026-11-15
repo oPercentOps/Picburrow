@@ -127,6 +127,26 @@ func TestFlow(t *testing.T) {
 	if months["2024-05"] != 1 || months["2023-12"] != 1 || total != 3 {
 		t.Fatalf("buckets = %v (want a.jpg in 2024-05, b.jpg in 2023-12, c.mp4 by file date, @eaDir skipped)", buckets)
 	}
+	// phone lookup: by time taken to the second, or by name within a day either side; the rest is missing
+	r, err := c.Post(srv.URL+"/api/assets/lookup", "application/json", strings.NewReader(`{"photos":[
+		{"name":"a.HEIC","taken":"2024-05-01 12:00:00"}, {"name":"IMG_9999.HEIC","taken":"2023-12-24 18:30:00"},
+		{"name":"a.jpg","taken":"2020-01-01 00:00:00"}, {"name":"zzz.jpg","taken":"2024-05-01 10:00:01"},
+		{"name":"001.jpg","taken":"2024-05-01 10:00:02"}]}`)) // 001: in t.TempDir's folder name, not a file name
+	if err != nil {
+		t.Fatal(err)
+	}
+	var look struct{ Missing []struct{ Name, Taken string } }
+	json.NewDecoder(r.Body).Decode(&look)
+	r.Body.Close()
+	if len(look.Missing) != 3 || look.Missing[0].Taken != "2020-01-01 00:00:00" || look.Missing[1].Name != "zzz.jpg" || look.Missing[2].Name != "001.jpg" {
+		t.Fatalf("lookup missing = %+v, want the a.jpg of 2020, zzz.jpg and 001.jpg", look.Missing)
+	}
+	if code := post(t, c, srv.URL+"/api/assets/lookup", `{"photos":[{"name":"a.jpg","taken":"15/06/2023"}]}`); code != 400 {
+		t.Fatalf("lookup with a bad date = %d, want 400", code)
+	}
+	if code := post(t, client(t), srv.URL+"/api/assets/lookup", `{"photos":[{"name":"a.jpg","taken":"2024-05-01 10:00:00"}]}`); code != 401 {
+		t.Fatalf("lookup signed out = %d, want 401", code)
+	}
 	var videoTaken string
 	a.db.QueryRow("select taken_local from assets where type = 'video'").Scan(&videoTaken)
 	if strings.HasPrefix(videoTaken, "1904") || videoTaken == "" {

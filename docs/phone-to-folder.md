@@ -77,6 +77,37 @@ If your NAS vendor's phone app already backs up photos to the NAS, keep it. Moun
    - a family member's phone: **People → Add someone**, with that folder as theirs. To let them see the family
      library too, press **Share my photos** next to their name.
 
+## Check that nothing is missing (iPhone Shortcut)
+
+Picburrow can tell which photos on the phone are not in its index yet: `POST /api/assets/lookup` takes the name and
+the time taken of up to 5000 photos and answers with the ones it can't find. A photo counts as found when one in your
+libraries has the same time taken to the second, or has its name (`IMG_0236`, whatever the extension or the prefix
+the copy tool added) in its file name, taken within a day either side. Archived photos count as found; photos in
+Trash do not.
+
+```
+POST /api/assets/lookup        (signed in: POST /api/login first, same cookie)
+{"photos": [{"name": "IMG_0236.HEIC", "taken": "2023-06-15 00:06:39"}, ...]}
+-> {"checked": 1, "missing": [{"name": "IMG_0236.HEIC", "taken": "2023-06-15 00:06:39"}]}
+```
+
+A Shortcut that does it (untested draft, like the rest of this page; the Shortcuts app on a French iPhone has the
+same actions under French names):
+
+1. **Get Contents of URL** `http://<pi-address>:8080/api/login`, method POST, request body JSON with the text fields
+   `username` and `password`. The password is then stored in the Shortcut: don't share that Shortcut.
+2. **Find Photos** where *Date Taken* is in the last 30 days (or any range), up to 5000.
+3. **Repeat with Each** photo:
+   - **Format Date** *Date Taken*, custom format `yyyy-MM-dd HH:mm:ss`;
+   - **Text** `{"name":"<Name>","taken":"<Formatted Date>"}`, with the photo's *Name* and the formatted date inserted
+     as variables.
+4. **Combine Text** *Repeat Results* with the custom separator `,`, then **Text** `{"photos":[<Combined Text>]}`.
+5. **Get Contents of URL** `http://<pi-address>:8080/api/assets/lookup`, method POST, header
+   `Content-Type: application/json`, request body *File*: the text from step 4.
+6. **Get Dictionary Value** `missing`, then **Show Result** (or **Count** to just get a number).
+
+If step 5 answers "Sign in first", the login cookie from step 1 did not carry over: please open an issue.
+
 ## Good to know
 
 - **Deleting on the phone.** With Send Only / Receive Only, a photo deleted on the phone is also deleted on the Pi

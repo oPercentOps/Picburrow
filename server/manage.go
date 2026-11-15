@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"path/filepath"
 	"sort"
@@ -34,6 +36,51 @@ func (a *App) getAssets(w http.ResponseWriter, r *http.Request) {
 	default:
 		httpError(w, http.StatusBadRequest, "Ask for favorite=1, archived=1 or onthisday=<date>")
 	}
+}
+
+// postLookup tells a phone which of its photos are not in the index yet (an iOS Shortcut sends name + time taken).
+// A photo is there if one has the same time taken to the second, or has its name in its file name within a day either
+// side: the phone may give the time in another time zone, and copy tools rename (IMG_0236.HEIC -> 2023-06-15_IMG_0236.jpeg).
+func (a *App) postLookup(w http.ResponseWriter, r *http.Request) {
+	type photo struct {
+		Name  string `json:"name"`
+		Taken string `json:"taken"` // 2023-06-15 00:06:39, the clock time on the photo
+	}
+	var in struct {
+		Photos []photo `json:"photos"`
+	}
+	if !readJSON(w, r, &in) {
+		return
+	}
+	if len(in.Photos) == 0 || len(in.Photos) > 5000 {
+		httpError(w, http.StatusBadRequest, "Send 1 to 5000 photos")
+		return
+	}
+	const layout = "2006-01-02 15:04:05"
+	missing := []photo{}
+	for _, p := range in.Photos {
+		t, err := time.Parse(layout, strings.TrimSpace(p.Taken))
+		if err != nil {
+			httpError(w, http.StatusBadRequest, "taken must look like 2024-05-31 18:30:00")
+			return
+		}
+		stem := strings.TrimSuffix(filepath.Base(p.Name), filepath.Ext(p.Name)) // the copy may be a JPEG of a HEIC
+		if stem == "." || stem == "/" {
+			stem = ""
+		}
+		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(stem) + "%"
+		var found int
+		err = a.db.QueryRow(`select 1 from assets a where a.library_id in `+mine+` and a.missing_at is null
+			and a.taken_local between ? and ? and (a.taken_local = ? or (? != '' and substr(a.path, length(a.dir) + 2) like ? escape '\')) limit 1`,
+			userFrom(r).ID, t.Add(-26*time.Hour).Format(layout), t.Add(26*time.Hour).Format(layout), t.Format(layout), stem, like).Scan(&found)
+		if errors.Is(err, sql.ErrNoRows) {
+			missing = append(missing, p)
+		} else if err != nil {
+			serverError(w, err)
+			return
+		}
+	}
+	writeJSON(w, map[string]any{"checked": len(in.Photos), "missing": missing})
 }
 
 func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {
