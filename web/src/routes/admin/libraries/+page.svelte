@@ -55,7 +55,7 @@
     {@const f = forms[l.id]}
     <form class="card" onsubmit={(e) => save(l, e)}>
       <div class="status">
-        <span><strong>{l.assets.toLocaleString()}</strong> {t('photos and videos')}{#if l.missing}, <a href="/trash">{t('{n} missing from disk', { n: l.missing.toLocaleString() })}</a>{/if}</span>
+        <span><strong>{l.photos.toLocaleString()}</strong> {t('photos')}, <strong>{l.videos.toLocaleString()}</strong> {t('videos')}{#if l.missing}, <a href="/trash">{t('{n} missing from disk', { n: l.missing.toLocaleString() })}</a>{/if}</span>
         <span class="muted">{t('Last scan: {date}', { date: formatWhen(l.last_scan_at) })}</span>
         {#if l.last_scan_error}<span class="warn" role="status">{tServer(l.last_scan_error)}</span>{/if}
       </div>

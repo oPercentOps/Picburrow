@@ -113,7 +113,8 @@ export type Library = {
   exclusion_globs: string[];
   last_scan_at: number | null;
   last_scan_error: string | null;
-  assets: number;
+  photos: number;
+  videos: number;
   missing: number;
 };
 

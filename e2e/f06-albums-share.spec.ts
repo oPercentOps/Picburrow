@@ -84,11 +84,11 @@ test('F05-A1 pick photos, make an album, remove one, rename; F06-H1 share it wit
 
   // delete the album: the photos stay
   await share.getByRole('button', { name: 'Done' }).click();
-  const before = (await api(page, '/api/libraries'))[0].assets;
+  const before = (await api(page, '/api/libraries'))[0].photos;
   await page.getByRole('button', { name: 'Delete album' }).click();
   await expect(page).toHaveURL(/\/albums$/);
   await expect(page.getByText('No albums yet')).toBeVisible();
-  expect((await api(page, '/api/libraries'))[0].assets).toBe(before);
+  expect((await api(page, '/api/libraries'))[0].photos).toBe(before);
 });
 
 test('F05-A2 keyboard: Space picks a photo, Escape clears; archive from the bar', async ({ page }) => {

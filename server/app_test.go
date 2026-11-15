@@ -369,6 +369,7 @@ func TestManage(t *testing.T) {
 		mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", filepath.Join(lib, f))
 	}
 	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48", "-frames:v", "1", filepath.Join(extra, "x.jpg"))
+	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48:duration=1", "-pix_fmt", "yuv420p", filepath.Join(extra, "y.mp4"))
 	a, srv := newTestApp(t)
 	c := client(t)
 	if code := post(t, c, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
@@ -452,7 +453,7 @@ func TestManage(t *testing.T) {
 	waitScan(t, a)
 	var libs []library
 	get(t, c, srv.URL+"/api/libraries", &libs)
-	if len(libs) != 1 || libs[0].Name != "Family" || len(libs[0].Paths) != 2 || libs[0].Assets != 5 {
+	if len(libs) != 1 || libs[0].Name != "Family" || len(libs[0].Paths) != 2 || libs[0].Photos != 5 || libs[0].Videos != 1 {
 		t.Fatalf("libraries = %+v (want deduped paths and the extra folder scanned)", libs)
 	}
 }
@@ -494,6 +495,7 @@ func TestLibraryUnderHiddenFolder(t *testing.T) {
 	os.MkdirAll(filepath.Join(lib, ".thumbnails"), 0o755)
 	os.WriteFile(filepath.Join(lib, "a.jpg"), []byte("x"), 0o644)
 	os.WriteFile(filepath.Join(lib, ".thumbnails", "skip.jpg"), []byte("x"), 0o644)
+	os.WriteFile(filepath.Join(lib, "empty-2.jpeg"), nil, 0o644)
 	a, srv := newTestApp(t)
 	if code := post(t, client(t), srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
 		t.Fatalf("setup: %d", code)
@@ -508,7 +510,7 @@ func TestLibraryUnderHiddenFolder(t *testing.T) {
 	}
 	rows.Close()
 	if len(paths) != 1 || filepath.Base(paths[0]) != "a.jpg" {
-		t.Fatalf("indexed %v, want only a.jpg (hidden subfolder skipped, hidden parent of the library ignored)", paths)
+		t.Fatalf("indexed %v, want only a.jpg (hidden subfolder and empty file skipped, hidden parent of the library ignored)", paths)
 	}
 }
 
@@ -587,6 +589,40 @@ func TestHEICThumbnail(t *testing.T) {
 	}
 	if !fileExists(a.thumbPath(1, "l")) || !fileExists(a.thumbPath(1, "s")) {
 		t.Fatal("HEIC thumbnails not written")
+	}
+}
+
+// RAW previews come from the JPEG embedded in the file, turned by the RAW's orientation; .jpeg is a plain JPEG.
+// testdata/canon.dng is exiftool's own DNG test file (t/images/DNG.dng): real structure, dummy image data.
+func TestRawAndJPEGThumbnails(t *testing.T) {
+	for _, tool := range []string{"exiftool", "ffmpeg", "vipsheader"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not installed", tool)
+		}
+	}
+	lib := t.TempDir()
+	jpg := filepath.Join(lib, "b.jpeg")
+	mustRun(t, "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=640x480", "-frames:v", "1", jpg)
+	src, _ := os.ReadFile("testdata/canon.dng")
+	dng := filepath.Join(lib, "a.DNG")
+	os.WriteFile(dng, src, 0o644)
+	mustRun(t, "exiftool", "-q", "-overwrite_original", "-JpgFromRaw<="+jpg, "-Orientation#=6", dng) // 90° clockwise
+	a, srv := newTestApp(t)
+	if code := post(t, client(t), srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	for name, want := range map[string]string{"a.DNG": "1440x1920", "b.jpeg": "1920x1440"} {
+		var id int64
+		a.db.QueryRow("select id from assets where path = ?", filepath.Join(lib, name)).Scan(&id)
+		if err := a.ensureThumbs(context.Background(), id); err != nil {
+			t.Fatalf("%s thumbnail: %v", name, err)
+		}
+		out, _ := exec.Command("vipsheader", "-f", "width", a.thumbPath(id, "l")).Output()
+		h, _ := exec.Command("vipsheader", "-f", "height", a.thumbPath(id, "l")).Output()
+		if got := strings.TrimSpace(string(out)) + "x" + strings.TrimSpace(string(h)); got != want {
+			t.Errorf("%s preview = %s, want %s", name, got, want)
+		}
 	}
 }
 

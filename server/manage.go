@@ -209,7 +209,8 @@ type library struct {
 	Globs         []string `json:"exclusion_globs"`
 	LastScanAt    *int64   `json:"last_scan_at"`
 	LastScanError *string  `json:"last_scan_error"`
-	Assets        int      `json:"assets"`
+	Photos        int      `json:"photos"`
+	Videos        int      `json:"videos"` // live-photo clips not counted: they show as part of their photo
 	Missing       int      `json:"missing"`
 }
 
@@ -219,7 +220,8 @@ func (a *App) ownLibraries(uid int64, shared bool) ([]library, error) {
 		who = "l.id in " + mine
 	}
 	rows, err := a.db.Query(`select l.id, l.name, l.import_paths, l.exclusion_globs, l.last_scan_at, l.last_scan_error,
-		(select count(*) from assets where library_id = l.id and missing_at is null),
+		(select count(*) from assets where library_id = l.id and missing_at is null and type = 'image'),
+		(select count(*) from assets a where a.library_id = l.id and a.missing_at is null and a.type = 'video' and `+notLiveClip+`),
 		(select count(*) from assets where library_id = l.id and missing_at is not null)
 		from libraries l where `+who+` order by l.id`, uid)
 	if err != nil {
@@ -230,7 +232,7 @@ func (a *App) ownLibraries(uid int64, shared bool) ([]library, error) {
 	for rows.Next() {
 		var l library
 		var paths, globs string
-		if err := rows.Scan(&l.ID, &l.Name, &paths, &globs, &l.LastScanAt, &l.LastScanError, &l.Assets, &l.Missing); err != nil {
+		if err := rows.Scan(&l.ID, &l.Name, &paths, &globs, &l.LastScanAt, &l.LastScanError, &l.Photos, &l.Videos, &l.Missing); err != nil {
 			return nil, err
 		}
 		json.Unmarshal([]byte(paths), &l.Paths)
