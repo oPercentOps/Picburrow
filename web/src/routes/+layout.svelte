@@ -11,7 +11,7 @@
   import { api, type User } from '$lib/api';
   import { SOURCE_URL } from '$lib/source';
   import { sleepSeconds } from '$lib/sleep';
-  import { Image, Folder, BookImage, Heart, Archive, Search, Trash2, HardDrive, Activity, LogOut, Users, Menu } from '@lucide/svelte';
+  import { Image, Folder, BookImage, Heart, Archive, Search, Trash2, HardDrive, Activity, LogOut, Users, Menu, KeyRound } from '@lucide/svelte';
 
   let { children } = $props();
   let user = $state<User | null>(null);
@@ -43,7 +43,8 @@
     { href: '/favorites', label: t('Favourites'), icon: Heart, desktop: true },
     { href: '/archive', label: t('Archive'), icon: Archive, desktop: true },
     { href: '/search', label: t('Search'), icon: Search },
-    { href: '/trash', label: t('Trash'), icon: Trash2, desktop: true }
+    { href: '/trash', label: t('Trash'), icon: Trash2, desktop: true },
+    { href: '/keys', label: t('API keys'), icon: KeyRound, desktop: true }
   ];
   const admin = [
     { href: '/admin/libraries', label: t('Libraries'), icon: HardDrive },

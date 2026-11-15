@@ -79,6 +79,89 @@ func (a *App) auth(admin bool, h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// authKey is auth that also takes an API key ("Authorization: Bearer <key>"), for the few routes a key is made for:
+// an iOS Shortcut can't be trusted to keep a login cookie, and a key in it can do no more than those routes.
+func (a *App) authKey(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if !ok {
+			a.auth(false, h)(w, r)
+			return
+		}
+		var u User
+		if err := a.db.QueryRow(`select u.id, u.username, u.is_admin from api_keys k join users u on u.id = k.user_id
+			where k.token_hash = ?`, hashToken(key)).Scan(&u.ID, &u.Username, &u.IsAdmin); err != nil {
+			httpError(w, http.StatusUnauthorized, "Unknown API key")
+			return
+		}
+		a.db.Exec("update api_keys set last_used_at = unixepoch() where token_hash = ?", hashToken(key))
+		h(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, u)))
+	}
+}
+
+// ---- API keys: each person makes and deletes their own
+
+type apiKey struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	CreatedAt  int64  `json:"created_at"`
+	LastUsedAt *int64 `json:"last_used_at"`
+	Key        string `json:"key,omitempty"` // only in the answer to its creation
+}
+
+func (a *App) getKeys(w http.ResponseWriter, r *http.Request) {
+	rows, err := a.db.Query("select id, name, created_at, last_used_at from api_keys where user_id = ? order by id", userFrom(r).ID)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	defer rows.Close()
+	out := []apiKey{}
+	for rows.Next() {
+		var k apiKey
+		if err := rows.Scan(&k.ID, &k.Name, &k.CreatedAt, &k.LastUsedAt); err != nil {
+			serverError(w, err)
+			return
+		}
+		out = append(out, k)
+	}
+	writeJSON(w, out)
+}
+
+func (a *App) postKey(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Name string `json:"name"`
+	}
+	if !readJSON(w, r, &in) {
+		return
+	}
+	k := apiKey{Name: strings.TrimSpace(in.Name), Key: randomToken()}
+	if k.Name == "" || len(k.Name) > 100 {
+		httpError(w, http.StatusBadRequest, "Give the key a name of up to 100 characters")
+		return
+	}
+	if err := a.db.QueryRow("insert into api_keys (user_id, name, token_hash) values (?, ?, ?) returning id, created_at",
+		userFrom(r).ID, k.Name, hashToken(k.Key)).Scan(&k.ID, &k.CreatedAt); err != nil {
+		serverError(w, err)
+		return
+	}
+	writeJSON(w, k)
+}
+
+func (a *App) deleteKey(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r)
+	res, err := a.db.Exec("delete from api_keys where id = ? and user_id = ?", id, userFrom(r).ID)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	if n, _ := res.RowsAffected(); !ok || n == 0 {
+		httpError(w, http.StatusNotFound, "No such key")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func hashPassword(pw string) (string, error) {
 	h, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
 	return string(h), err

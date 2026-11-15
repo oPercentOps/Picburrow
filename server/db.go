@@ -30,6 +30,15 @@ var migrations = []string{
 	`alter table assets add column rotation integer not null default 0;`,
 	`alter table assets add column keywords text;
 	 alter table assets add column sidecar_mtime integer;`,
+	`create table api_keys (
+	   id           integer primary key,
+	   user_id      integer not null references users(id) on delete cascade,
+	   name         text not null,                         -- what the person called it, e.g. "iPhone Shortcut"
+	   token_hash   blob not null unique,                  -- sha256 of the key, never the key: shown once at creation
+	   created_at   integer not null default (unixepoch()),
+	   last_used_at integer
+	 );
+	 create index api_keys_user on api_keys(user_id);`,
 }
 
 var schemaVersion = len(migrations) + 1

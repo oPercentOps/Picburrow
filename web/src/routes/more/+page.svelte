@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { api, type User } from '$lib/api';
   import { SOURCE_URL } from '$lib/source';
-  import { Heart, Archive, Trash2, HardDrive, Activity, Users, LogOut, ChevronRight } from '@lucide/svelte';
+  import { Heart, Archive, Trash2, HardDrive, Activity, Users, LogOut, ChevronRight, KeyRound } from '@lucide/svelte';
 
   // Phones: the bottom bar holds four places; the rest lives here.
   let me = $state<User | null>(null);
@@ -11,7 +11,8 @@
   const links = [
     { href: '/favorites', label: t('Favourites'), icon: Heart },
     { href: '/archive', label: t('Archive'), icon: Archive },
-    { href: '/trash', label: t('Trash'), icon: Trash2 }
+    { href: '/trash', label: t('Trash'), icon: Trash2 },
+    { href: '/keys', label: t('API keys'), icon: KeyRound }
   ];
   const admin = [
     { href: '/admin/libraries', label: t('Libraries'), icon: HardDrive },
