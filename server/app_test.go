@@ -495,6 +495,7 @@ func TestLibraryUnderHiddenFolder(t *testing.T) {
 	os.MkdirAll(filepath.Join(lib, ".thumbnails"), 0o755)
 	os.WriteFile(filepath.Join(lib, "a.jpg"), []byte("x"), 0o644)
 	os.WriteFile(filepath.Join(lib, ".thumbnails", "skip.jpg"), []byte("x"), 0o644)
+	os.WriteFile(filepath.Join(lib, "empty-2.jpeg"), nil, 0o644)
 	a, srv := newTestApp(t)
 	if code := post(t, client(t), srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
 		t.Fatalf("setup: %d", code)
@@ -509,7 +510,7 @@ func TestLibraryUnderHiddenFolder(t *testing.T) {
 	}
 	rows.Close()
 	if len(paths) != 1 || filepath.Base(paths[0]) != "a.jpg" {
-		t.Fatalf("indexed %v, want only a.jpg (hidden subfolder skipped, hidden parent of the library ignored)", paths)
+		t.Fatalf("indexed %v, want only a.jpg (hidden subfolder and empty file skipped, hidden parent of the library ignored)", paths)
 	}
 }
 

@@ -138,6 +138,9 @@ func (a *App) scanLibrary(libID int64) error {
 			if time.Since(info.ModTime()) < 10*time.Minute {
 				a.noteWatch(p, info.ModTime())
 			}
+			if info.Size() == 0 { // a failed copy or a sync placeholder: no picture in it (indexed once it fills)
+				return nil
+			}
 			seen[p] = true
 			files++
 			e, ok := known[p]
