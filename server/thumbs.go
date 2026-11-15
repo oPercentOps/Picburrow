@@ -18,6 +18,9 @@ import (
 // Thumbnail sizes: small fits the justified grid at 2x DPR (220 css px rows), large is the viewer preview.
 var thumbSizes = map[string]string{"s": "1000x440", "l": "1920x1920"}
 
+// RAW files are previewed from the JPEG embedded in them; with none, vips tries the file itself.
+var rawExt = map[string]bool{".dng": true, ".cr2": true, ".cr3": true, ".nef": true, ".arw": true, ".orf": true, ".rw2": true, ".raf": true}
+
 func (a *App) thumbPath(id int64, size string) string {
 	return filepath.Join(a.dataDir, "thumbs", fmt.Sprint(id%256), fmt.Sprintf("%d-%s.webp", id, size))
 }
@@ -96,6 +99,22 @@ func (a *App) makeThumbs(id int64, src, typ string, rot int) error {
 			}
 		}
 		src = poster
+	} else if rawExt[strings.ToLower(filepath.Ext(src))] {
+		// vips can't decode sensor data (on a DNG it reads the tiny first image): use the JPEG the camera embedded
+		pat, err := filepath.Abs(filepath.Join(dir, fmt.Sprintf("%d-raw.tmp.%%s", id))) // %s: exiftool's extension
+		if err != nil {
+			return err
+		}
+		prev := strings.TrimSuffix(pat, "%s") + "jpg"
+		defer os.Remove(prev)
+		for _, tag := range []string{"-JpgFromRaw", "-PreviewImage"} { // full size first, then the camera's preview
+			if a.run("exiftool", "-q", "-b", "-W!", pat, tag, src); fileExists(prev) {
+				// the embedded JPEG has no orientation of its own: take the RAW's, so vipsthumbnail turns it
+				a.run("exiftool", "-q", "-overwrite_original", "-TagsFromFile", src, "-Orientation", prev)
+				src = prev
+				break
+			}
+		}
 	}
 	for _, size := range []string{"l", "s"} { // large first: the small one is made from it, so the original is decoded once
 		box := thumbSizes[size]

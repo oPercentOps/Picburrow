@@ -33,7 +33,7 @@ test('F07-H2 add a folder, it gets scanned; remove it, its photo goes to trash @
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved. Scanning for changes now.' })).toBeVisible();
   await waitIndexed(page);
-  expect((await api(page, '/api/libraries'))[0].assets).toBe(before.assets + 1);
+  expect((await api(page, '/api/libraries'))[0].photos).toBe(before.photos + 1);
 
   // F07-E4 removing a folder asks first (accepted by the guard) and its photo moves to trash
   await page.reload();
@@ -42,7 +42,7 @@ test('F07-H2 add a folder, it gets scanned; remove it, its photo goes to trash @
   await expect(page.getByRole('status').filter({ hasText: 'Saved.' })).toBeVisible();
   await waitIndexed(page);
   const after = (await api(page, '/api/libraries'))[0];
-  expect(after.assets).toBe(before.assets);
+  expect(after.photos).toBe(before.photos);
   expect(after.missing).toBe(before.missing + 1);
   rmSync(extra, { recursive: true, force: true });
 });
