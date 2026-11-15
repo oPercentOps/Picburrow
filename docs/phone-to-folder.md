@@ -86,27 +86,31 @@ the copy tool added) in its file name, taken within a day either side. Archived 
 Trash do not.
 
 ```
-POST /api/assets/lookup        (signed in: POST /api/login first, same cookie)
+POST /api/assets/lookup        Authorization: Bearer <API key>   (or signed in with the app's cookie)
 {"photos": [{"name": "IMG_0236.HEIC", "taken": "2023-06-15 00:06:39"}, ...]}
 -> {"checked": 1, "missing": [{"name": "IMG_0236.HEIC", "taken": "2023-06-15 00:06:39"}]}
 ```
 
+**The key.** In Picburrow, **API keys → Make a key** (each person makes their own; on a phone it is under **More**).
+Copy it then: it is shown only once. A key opens this lookup and nothing else, so a Shortcut holding it can't show,
+change or download photos. Delete it on the same page and it stops working at once; the page also shows when each
+key was last used.
+
 A Shortcut that does it (untested draft, like the rest of this page; the Shortcuts app on a French iPhone has the
 same actions under French names):
 
-1. **Get Contents of URL** `http://<pi-address>:8080/api/login`, method POST, request body JSON with the text fields
-   `username` and `password`. The password is then stored in the Shortcut: don't share that Shortcut.
-2. **Find Photos** where *Date Taken* is in the last 30 days (or any range), up to 5000.
-3. **Repeat with Each** photo:
+1. **Find Photos** where *Date Taken* is in the last 30 days (or any range), up to 5000.
+2. **Repeat with Each** photo:
    - **Format Date** *Date Taken*, custom format `yyyy-MM-dd HH:mm:ss`;
    - **Text** `{"name":"<Name>","taken":"<Formatted Date>"}`, with the photo's *Name* and the formatted date inserted
      as variables.
-4. **Combine Text** *Repeat Results* with the custom separator `,`, then **Text** `{"photos":[<Combined Text>]}`.
-5. **Get Contents of URL** `http://<pi-address>:8080/api/assets/lookup`, method POST, header
-   `Content-Type: application/json`, request body *File*: the text from step 4.
-6. **Get Dictionary Value** `missing`, then **Show Result** (or **Count** to just get a number).
+3. **Combine Text** *Repeat Results* with the custom separator `,`, then **Text** `{"photos":[<Combined Text>]}`.
+4. **Get Contents of URL** `http://<pi-address>:8080/api/assets/lookup`, method POST, headers
+   `Content-Type: application/json` and `Authorization: Bearer <your key>`, request body *File*: the text from step 3.
+5. **Get Dictionary Value** `missing`, then **Show Result** (or **Count** to just get a number).
 
-If step 5 answers "Sign in first", the login cookie from step 1 did not carry over: please open an issue.
+Over the internet, use the HTTPS address from [remote-access](remote-access.md): over plain HTTP the key travels
+readable.
 
 ## Good to know
 

@@ -147,6 +147,52 @@ func TestFlow(t *testing.T) {
 	if code := post(t, client(t), srv.URL+"/api/assets/lookup", `{"photos":[{"name":"a.jpg","taken":"2024-05-01 10:00:00"}]}`); code != 401 {
 		t.Fatalf("lookup signed out = %d, want 401", code)
 	}
+	// API keys: made by a signed-in person, open the lookup and nothing else, gone once deleted
+	r, err = c.Post(srv.URL+"/api/keys", "application/json", strings.NewReader(`{"name":"iPhone"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var key apiKey
+	json.NewDecoder(r.Body).Decode(&key)
+	r.Body.Close()
+	if key.Key == "" || key.ID == 0 {
+		t.Fatalf("new key = %+v", key)
+	}
+	withKey := func(method, url, k string) int {
+		req, _ := http.NewRequest(method, srv.URL+url, strings.NewReader(`{"photos":[{"name":"x","taken":"2024-05-01 10:00:00"}]}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+k)
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.Body.Close()
+		return r.StatusCode
+	}
+	if code := withKey("POST", "/api/assets/lookup", key.Key); code != 200 {
+		t.Fatalf("lookup with a key = %d", code)
+	}
+	if code := withKey("GET", "/api/timeline/buckets", key.Key); code != 401 {
+		t.Fatalf("timeline with a key = %d, want 401: a key only opens the lookup", code)
+	}
+	if code := withKey("POST", "/api/assets/lookup", key.Key+"x"); code != 401 {
+		t.Fatalf("lookup with a wrong key = %d", code)
+	}
+	if code := post(t, client(t), srv.URL+"/api/keys", `{"name":"x"}`); code != 401 {
+		t.Fatalf("key made signed out = %d", code)
+	}
+	var keys []apiKey
+	get(t, c, srv.URL+"/api/keys", &keys)
+	if len(keys) != 1 || keys[0].Key != "" || keys[0].LastUsedAt == nil {
+		t.Fatalf("keys = %+v (want one, used, without its secret)", keys)
+	}
+	del, _ := http.NewRequest("DELETE", srv.URL+"/api/keys/"+itoa(key.ID), nil)
+	if r, err := c.Do(del); err != nil || r.StatusCode != 204 {
+		t.Fatalf("delete key: %v %v", err, r)
+	}
+	if code := withKey("POST", "/api/assets/lookup", key.Key); code != 401 {
+		t.Fatalf("lookup with a deleted key = %d", code)
+	}
 	var videoTaken string
 	a.db.QueryRow("select taken_local from assets where type = 'video'").Scan(&videoTaken)
 	if strings.HasPrefix(videoTaken, "1904") || videoTaken == "" {
@@ -1040,7 +1086,17 @@ func TestMigrateFromV1(t *testing.T) {
 		"create index assets_play     on assets(id) where type = 'video' and play_at is null;\n", "",
 		"  rotation      integer not null default 0,          -- degrees clockwise the person turned the photo; previews are made turned, the file is untouched\n", "",
 		"  keywords      text,                                -- from the XMP sidecar next to the file: \"People/Ann, Holidays\", as other tools wrote them\n", "",
-		"  sidecar_mtime integer,                             -- modified time of the sidecar when it was read; null = no sidecar\n", "").Replace(schemaSQL)
+		"  sidecar_mtime integer,                             -- modified time of the sidecar when it was read; null = no sidecar\n", "",
+		`create table api_keys (
+  id           integer primary key,
+  user_id      integer not null references users(id) on delete cascade,
+  name         text not null,                         -- what the person called it, e.g. "iPhone Shortcut"
+  token_hash   blob not null unique,                  -- sha256 of the key, never the key: shown once at creation
+  created_at   integer not null default (unixepoch()),
+  last_used_at integer
+);
+create index api_keys_user on api_keys(user_id);
+`, "").Replace(schemaSQL)
 	if v1 == schemaSQL {
 		t.Fatal("couldn't rebuild the v1 schema from schema.sql")
 	}

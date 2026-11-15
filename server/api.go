@@ -36,7 +36,10 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("POST /api/libraries/{id}/scan", a.auth(true, a.postScan))
 	m.HandleFunc("GET /api/assets", a.auth(false, a.getAssets))
 	m.HandleFunc("PATCH /api/assets", a.auth(false, a.patchAssets))
-	m.HandleFunc("POST /api/assets/lookup", a.auth(false, a.postLookup))
+	m.HandleFunc("POST /api/assets/lookup", a.authKey(a.postLookup)) // the one route an API key opens
+	m.HandleFunc("GET /api/keys", a.auth(false, a.getKeys))
+	m.HandleFunc("POST /api/keys", a.auth(false, a.postKey))
+	m.HandleFunc("DELETE /api/keys/{id}", a.auth(false, a.deleteKey))
 	m.HandleFunc("GET /api/folders", a.auth(false, a.getFolders))
 	m.HandleFunc("GET /api/libraries", a.auth(true, a.getLibraries))
 	m.HandleFunc("PATCH /api/libraries/{id}", a.auth(true, a.patchLibrary))
