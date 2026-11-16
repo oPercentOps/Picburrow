@@ -141,6 +141,22 @@ func TestFlow(t *testing.T) {
 	if len(look.Missing) != 3 || look.Missing[0].Taken != "2020-01-01 00:00:00" || look.Missing[1].Name != "zzz.jpg" || look.Missing[2].Name != "001.jpg" {
 		t.Fatalf("lookup missing = %+v, want the a.jpg of 2020, zzz.jpg and 001.jpg", look.Missing)
 	}
+	// the Shortcut's fast form: one line per photo, dates in ISO 8601 as Shortcuts gives them unformatted
+	iso, _ := time.ParseInLocation("2006-01-02 15:04:05", "2023-12-24 18:30:00", time.Local)
+	r, err = c.Post(srv.URL+"/api/assets/lookup", "application/json", strings.NewReader(`{"names":"IMG_1.HEIC\r\nIMG_2.HEIC\n",
+		"dates":"`+iso.Format(time.RFC3339)+`\n2024-05-01T10:00:09+02:00"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	look.Missing = nil
+	json.NewDecoder(r.Body).Decode(&look)
+	r.Body.Close()
+	if len(look.Missing) != 1 || look.Missing[0].Name != "IMG_2.HEIC" {
+		t.Fatalf("lookup by lines = %+v, want only IMG_2.HEIC (IMG_1 has b.jpg's time)", look.Missing)
+	}
+	if code := post(t, c, srv.URL+"/api/assets/lookup", `{"names":"a\nb","dates":"2024-05-01T10:00:00Z"}`); code != 400 {
+		t.Fatalf("lookup with fewer dates than names = %d, want 400", code)
+	}
 	if code := post(t, c, srv.URL+"/api/assets/lookup", `{"photos":[{"name":"a.jpg","taken":"15/06/2023"}]}`); code != 400 {
 		t.Fatalf("lookup with a bad date = %d, want 400", code)
 	}
