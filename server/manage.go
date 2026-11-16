@@ -48,9 +48,23 @@ func (a *App) postLookup(w http.ResponseWriter, r *http.Request) {
 	}
 	var in struct {
 		Photos []photo `json:"photos"`
+		// or one photo per line, names and dates in the same order: a Shortcut makes these with no loop per photo
+		Names string `json:"names"`
+		Dates string `json:"dates"`
 	}
 	if !readJSON(w, r, &in) {
 		return
+	}
+	if in.Names != "" || in.Dates != "" {
+		lines := func(s string) []string { return strings.Split(strings.TrimSpace(strings.ReplaceAll(s, "\r", "")), "\n") }
+		names, dates := lines(in.Names), lines(in.Dates)
+		if len(names) != len(dates) {
+			httpError(w, http.StatusBadRequest, "names and dates need one line per photo, in the same order")
+			return
+		}
+		for i := range names {
+			in.Photos = append(in.Photos, photo{names[i], dates[i]})
+		}
 	}
 	if len(in.Photos) == 0 || len(in.Photos) > 5000 {
 		httpError(w, http.StatusBadRequest, "Send 1 to 5000 photos")
@@ -60,9 +74,13 @@ func (a *App) postLookup(w http.ResponseWriter, r *http.Request) {
 	missing := []photo{}
 	for _, p := range in.Photos {
 		t, err := time.Parse(layout, strings.TrimSpace(p.Taken))
-		if err != nil {
-			httpError(w, http.StatusBadRequest, "taken must look like 2024-05-31 18:30:00")
-			return
+		if err != nil { // ISO 8601, what Shortcuts gives unformatted: the clock time in this server's time zone
+			if t, err = time.Parse(time.RFC3339, strings.TrimSpace(p.Taken)); err == nil {
+				t = t.In(time.Local)
+			} else if t, err = time.Parse("2006-01-02T15:04:05", strings.TrimSpace(p.Taken)); err != nil {
+				httpError(w, http.StatusBadRequest, "Dates must look like 2024-05-31 18:30:00 or 2024-05-31T18:30:00+02:00")
+				return
+			}
 		}
 		stem := strings.TrimSuffix(filepath.Base(p.Name), filepath.Ext(p.Name)) // the copy may be a JPEG of a HEIC
 		if stem == "." || stem == "/" {

@@ -88,26 +88,37 @@ Trash do not.
 ```
 POST /api/assets/lookup        Authorization: Bearer <API key>   (or signed in with the app's cookie)
 {"photos": [{"name": "IMG_0236.HEIC", "taken": "2023-06-15 00:06:39"}, ...]}
--> {"checked": 1, "missing": [{"name": "IMG_0236.HEIC", "taken": "2023-06-15 00:06:39"}]}
+  or, one photo per line, in the same order:
+{"names": "IMG_0236.HEIC\nIMG_0237.HEIC", "dates": "2023-06-15T00:06:39+02:00\n2023-06-15T00:07:02+02:00"}
+-> {"checked": 2, "missing": [{"name": "IMG_0236.HEIC", "taken": "2023-06-15T00:06:39+02:00"}]}
 ```
+
+Dates are `2023-06-15 00:06:39` (the clock time on the photo) or ISO 8601; an ISO date is read in the server's time
+zone. The second form is the one to use from a Shortcut: it needs no loop over each photo, which on an iPhone takes
+around half a second per photo.
 
 **The key.** In Picburrow, **API keys → Make a key** (each person makes their own; on a phone it is under **More**).
 Copy it then: it is shown only once. A key opens this lookup and nothing else, so a Shortcut holding it can't show,
 change or download photos. Delete it on the same page and it stops working at once; the page also shows when each
 key was last used.
 
-A Shortcut that does it (untested draft, like the rest of this page; the Shortcuts app on a French iPhone has the
-same actions under French names):
+A Shortcut that does it, a thousand photos per request (untested draft, like the rest of this page; the Shortcuts
+app on a French iPhone has the same actions under French names):
 
-1. **Find Photos** where *Date Taken* is in the last 30 days (or any range), up to 5000.
-2. **Repeat with Each** photo:
-   - **Format Date** *Date Taken*, custom format `yyyy-MM-dd HH:mm:ss`;
-   - **Text** `{"name":"<Name>","taken":"<Formatted Date>"}`, with the photo's *Name* and the formatted date inserted
-     as variables.
-3. **Combine Text** *Repeat Results* with the custom separator `,`, then **Text** `{"photos":[<Combined Text>]}`.
-4. **Get Contents of URL** `http://<pi-address>:8080/api/assets/lookup`, method POST, headers
-   `Content-Type: application/json` and `Authorization: Bearer <your key>`, request body *File*: the text from step 3.
-5. **Get Dictionary Value** `missing`, then **Show Result** (or **Count** to just get a number).
+1. **Ask for Input**, a number of days, no default; **If** it has no value, use 36500 (the whole library).
+2. **Find Photos** where *Date Taken* is in those last days, sorted by *Date Taken*, oldest first, no limit.
+   **Count** them (*Total*), then **Calculate** *Total* / 1000 and **Round Number** up (*Batches*).
+3. **Repeat** *Batches* times:
+   - **Calculate** *Start* = (*Repeat Index* − 1) × 1000 + 1 and *End* = the smaller of *Repeat Index* × 1000 and *Total*;
+   - **Get Items from List**, *Items in Range* *Start* to *End*;
+   - **Get Details of Photo Media**: *Name*, then **Combine Text** with *New Lines*;
+   - **Get Details of Photo Media**: *Date Taken*, then **Combine Text** with *New Lines*. Tap the *Date Taken*
+     variable and set its date format to **ISO 8601**, with the time included;
+   - **Get Contents of URL** `http://<pi-address>:8080/api/assets/lookup`, method POST, headers
+     `Authorization: Bearer <your key>`, request body *JSON* with two *Text* fields: `names` (the combined names) and
+     `dates` (the combined dates). Shortcuts writes the JSON itself, quotes and line breaks included;
+   - **Get Dictionary Value** `missing`, and add each one's `name` and `taken` to a list.
+4. **Save File**: the list as text, for example to *Shortcuts/Picburrow-missing.txt*, replacing the old one.
 
 Over the internet, use the HTTPS address from [remote-access](remote-access.md): over plain HTTP the key travels
 readable.
