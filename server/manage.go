@@ -44,7 +44,7 @@ func (a *App) getAssets(w http.ResponseWriter, r *http.Request) {
 func (a *App) postLookup(w http.ResponseWriter, r *http.Request) {
 	type photo struct {
 		Name  string `json:"name"`
-		Taken string `json:"taken"` // 2023-06-15 00:06:39, the clock time on the photo
+		Taken string `json:"taken,omitempty"` // 2023-06-15 00:06:39, the clock time on the photo
 	}
 	var in struct {
 		Photos []photo `json:"photos"`
@@ -55,8 +55,12 @@ func (a *App) postLookup(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &in) {
 		return
 	}
+	lines := func(s string) []string { return strings.Split(strings.TrimSpace(strings.ReplaceAll(s, "\r", "")), "\n") }
+	if in.Names != "" && in.Dates == "" {
+		a.lookupFiles(w, r, lines(in.Names))
+		return
+	}
 	if in.Names != "" || in.Dates != "" {
-		lines := func(s string) []string { return strings.Split(strings.TrimSpace(strings.ReplaceAll(s, "\r", "")), "\n") }
 		names, dates := lines(in.Names), lines(in.Dates)
 		if len(names) != len(dates) {
 			httpError(w, http.StatusBadRequest, "names and dates need one line per photo, in the same order")
@@ -99,6 +103,57 @@ func (a *App) postLookup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, map[string]any{"checked": len(in.Photos), "missing": missing})
+}
+
+// lookupFiles is the lookup by file name alone, as the phone's copy tool names them (2023-06-15_000639_IMG_0236):
+// a photo is there if a file has that name, whatever its extension, letter case or duplicate suffix (-2).
+func (a *App) lookupFiles(w http.ResponseWriter, r *http.Request, names []string) {
+	if len(names) > 5000 {
+		httpError(w, http.StatusBadRequest, "Send 1 to 5000 photos")
+		return
+	}
+	stem := func(s string) string {
+		s = strings.ToLower(filepath.Base(strings.TrimSpace(s)))
+		return strings.TrimSuffix(s, filepath.Ext(s))
+	}
+	rows, err := a.db.Query(`select substr(a.path, length(a.dir) + 2) from assets a
+		where a.library_id in `+mine+` and a.missing_at is null`, userFrom(r).ID)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	defer rows.Close()
+	have := map[string]bool{}
+	for rows.Next() {
+		var f string
+		if err := rows.Scan(&f); err != nil {
+			serverError(w, err)
+			return
+		}
+		s := stem(f)
+		have[s] = true
+		if i := strings.LastIndexByte(s, '-'); i > 0 && i < len(s)-1 && strings.Trim(s[i+1:], "0123456789") == "" {
+			have[s[:i]] = true // IMG_0236-2.jpeg: the copy tool's second copy of IMG_0236
+		}
+	}
+	if err := rows.Err(); err != nil {
+		serverError(w, err)
+		return
+	}
+	type file struct {
+		Name string `json:"name"`
+	}
+	missing, checked := []file{}, 0
+	for _, n := range names {
+		if n = strings.TrimSpace(n); n == "" {
+			continue
+		}
+		checked++
+		if !have[stem(n)] {
+			missing = append(missing, file{n})
+		}
+	}
+	writeJSON(w, map[string]any{"checked": checked, "missing": missing})
 }
 
 func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {

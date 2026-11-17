@@ -154,6 +154,24 @@ func TestFlow(t *testing.T) {
 	if len(look.Missing) != 1 || look.Missing[0].Name != "IMG_2.HEIC" {
 		t.Fatalf("lookup by lines = %+v, want only IMG_2.HEIC (IMG_1 has b.jpg's time)", look.Missing)
 	}
+	// by file name alone, as the copy tool names them: extension, case and a duplicate suffix don't matter
+	a.db.Exec(`insert into assets (library_id, path, dir, size, mtime, quick_hash, type, mime)
+		values (1, ?, ?, 1, 1, x'01', 'image', 'image/jpeg')`, filepath.Join(lib, "2023-06-15_000639_IMG_0236-2.jpeg"), lib)
+	r, err = c.Post(srv.URL+"/api/assets/lookup", "application/json", strings.NewReader(
+		`{"names":"A\nb.HEIC\n2023-06-15_000639_IMG_0236\n\n2023-06-15_000639_IMG_0237\n2023-06-15_000639_IMG"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var files struct {
+		Checked int
+		Missing []map[string]string
+	}
+	json.NewDecoder(r.Body).Decode(&files)
+	r.Body.Close()
+	if files.Checked != 5 || len(files.Missing) != 2 || files.Missing[0]["name"] != "2023-06-15_000639_IMG_0237" || files.Missing[1]["name"] != "2023-06-15_000639_IMG" {
+		t.Fatalf("lookup by file name = %+v, want IMG_0237 and the half name missing, 5 checked", files)
+	}
+	a.db.Exec("delete from assets where path like '%IMG_0236-2.jpeg'")
 	if code := post(t, c, srv.URL+"/api/assets/lookup", `{"names":"a\nb","dates":"2024-05-01T10:00:00Z"}`); code != 400 {
 		t.Fatalf("lookup with fewer dates than names = %d, want 400", code)
 	}
