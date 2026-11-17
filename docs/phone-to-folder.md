@@ -91,11 +91,19 @@ POST /api/assets/lookup        Authorization: Bearer <API key>   (or signed in w
   or, one photo per line, in the same order:
 {"names": "IMG_0236.HEIC\nIMG_0237.HEIC", "dates": "2023-06-15T00:06:39+02:00\n2023-06-15T00:07:02+02:00"}
 -> {"checked": 2, "missing": [{"name": "IMG_0236.HEIC", "taken": "2023-06-15T00:06:39+02:00"}]}
+  or file names alone, one per line, as your copy tool names the files:
+{"names": "2023-06-15_000639_IMG_0236\n2023-06-15_000702_IMG_0237"}
+-> {"checked": 2, "missing": [{"name": "2023-06-15_000702_IMG_0237"}]}
 ```
 
 Dates are `2023-06-15 00:06:39` (the clock time on the photo) or ISO 8601; an ISO date is read in the server's time
 zone. The second form is the one to use from a Shortcut: it needs no loop over each photo, which on an iPhone takes
 around half a second per photo.
+
+With file names alone, no date is compared: a photo is there if a file in your libraries has exactly that name,
+whatever its extension (`.HEIC`, `.jpeg`), letter case or duplicate suffix (`-2`). Use it when the copy tool puts the
+date in the name: it also finds photos whose file has no date inside (screenshots, saved images), which the other
+forms can miss when the file was copied more than a day after it was taken.
 
 **The key.** In Picburrow, **API keys → Make a key** (each person makes their own; on a phone it is under **More**).
 Copy it then: it is shown only once. A key opens this lookup and nothing else, so a Shortcut holding it can't show,
