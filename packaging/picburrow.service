@@ -14,7 +14,9 @@ ExecStart=/usr/bin/picburrow
 StateDirectory=picburrow
 Restart=on-failure
 RestartSec=5
-# Picburrow only reads photo folders; it writes nothing but its own data dir.
+# Picburrow reads photo folders and writes its own data dir; it writes to a photo folder only for photos sent with an
+# API key (/api/assets/upload), and only where the picburrow user may write. ProtectHome keeps /home read-only: to
+# receive photos into a folder under /home, add ReadWritePaths=<that folder> with sudo systemctl edit picburrow.
 NoNewPrivileges=yes
 ProtectSystem=full
 ProtectHome=read-only

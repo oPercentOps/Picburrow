@@ -4,7 +4,7 @@ export const fr: Record<string, string> = {
   "1 star": "1 étoile",
   "1+ star": "1 étoile et plus",
   "A folder of their own": "Son propre dossier",
-  "A key lets an iPhone Shortcut ask which of your phone photos are not here yet. It can do nothing else: it does not show or change photos.": "Une clé permet à un Raccourci iPhone de demander quelles photos du téléphone ne sont pas encore ici. Elle ne peut rien faire d'autre : elle ne montre ni ne modifie aucune photo.",
+  "A key lets an iPhone Shortcut ask which of your phone photos are not here yet, and send them to your folder. It can do nothing else: it does not show, change or delete photos.": "Une clé permet à un Raccourci iPhone de demander quelles photos du téléphone ne sont pas encore ici, et de les envoyer dans votre dossier. Elle ne peut rien faire d'autre : elle ne montre, ne modifie ni ne supprime aucune photo.",
   "Add": "Ajouter",
   "Add someone": "Ajouter une personne",
   "Add to album": "Ajouter à un album",

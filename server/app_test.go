@@ -11,6 +11,7 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -1825,5 +1826,83 @@ func TestVideoCopiesSwitch(t *testing.T) {
 	}
 	if set(`{"video_one_thread":false}`) != 204 || fileExists(a.oneThreadFile()) {
 		t.Fatal("one thread off: the switch file is still there")
+	}
+}
+
+// upload with an API key: saved into the library's folder, never overwriting, and indexed
+func TestUpload(t *testing.T) {
+	if _, err := exec.LookPath("exiftool"); err != nil {
+		t.Skip("exiftool not installed")
+	}
+	lib := t.TempDir()
+	a, srv := newTestApp(t)
+	c := client(t)
+	if code := post(t, c, srv.URL+"/api/setup", `{"username":"ann","password":"correct horse","path":"`+lib+`"}`); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	waitScan(t, a)
+	r, err := c.Post(srv.URL+"/api/keys", "application/json", strings.NewReader(`{"name":"iPhone"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var key apiKey
+	json.NewDecoder(r.Body).Decode(&key)
+	r.Body.Close()
+	jpg := func(v uint8) []byte {
+		var b bytes.Buffer
+		img := image.NewGray(image.Rect(0, 0, 8, 8+int(v)))
+		jpeg.Encode(&b, img, nil)
+		return b.Bytes()
+	}
+	upload := func(c *http.Client, k, name string, data []byte) (int, string) {
+		var body bytes.Buffer
+		mw := multipart.NewWriter(&body)
+		fw, _ := mw.CreateFormFile("file", name)
+		fw.Write(data)
+		mw.Close()
+		req, _ := http.NewRequest("POST", srv.URL+"/api/assets/upload", &body)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		if k != "" {
+			req.Header.Set("Authorization", "Bearer "+k)
+		}
+		r, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+		out, _ := io.ReadAll(r.Body)
+		return r.StatusCode, string(out)
+	}
+	if code, out := upload(http.DefaultClient, key.Key, "../IMG_1.jpg", jpg(0)); code != 200 || !strings.Contains(out, `"name":"IMG_1.jpg"`) {
+		t.Fatalf("upload = %d %s", code, out)
+	}
+	if _, err := os.Stat(filepath.Join(lib, "IMG_1.jpg")); err != nil {
+		t.Fatalf("not saved in the library folder: %v", err)
+	}
+	if code, out := upload(http.DefaultClient, key.Key, "IMG_1.jpg", jpg(0)); code != 200 || !strings.Contains(out, `"existed":true`) {
+		t.Fatalf("same photo again = %d %s, want existed", code, out)
+	}
+	if code, out := upload(http.DefaultClient, key.Key, "IMG_1.jpg", jpg(200)); code != 200 || !strings.Contains(out, `"name":"IMG_1-2.jpg"`) {
+		t.Fatalf("other photo, same name = %d %s, want IMG_1-2.jpg", code, out)
+	}
+	for name, want := range map[string]int{"notes.txt": 400, ".IMG_2.jpg": 400} {
+		if code, _ := upload(http.DefaultClient, key.Key, name, jpg(0)); code != want {
+			t.Errorf("upload %s = %d, want %d", name, code, want)
+		}
+	}
+	if code, _ := upload(c, "", "IMG_3.jpg", jpg(0)); code != 401 {
+		t.Fatalf("upload with the cookie alone = %d, want 401 (cross-site forms can send it)", code)
+	}
+	if code, _ := upload(http.DefaultClient, key.Key+"x", "IMG_3.jpg", jpg(0)); code != 401 {
+		t.Fatalf("upload with a wrong key = %d", code)
+	}
+	waitScan(t, a)
+	var n int
+	a.db.QueryRow("select count(*) from assets").Scan(&n)
+	if n != 2 {
+		t.Fatalf("indexed %d uploads, want 2", n)
+	}
+	if left, _ := filepath.Glob(filepath.Join(lib, ".picburrow-upload-*")); len(left) != 0 {
+		t.Fatalf("temporary files left: %v", left)
 	}
 }
