@@ -4,11 +4,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"io/fs"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 // ---- favourites / archive
@@ -154,6 +161,139 @@ func (a *App) lookupFiles(w http.ResponseWriter, r *http.Request, names []string
 		}
 	}
 	writeJSON(w, map[string]any{"checked": checked, "missing": missing})
+}
+
+// postUpload saves the photos a phone sends (multipart, field "file") into the first folder of the sender's own library:
+// the catch-up for photos the lookup says are missing, from anywhere the server can be reached (Tailscale), without the
+// NAS share. It never overwrites: a name taken by a file of another size gets -2, -3 (as copy tools do), one of the same
+// size is taken as the same photo, already there.
+func (a *App) postUpload(w http.ResponseWriter, r *http.Request) {
+	// key only: a cross-site form can post multipart/form-data with the cookie, it can't set this header
+	if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+		httpError(w, http.StatusUnauthorized, "Send an API key in the header Authorization: Bearer <key>")
+		return
+	}
+	var pathsJSON string
+	var roots []string
+	err := a.db.QueryRow("select import_paths from libraries where owner_id = ? order by id limit 1", userFrom(r).ID).Scan(&pathsJSON)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		serverError(w, err)
+		return
+	}
+	if json.Unmarshal([]byte(pathsJSON), &roots); len(roots) == 0 {
+		httpError(w, http.StatusConflict, "Your library has no folder to save photos in")
+		return
+	}
+	dir := roots[0]
+	mr, err := r.MultipartReader()
+	if err != nil {
+		httpError(w, http.StatusBadRequest, "Send the photos as multipart/form-data, in the field file")
+		return
+	}
+	type file struct {
+		Name    string `json:"name"`              // as saved, maybe with -2
+		Existed bool   `json:"existed,omitempty"` // already there, nothing written
+	}
+	saved := []file{}
+	defer func() {
+		if len(saved) > 0 {
+			a.startScan() // also after an upload cut off halfway: what was saved shows up
+		}
+	}()
+	for {
+		part, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			httpError(w, http.StatusBadRequest, "The upload was cut off")
+			return
+		}
+		if part.FileName() == "" {
+			continue
+		}
+		name := filepath.Base(part.FileName())
+		if strings.HasPrefix(name, ".") || !mediaExt[strings.ToLower(filepath.Ext(name))] {
+			httpError(w, http.StatusBadRequest, fmt.Sprintf("%s is not a photo or video Picburrow shows", name))
+			return
+		}
+		got, existed, err := saveUpload(dir, name, part)
+		switch {
+		case errors.Is(err, errNoRoom):
+			httpError(w, http.StatusInsufficientStorage, "Less than 1 GB would be left on the disk of "+dir)
+			return
+		case errors.Is(err, fs.ErrPermission) || errors.Is(err, syscall.EROFS):
+			httpError(w, http.StatusForbidden, "Picburrow may not write to "+dir+". Give the picburrow user write access to it.")
+			return
+		case err != nil:
+			serverError(w, err)
+			return
+		}
+		saved = append(saved, file{got, existed})
+	}
+	if len(saved) == 0 {
+		httpError(w, http.StatusBadRequest, "Send at least one file, in the field file")
+		return
+	}
+	writeJSON(w, map[string]any{"saved": saved})
+}
+
+var errNoRoom = errors.New("disk nearly full")
+
+// saveUpload writes src to a hidden file in dir (the scan skips it), then renames it to name, or name-2... if taken.
+func saveUpload(dir, name string, src io.Reader) (saved string, existed bool, err error) {
+	var st unix.Statfs_t
+	if err := unix.Statfs(dir, &st); err != nil {
+		return "", false, err
+	}
+	room := int64(st.Bavail*uint64(st.Bsize)) - 1<<30 // keep 1 GB: the disk is the NAS's, not only ours
+	tmp := filepath.Join(dir, ".picburrow-upload-"+randomToken()[:16])
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666) // the umask decides, like any other copy
+	if err != nil {
+		return "", false, err
+	}
+	defer os.Remove(tmp) // fails harmlessly once renamed
+	n, err := io.Copy(f, io.LimitReader(src, max(room, 0)+1))
+	if err == nil && n > room {
+		err = errNoRoom
+	}
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return "", false, err
+	}
+	ext := filepath.Ext(name)
+	for i := 1; ; i++ {
+		cand := name
+		if i > 1 {
+			cand = fmt.Sprintf("%s-%d%s", strings.TrimSuffix(name, ext), i, ext)
+		}
+		p := filepath.Join(dir, cand)
+		if info, err := os.Stat(p); err == nil {
+			if info.Size() == n {
+				return cand, true, nil
+			}
+			continue
+		}
+		// claim the name first: O_EXCL, so two uploads of the same name at once can't both take it
+		res, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
+		if errors.Is(err, fs.ErrExist) {
+			continue
+		}
+		if err != nil {
+			return "", false, err
+		}
+		res.Close()
+		if err := os.Rename(tmp, p); err != nil {
+			os.Remove(p)
+			return "", false, err
+		}
+		return cand, false, nil
+	}
 }
 
 func (a *App) patchAssets(w http.ResponseWriter, r *http.Request) {

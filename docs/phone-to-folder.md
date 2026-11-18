@@ -106,8 +106,8 @@ date in the name: it also finds photos whose file has no date inside (screenshot
 forms can miss when the file was copied more than a day after it was taken.
 
 **The key.** In Picburrow, **API keys → Make a key** (each person makes their own; on a phone it is under **More**).
-Copy it then: it is shown only once. A key opens this lookup and nothing else, so a Shortcut holding it can't show,
-change or download photos. Delete it on the same page and it stops working at once; the page also shows when each
+Copy it then: it is shown only once. A key opens this lookup and the upload below, nothing else, so a Shortcut
+holding it can't show, change, delete or download photos. Delete it on the same page and it stops working at once; the page also shows when each
 key was last used.
 
 A Shortcut that does it, a thousand photos per request (untested draft, like the rest of this page; the Shortcuts
@@ -130,6 +130,39 @@ app on a French iPhone has the same actions under French names):
 
 Over the internet, use the HTTPS address from [remote-access](remote-access.md): over plain HTTP the key travels
 readable.
+
+## Send the missing photos (catch-up, from anywhere)
+
+When the phone can't reach the NAS share (away from home, or no SMB app), the same key sends the photos straight to
+Picburrow, over the Tailscale address from [remote-access](remote-access.md):
+
+```
+POST /api/assets/upload        Authorization: Bearer <API key>   (the key is required: the login cookie isn't enough)
+multipart/form-data, one or more files in the field file
+-> {"saved": [{"name": "IMG_0236.HEIC"}, {"name": "IMG_0237-2.HEIC"}, {"name": "IMG_0238.HEIC", "existed": true}]}
+```
+
+```bash
+curl -H "Authorization: Bearer <key>" -F file=@IMG_0236.HEIC https://<pi>.<tailnet>.ts.net/api/assets/upload
+```
+
+- The photo lands in the **first folder of your own library** (Libraries page), under the name the phone gives it,
+  and shows up once the scan that starts right after has read it.
+- Nothing is ever overwritten. A file of the same name and the same size counts as the same photo (`existed`, nothing
+  written), so sending a batch again after a dropped connection is harmless; a different file of the same name is
+  saved as `IMG_0236-2.HEIC`, which the lookup by file name also counts as found.
+- Only photo and video files Picburrow shows are taken. It refuses when less than 1 GB would be left on that disk.
+- **The picburrow user must be allowed to write to that folder** (until now it only needed to read it):
+  `sudo -u picburrow touch /srv/photos/ann-phone/.test && sudo rm /srv/photos/ann-phone/.test` tells you. For a
+  folder under `/home`, the service also keeps `/home` read-only: `sudo systemctl edit picburrow`, add
+  `[Service]` and `ReadWritePaths=/home/<you>/Pictures`, then `sudo systemctl restart picburrow`.
+- **Syncthing *Receive Only* folder:** Syncthing lists the uploaded photos as *local additions*; don't press
+  *Revert Local Changes*, it would delete them. Send Only from the phone keeps working as before.
+
+In the Shortcut above, after the lookup: **Repeat with Each** photo whose name is in `missing`, **Get Contents of
+URL** `https://<pi>.<tailnet>.ts.net/api/assets/upload`, method POST, the same `Authorization` header, request body
+*Form* with a field `file` of type *File* set to the photo. Shortcuts may send a JPEG instead of the HEIC original
+unless the photo is passed unconverted; Picburrow takes either.
 
 ## Good to know
 

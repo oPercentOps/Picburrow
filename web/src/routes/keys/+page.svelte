@@ -54,7 +54,7 @@
 
 <div class="page">
   <h1>{t('API keys')}</h1>
-  <p class="muted intro">{t('A key lets an iPhone Shortcut ask which of your phone photos are not here yet. It can do nothing else: it does not show or change photos.')}</p>
+  <p class="muted intro">{t('A key lets an iPhone Shortcut ask which of your phone photos are not here yet, and send them to your folder. It can do nothing else: it does not show, change or delete photos.')}</p>
   {#if error}<p class="error-msg" role="alert">{error}</p>{/if}
 
   {#if made?.key}
