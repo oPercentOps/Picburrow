@@ -20,3 +20,26 @@ test('F08-H1 archive moves on to the next photo, leaves the timeline, unarchive 
   await expect(page.getByText('Nothing archived')).toBeVisible();
   expect(await count()).toBe(before);
 });
+
+test('F08-D1 delete moves the selected photo to Trash; Restore there brings it back', async ({ page }) => {
+  const count = async () => (await api<any[]>(page, '/api/timeline/buckets')).reduce((n, b) => n + b.count, 0);
+  const before = await count();
+  const inTrash = (await api<any[]>(page, '/api/trash')).length;
+  await page.goto('/');
+  await expect(tiles(page).first()).toBeVisible();
+  const shown = await tiles(page).count();
+  await page.getByRole('button', { name: /^Select (Photo|Video) from/ }).first().click();
+  const bar = page.getByRole('toolbar', { name: 'Selected photos' });
+  await bar.getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByRole('status').filter({ hasText: /^Moved \d+ to Trash/ })).toBeVisible();
+  await expect(tiles(page)).toHaveCount(shown - 1);
+  expect(await count()).toBeLessThan(before);
+
+  await page.goto('/trash');
+  await expect(tiles(page)).not.toHaveCount(inTrash);
+  await page.getByRole('button', { name: /^Select (Photo|Video) from/ }).first().click();
+  await bar.getByRole('button', { name: 'Restore' }).click();
+  await expect(page.getByRole('status').filter({ hasText: /^Restored \d+/ })).toBeVisible();
+  await expect(tiles(page)).toHaveCount(inTrash);
+  expect(await count()).toBe(before);
+});

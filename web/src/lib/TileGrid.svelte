@@ -22,6 +22,7 @@
     const gs: { day: string; items: Tile[] }[] = [];
     for (const t0 of tiles) {
       const o = overrides[t0.id];
+      if (o?.gone) continue;
       const t = o?.v ? { ...t0, w: o.w ?? t0.w, h: o.h ?? t0.h, v: o.v } : t0; // rotated in the viewer since it was loaded
       const day = byDay ? t.taken.slice(0, 10) : '';
       if (gs.at(-1)?.day !== day || !gs.length) gs.push({ day, items: [] });
@@ -29,7 +30,7 @@
     }
     return gs.map((g) => ({ ...g, rows: justify(g.items.map((t) => aspectOf(t.w, t.h)), width, rowHeight, GAP) }));
   });
-  const ids = $derived(seq ? tiles.map((t) => t.id) : undefined);
+  const ids = $derived(seq ? tiles.filter((t) => !overrides[t.id]?.gone).map((t) => t.id) : undefined);
   const fav = (t: Tile) => overrides[t.id]?.fav ?? t.fav;
   // the name must contain the text the tile shows (WCAG 2.5.3, voice control): duration, "No preview"
   const label = (t: Tile) =>
