@@ -7,7 +7,7 @@ Rules kept: no testimonials, user counts, stars or "trusted by" rows (there are 
 ## 1. Hero
 
 - **Headline**: Your phone photos, as a timeline, on a 1 GB Raspberry Pi.
-- **Under it**: Picburrow is one small program that turns the photo folders you already have into a timeline you can scroll on your phone. No Docker, no database server. It only reads your photos.
+- **Under it**: Picburrow is one small program that turns the photo folders you already have into a timeline you can scroll on your phone. No Docker, no database server. It never edits your photos.
 - **Button**: Install on your Pi → `#install`. Secondary link: Source code.
 - **Image**: the real timeline, desktop and phone (`docs/img/timeline.webp`, `timeline-phone.webp`, from the Playwright run).
 
@@ -34,7 +34,7 @@ Rules kept: no testimonials, user counts, stars or "trusted by" rows (there are 
 | The whole family, no tier | Give each person an account and their own folder. Nothing is behind a paid plan. | #6 (H4, M1) |
 | Full camera details | Aperture, shutter speed, ISO, focal length and flash in the photo's details. | #7 (M2) |
 | Rate many at once | Pick photos and give them stars in one go. | #8 (M3) |
-| Your folders, untouched | It reads your folders as they are. Nothing is moved, renamed or rewritten. | U1, M4 |
+| Your photos, never rewritten | It reads your folders as they are and never edits a file. Delete moves a photo to a hidden trash folder next to it: Restore puts it back, and it is gone for good only after 30 days or when you empty Trash. | U1, M4 |
 
 Then the price of entry, one line each: timeline with a date scrubber; full-screen viewer with swipe; live photos; folders; albums; share links with a password and an end date; search by name, date and type; favourites, archive and trash; works on phone and desktop, light and dark.
 
@@ -45,8 +45,8 @@ Free. All of it. Licensed under the GNU AGPL v3: you can use, change and share i
 ## 6. FAQ (the objections people raised in the research, answered honestly)
 
 - **Will it run on my Pi 3?** It is built for 64-bit Raspberry Pi OS on a Pi 3, 4 or 5 with 1 GB of memory, and measured well under that on a 64-bit test machine. Testing on real Pi boards is still in progress; please report what you see.
-- **Does it change my photos?** No. It only reads them. Its own data (previews, albums, favourites) lives in a separate folder.
-- **How do photos get from my phone to the Pi?** With the sync app you already use (Syncthing, a NAS app, anything that copies files into a folder). Picburrow shows whatever lands there.
+- **Does it change my photos?** No. It never edits a photo: rotations, ratings, albums and favourites live in its own data folder. It adds files only when your phone sends them, and moves one only when you press Delete (into a hidden trash folder you can restore from).
+- **How do photos get from my phone to the Pi?** With the sync app you already use (Syncthing, a NAS app, anything that copies files into a folder). Picburrow shows whatever lands there. On an iPhone, a Shortcut with a personal key can also send the photos Picburrow doesn't have yet, at home or from outside.
 - **Can I move from another photo app?** If that app keeps your originals in normal folders, point Picburrow at them. Albums and faces from other apps are not imported.
 - **Does it recognise faces or search by "beach"?** No, on purpose. Those need several gigabytes of memory, which is what Picburrow exists to avoid.
 - **Can I see my photos away from home?** Yes, through a VPN such as WireGuard or Tailscale, or behind a web server that adds HTTPS. Picburrow has no HTTPS of its own, so don't open its port straight to the internet.
