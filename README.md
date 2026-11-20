@@ -35,8 +35,8 @@ Build the package on any machine with `make deb-pi`.
 - **Upgrades**: install the newer `.deb` the same way. Before changing its database, Picburrow saves a copy next to it
   (`picburrow.db.v<N>-<date>.bak`, newest 3 kept). To go back: `sudo systemctl stop picburrow`, copy the backup over
   `picburrow.db`, reinstall the older package, start again.
-- **Getting phone photos into the folder**: [docs/phone-to-folder.md](docs/phone-to-folder.md) (a draft, not yet tested
-  on real phones): Syncthing on Android, a photo-transfer app on iPhone, or your NAS's own app.
+- **Getting phone photos into the folder**: [docs/phone-to-folder.md](docs/phone-to-folder.md): Syncthing on Android, a photo-transfer
+  app on iPhone, or your NAS's own app; on iPhone, Shortcuts that find and send what is missing (tested on a real iPhone).
 - **Away from home**: [docs/remote-access.md](docs/remote-access.md) walks through Tailscale (about ten minutes, nothing opened
   to the internet), your own VPN, or a public HTTPS address. Don't open port 8080 on your router: Picburrow has no HTTPS of its own.
 - **Uninstalling** never deletes `/var/lib/picburrow` (albums, favourites, previews) and never touches your photos (a deleted photo still waiting in a `.picburrow-trash` folder stays there).

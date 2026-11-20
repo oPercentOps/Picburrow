@@ -105,8 +105,8 @@ Clone against itself (layout mode, this 0.1.17 e2e run against the committed scr
 | Language | dozens of translations, chosen in settings | English or French, following the browser | gap: more languages, an in-app switch |
 | Live photos | PhotoPrism plays them on hover | one item with a Live badge; Play shows the clip over the still | parity (Apple pairs; Google/Samsung embedded clips not read) |
 | Phone app | Immich native apps; PhotoPrism installable PWA | installable web app (manifest, icons) | parity with PhotoPrism |
-| Phone backup | Immich: native apps with background upload; its iOS reviews call it unreliable (fixes.md H5) | an iOS Shortcut with an API key: lookup finds the photos not yet indexed, upload sends them into yyyy-MM folders, never overwriting; run by hand or by a Shortcut automation | gap: not tried on a real iPhone, nothing for Android, no background upload |
-| Promise on the landing page | (none) | `docs/index.html` still says "Your folders, untouched … Nothing is moved, renamed or rewritten". Since 0.1.15/0.1.16 upload adds files and Delete moves them. The README already says this correctly | **fix**: reword to "never rewrites your photos; Delete moves a file to a hidden trash folder you can restore from" |
+| Phone backup | Immich: native apps with background upload; its iOS reviews call it unreliable (fixes.md H5) | an iOS Shortcut with an API key: lookup finds the photos not yet indexed, upload sends them into yyyy-MM folders, never overwriting; run by hand or by a Shortcut automation. Works on a real iPhone at home and from outside (owner's test, 2026-11-20) | gap: nothing for Android, no background upload |
+| Promise on the landing page | (none) | `docs/index.html` said "Your folders, untouched … Nothing is moved, renamed or rewritten" and "It only reads your photos", untrue since upload and Delete | **fixed** 2026-11-20: "never edits a photo", with what Delete and upload do |
 
 ## Measured on the build box (x86 container, not a Pi)
 
@@ -119,13 +119,15 @@ Clone against itself (layout mode, this 0.1.17 e2e run against the committed scr
 
 Not measured: memory while ffmpeg makes a video playback copy. It runs after all previews are done, so it does not add to the 48 MP peak, but on a 1 GB Pi it is the next number to take.
 
+**On a real Pi 3 (owner's test, 2026-11-20, in progress)**: 3,000 photos and 400 videos (45 GB). Under one device's load, less than 150 MB of RAM for Picburrow, Samba, Radicale and an e-ink screen service together; no latency browsing. A video conversion keeps one core at 100 % and the other three at 5-10 %; slow but it works, and it's needed for an Android phone's browser (Motorola G34) that can't play the originals. The bottleneck is the Pi 3's old Wi-Fi when photos are sent over the air. Still to test: a shared library opened on two or more devices, with videos playing at once.
+
 The 48 MP case is over the 350 MB target set in `architecture.md`. It still fits a 1 GB Pi (about 750 MB usable) only because thumbnails are made one at a time (`--workers 1`). Keep that default. A real 1 GB Pi 3 with real iPhone files is still the deciding test.
 
 
 ## Top five to build next
 
-1. **The real-hardware pass**, still the release decider: a 1 GB Pi 3 with real iPhone HEICs, live photos and a real RAW from a camera other than the DNG fixture, memory during a video conversion and during an upload (exiftool reads each uploaded file), Safari on an iPhone, a screen reader.
-2. **Run the catch-up Shortcut on a real iPhone**: lookup, upload, a second run that finds nothing to send. This is the only should-have not fully done, and the biggest user complaint about the originals (fixes.md H5).
-3. **Fix the landing page's "untouched" claim** (behaviour diff above). It is one sentence, but it is a promise that is no longer true.
+1. **Finish the Pi 3 pass**: two or more devices on a shared library with videos playing at once (CPU is the one to watch: a conversion already takes a whole core), live photos, a RAW from a camera other than the DNG fixture, a screen reader.
+2. **A cable for the Pi**: its old Wi-Fi is the bottleneck when photos are sent over the air. One line in the guide: plug the Pi into the router with an Ethernet cable.
+3. ~~Fix the landing page's "untouched" claim~~: done. The iPhone catch-up is tested, and the guide and README now say so.
 4. **Android catch-up**: the same lookup + upload routes from an HTTP-capable automation app, or a tested Syncthing recipe in the guide. Upload would then count as done for both phones.
 5. **Duplicate finder** by exact hash. Uploads and sync tools together make duplicates more likely, and the content hash is already stored.

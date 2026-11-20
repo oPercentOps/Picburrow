@@ -1,7 +1,8 @@
 # Getting photos from your phone to Picburrow
 
-> **Draft, not yet tested on real phones.** The Picburrow side below is how the program works. The steps inside the
-> phone apps are written from their documentation and may differ from what you see. If a step is wrong, please open an issue.
+> **The iPhone Shortcuts (check and catch-up) are tested on a real iPhone, at home and from outside.** The steps inside
+> Syncthing, photo-transfer apps and NAS apps are written from their documentation and may differ from what you see.
+> If a step is wrong, please open an issue.
 
 Picburrow does not copy photos off your phone. It shows the photos it finds in a folder, and it never changes them.
 So the job has two halves:
@@ -110,7 +111,7 @@ Copy it then: it is shown only once. A key opens this lookup and the upload belo
 holding it can't show, change, delete or download photos. Delete it on the same page and it stops working at once; the page also shows when each
 key was last used.
 
-A Shortcut that does it, a thousand photos per request (untested draft, like the rest of this page; the Shortcuts
+A Shortcut that does it, a thousand photos per request (the Shortcuts
 app on a French iPhone has the same actions under French names):
 
 1. **Ask for Input**, a number of days, no default; **If** it has no value, use 36500 (the whole library).
