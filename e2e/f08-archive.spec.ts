@@ -43,3 +43,16 @@ test('F08-D1 delete moves the selected photo to Trash; Restore there brings it b
   await expect(tiles(page)).toHaveCount(inTrash);
   expect(await count()).toBe(before);
 });
+
+test('F08-D2 delete in the viewer moves on to the next photo and leaves the timeline', async ({ page }) => {
+  const count = async () => (await api<any[]>(page, '/api/timeline/buckets')).find((b) => b.month === '2026-06').count;
+  const before = await count();
+  const [p] = await photoIn(page, '2026-06');
+  await page.goto(`/photos/${p.id}`);
+  await viewer(page).getByRole('button', { name: 'Delete' }).click();
+  await expect(page).not.toHaveURL(new RegExp(`/photos/${p.id}$`));
+  await expect(page.getByRole('status').filter({ hasText: 'Moved 1 to Trash' })).toBeVisible();
+  expect(await count()).toBe(before - 1);
+  await page.request.post('/api/trash/restore', { data: { ids: [p.id] } });
+  expect(await count()).toBe(before);
+});
