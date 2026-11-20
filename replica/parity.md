@@ -8,7 +8,7 @@ Build: 0.1.17 (0.1.10 + RAW previews, library counts, the phone catch-up: lookup
 | Features | 91.9 / 100, must-haves **18 of 18**, should-haves **12.5 of 13** |
 | Layout | not measured |
 | Open bugs | 0 S1, 0 S2 (`replica/bugs.md`) |
-| Tests at this build | server tests (`go test`) green; web check and e2e still running when this was written |
+| Tests at this build | `make test` green; e2e 63 passed (the 5 skips are phone-only tests skipped in the desktop run) |
 
 **Verdict: shippable** by this report's bar: every must-have works, the feature score reaches 80, and no S1 or S2 bug is open. As before, that is a family/LAN release. The real-hardware checks still decide whether it is a *Raspberry Pi 3* release.
 
@@ -76,7 +76,7 @@ python3 parity.py replica/features.csv --visual replica/diffs/*.json --markdown 
 
 Layout is 20% of the overall score; colour is ignored on purpose (the rebrand changes it).
 
-Clone against itself (`--mode pixel`, screenshots from this e2e run against the committed ones): no layout regression. The pages differ only where the fixture photos are random or a thumbnail had not loaded yet. `S14-indexing.png` is refreshed: it now shows the video conversion switch.
+Clone against itself (layout mode, this 0.1.17 e2e run against the committed screenshots): no regression. The low scores have three causes: thumbnails that had not loaded when the screenshot was taken (S03, S06, S19), a different random photo (S18 slideshow, 2-4), and the new **API keys** item in the sidebar and on More (S17, 55). On More at 390 px that item pushes the AGPL line under the floating nav, but the page has bottom padding for the nav and scrolls to it. The committed screenshots are kept, since the new ones show half-loaded grids; they lack the API keys item.
 
 ## Behaviour diff (from the originals' public docs vs the clone as tested)
 
