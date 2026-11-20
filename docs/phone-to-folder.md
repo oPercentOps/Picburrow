@@ -140,16 +140,18 @@ Picburrow, over the Tailscale address from [remote-access](remote-access.md):
 ```
 POST /api/assets/upload        Authorization: Bearer <API key>   (the key is required: the login cookie isn't enough)
 multipart/form-data, one or more files in the field file
--> {"saved": [{"name": "IMG_0236.HEIC"}, {"name": "IMG_0237-2.HEIC"}, {"name": "IMG_0238.HEIC", "existed": true}]}
+-> {"saved": [{"name": "2023-06/IMG_0236.HEIC"}, {"name": "2023-06/IMG_0237-2.HEIC"}, {"name": "2023-07/IMG_0238.HEIC", "existed": true}]}
 ```
 
 ```bash
 curl -H "Authorization: Bearer <key>" -F file=@IMG_0236.HEIC https://<pi>.<tailnet>.ts.net/api/assets/upload
 ```
 
-- The photo lands in the **first folder of your own library** (Libraries page), under the name the phone gives it,
-  and shows up once the scan that starts right after has read it.
-- Nothing is ever overwritten. A file of the same name and the same size counts as the same photo (`existed`, nothing
+- The photo lands in the **first folder of your own library** (Libraries page), in a subfolder for the month it was
+  taken (`2023-06`, made if missing), under the name the phone gives it, and shows up once the scan that starts right
+  after has read it. The month comes from the date inside the file; without one, from a name that starts with it
+  (`2023-06-15_000639_IMG_0236`, as the Shortcut below names them); otherwise it is the month of the upload.
+- Nothing is ever overwritten. A file of the same name and the same size in that month's folder counts as the same photo (`existed`, nothing
   written), so sending a batch again after a dropped connection is harmless; a different file of the same name is
   saved as `IMG_0236-2.HEIC`, which the lookup by file name also counts as found.
 - Only photo and video files Picburrow shows are taken. It refuses when less than 1 GB would be left on that disk.

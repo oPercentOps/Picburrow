@@ -163,7 +163,8 @@ func (a *App) lookupFiles(w http.ResponseWriter, r *http.Request, names []string
 	writeJSON(w, map[string]any{"checked": checked, "missing": missing})
 }
 
-// postUpload saves the photos a phone sends (multipart, field "file") into the first folder of the sender's own library:
+// postUpload saves the photos a phone sends (multipart, field "file") into the first folder of the sender's own library,
+// in a subfolder per month taken (2023-06):
 // the catch-up for photos the lookup says are missing, from anywhere the server can be reached (Tailscale), without the
 // NAS share. It never overwrites: a name taken by a file of another size gets -2, -3 (as copy tools do), one of the same
 // size is taken as the same photo, already there.
@@ -217,7 +218,7 @@ func (a *App) postUpload(w http.ResponseWriter, r *http.Request) {
 			httpError(w, http.StatusBadRequest, fmt.Sprintf("%s is not a photo or video Picburrow shows", name))
 			return
 		}
-		got, existed, err := saveUpload(dir, name, part)
+		got, existed, err := a.saveUpload(dir, name, part)
 		switch {
 		case errors.Is(err, errNoRoom):
 			httpError(w, http.StatusInsufficientStorage, "Less than 1 GB would be left on the disk of "+dir)
@@ -240,8 +241,9 @@ func (a *App) postUpload(w http.ResponseWriter, r *http.Request) {
 
 var errNoRoom = errors.New("disk nearly full")
 
-// saveUpload writes src to a hidden file in dir (the scan skips it), then renames it to name, or name-2... if taken.
-func saveUpload(dir, name string, src io.Reader) (saved string, existed bool, err error) {
+// saveUpload writes src to a hidden file in dir (the scan skips it), then renames it to <month taken>/name, or name-2...
+// if taken. saved is that path inside dir: 2023-06/IMG_0236.HEIC.
+func (a *App) saveUpload(dir, name string, src io.Reader) (saved string, existed bool, err error) {
 	var st unix.Statfs_t
 	if err := unix.Statfs(dir, &st); err != nil {
 		return "", false, err
@@ -266,6 +268,19 @@ func saveUpload(dir, name string, src io.Reader) (saved string, existed bool, er
 	if err != nil {
 		return "", false, err
 	}
+	// the month it was taken: from the file's own date, else from a name that starts with it (2023-06-15_..., as the
+	// Shortcut names them), else this month
+	month := time.Now().Format("2006-01")
+	if _, err := time.Parse("2006-01", name[:min(7, len(name))]); err == nil {
+		month = name[:7]
+	}
+	if m, err := a.exif.Read([]string{tmp}); err == nil && len(m[0].TakenLocal) >= 7 {
+		month = m[0].TakenLocal[:7]
+	}
+	dir = filepath.Join(dir, month)
+	if err := os.MkdirAll(dir, 0o777); err != nil {
+		return "", false, err
+	}
 	ext := filepath.Ext(name)
 	for i := 1; ; i++ {
 		cand := name
@@ -275,7 +290,7 @@ func saveUpload(dir, name string, src io.Reader) (saved string, existed bool, er
 		p := filepath.Join(dir, cand)
 		if info, err := os.Stat(p); err == nil {
 			if info.Size() == n {
-				return cand, true, nil
+				return month + "/" + cand, true, nil
 			}
 			continue
 		}
@@ -292,7 +307,7 @@ func saveUpload(dir, name string, src io.Reader) (saved string, existed bool, er
 			os.Remove(p)
 			return "", false, err
 		}
-		return cand, false, nil
+		return month + "/" + cand, false, nil
 	}
 }
 
