@@ -125,7 +125,8 @@ app on a French iPhone has the same actions under French names):
    - **Get Contents of URL** `http://<pi-address>:8080/api/assets/lookup`, method POST, headers
      `Authorization: Bearer <your key>`, request body *JSON* with two *Text* fields: `names` (the combined names) and
      `dates` (the combined dates). Shortcuts writes the JSON itself, quotes and line breaks included;
-   - **Get Dictionary Value** `missing`, and add each one's `name` and `taken` to a list.
+   - **Get Dictionary Value** `missing`, then **Combine Text** with *New Lines* and add it to a list. Don't ask
+     for `name` on that list: *Get Dictionary Value* takes one dictionary, so Shortcuts would ask you to pick one.
 4. **Save File**: the list as text, for example to *Shortcuts/Picburrow-missing.txt*, replacing the old one.
 
 Over the internet, use the HTTPS address from [remote-access](remote-access.md): over plain HTTP the key travels
@@ -159,10 +160,30 @@ curl -H "Authorization: Bearer <key>" -F file=@IMG_0236.HEIC https://<pi>.<tailn
 - **Syncthing *Receive Only* folder:** Syncthing lists the uploaded photos as *local additions*; don't press
   *Revert Local Changes*, it would delete them. Send Only from the phone keeps working as before.
 
-In the Shortcut above, after the lookup: **Repeat with Each** photo whose name is in `missing`, **Get Contents of
-URL** `https://<pi>.<tailnet>.ts.net/api/assets/upload`, method POST, the same `Authorization` header, request body
-*Form* with a field `file` of type *File* set to the photo. Shortcuts may send a JPEG instead of the HEIC original
-unless the photo is passed unconverted; Picburrow takes either.
+A Shortcut that does the whole catch-up, tested on an iPhone (with the lookup by file name, the copy tool naming the
+files `2023-06-15_000639_IMG_0236.HEIC`; up to 5000 photos, so keep the number of days small):
+
+1. **Ask for Input**, a number of days; **If** it has no value, use 36500.
+2. **Find Photos** where *Creation Date* is after today minus those days, *Is a Screenshot* is off, oldest first.
+3. **Repeat with Each** photo: **Get Details of Images** *Creation Date* and *Name*, then **Text**
+   `<Creation Date>_<Name>`, the date in the custom format `yyyy-MM-dd_HHmmss`. After the loop, **Combine Text**
+   with *New Lines*.
+4. **Get Contents of URL** `https://<pi>.<tailnet>.ts.net/api/assets/lookup`, method POST, header
+   `Authorization: Bearer <your key>`, request body *JSON* with one *Text* field `names` = the combined text.
+5. **Get Dictionary Value** `missing`, **Count** it, and **If** the count is more than 0:
+   - **Combine Text** the `missing` value itself (the whole list of `{"name": ...}`) into a variable *Missing*;
+   - **Repeat with Each** photo of step 2:
+     - **Get Item from List**: the photos of step 2, *Item at Index* *Repeat Index*;
+     - **Get Details of Images** of that item: *Creation Date*, *Name*, *File Extension*, and the same **Text**
+       `<Creation Date>_<Name>` as in step 3;
+     - **If** *Missing* contains that text: **Set Name** of the item to `<Text>.<File Extension>`, then
+       **Get Contents of URL** `https://<pi>.<tailnet>.ts.net/api/assets/upload`, method POST, the same
+       `Authorization` header, request body *Form* with a field `file` of type *File* = the renamed item.
+   - **Show Notification** with the count; **Otherwise**, a notification that nothing is missing.
+
+Renaming matters: the photo is saved under the name it is sent with, and the next lookup must find
+`2023-06-15_000639_IMG_0236` again, or it would send the photo every time. Shortcuts may send a JPEG instead of the
+HEIC original; Picburrow takes either.
 
 ## Good to know
 
