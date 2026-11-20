@@ -1916,17 +1916,28 @@ func TestUpload(t *testing.T) {
 		out, _ := io.ReadAll(r.Body)
 		return r.StatusCode, string(out)
 	}
-	if code, out := upload(http.DefaultClient, key.Key, "../IMG_1.jpg", jpg(0)); code != 200 || !strings.Contains(out, `"name":"IMG_1.jpg"`) {
+	now := time.Now().Format("2006-01") // no date in the file nor in its name: this month
+	if code, out := upload(http.DefaultClient, key.Key, "../IMG_1.jpg", jpg(0)); code != 200 || !strings.Contains(out, `"name":"`+now+`/IMG_1.jpg"`) {
 		t.Fatalf("upload = %d %s", code, out)
 	}
-	if _, err := os.Stat(filepath.Join(lib, "IMG_1.jpg")); err != nil {
-		t.Fatalf("not saved in the library folder: %v", err)
+	if _, err := os.Stat(filepath.Join(lib, now, "IMG_1.jpg")); err != nil {
+		t.Fatalf("not saved in the month's folder: %v", err)
 	}
 	if code, out := upload(http.DefaultClient, key.Key, "IMG_1.jpg", jpg(0)); code != 200 || !strings.Contains(out, `"existed":true`) {
 		t.Fatalf("same photo again = %d %s, want existed", code, out)
 	}
-	if code, out := upload(http.DefaultClient, key.Key, "IMG_1.jpg", jpg(200)); code != 200 || !strings.Contains(out, `"name":"IMG_1-2.jpg"`) {
+	if code, out := upload(http.DefaultClient, key.Key, "IMG_1.jpg", jpg(200)); code != 200 || !strings.Contains(out, `"name":"`+now+`/IMG_1-2.jpg"`) {
 		t.Fatalf("other photo, same name = %d %s, want IMG_1-2.jpg", code, out)
+	}
+	if code, out := upload(http.DefaultClient, key.Key, "2023-06-15_000639_IMG_2.jpg", jpg(0)); code != 200 || !strings.Contains(out, `"name":"2023-06/2023-06-15_000639_IMG_2.jpg"`) {
+		t.Fatalf("dated name = %d %s, want it in 2023-06", code, out)
+	}
+	exif := filepath.Join(t.TempDir(), "x.jpg")
+	os.WriteFile(exif, jpg(100), 0o644)
+	mustRun(t, "exiftool", "-q", "-overwrite_original", "-DateTimeOriginal=2021:03:04 10:00:00", exif)
+	dated, _ := os.ReadFile(exif)
+	if code, out := upload(http.DefaultClient, key.Key, "2023-06-15_000640_IMG_3.jpg", dated); code != 200 || !strings.Contains(out, `"name":"2021-03/2023-06-15_000640_IMG_3.jpg"`) {
+		t.Fatalf("photo with a date inside = %d %s, want it in 2021-03: the file's own date wins over its name", code, out)
 	}
 	for name, want := range map[string]int{"notes.txt": 400, ".IMG_2.jpg": 400} {
 		if code, _ := upload(http.DefaultClient, key.Key, name, jpg(0)); code != want {
@@ -1942,8 +1953,8 @@ func TestUpload(t *testing.T) {
 	waitScan(t, a)
 	var n int
 	a.db.QueryRow("select count(*) from assets").Scan(&n)
-	if n != 2 {
-		t.Fatalf("indexed %d uploads, want 2", n)
+	if n != 4 {
+		t.Fatalf("indexed %d uploads, want 4", n)
 	}
 	if left, _ := filepath.Glob(filepath.Join(lib, ".picburrow-upload-*")); len(left) != 0 {
 		t.Fatalf("temporary files left: %v", left)
