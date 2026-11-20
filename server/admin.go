@@ -3,17 +3,135 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
-// ---- trash: photos whose file disappeared from disk. Files are never touched; only the index entry goes.
+// ---- trash: photos whose file disappeared from disk, or that someone deleted here. Delete moves the file into a
+// hidden .picburrow-trash folder next to it (same disk, so a rename); restore moves it back; after 30 days it goes.
 
 const trashDays = 30
+const trashDir = ".picburrow-trash" // the scan never walks into it
+
+// trashPath is where a deleted file waits: the id keeps two deleted IMG_0001.jpg of one folder apart.
+func trashPath(p string, id int64) string {
+	return filepath.Join(filepath.Dir(p), trashDir, fmt.Sprintf("%d-%s", id, filepath.Base(p)))
+}
+
+// pickAssets reads {"ids":[...]} and returns the paths of those the user sees, in or out of trash, live clips included.
+func (a *App) pickAssets(w http.ResponseWriter, r *http.Request, inTrash bool) (map[int64]string, bool) {
+	var in struct {
+		IDs []int64 `json:"ids"`
+	}
+	if !readJSON(w, r, &in) {
+		return nil, false
+	}
+	if len(in.IDs) == 0 || len(in.IDs) > 5000 {
+		httpError(w, http.StatusBadRequest, "Send 1 to 5000 ids")
+		return nil, false
+	}
+	args := []any{userFrom(r).ID, inTrash}
+	for range 2 {
+		for _, id := range in.IDs {
+			args = append(args, id)
+		}
+	}
+	list := "(?" + strings.Repeat(",?", len(in.IDs)-1) + ")"
+	rows, err := a.db.Query(`select id, path from assets where library_id in `+mine+` and (missing_at is not null) = ?
+		and (id in `+list+` or id in (select live_video_id from assets where id in `+list+`))`, args...)
+	if err != nil {
+		serverError(w, err)
+		return nil, false
+	}
+	defer rows.Close()
+	paths := map[int64]string{}
+	for rows.Next() {
+		var id int64
+		var p string
+		if err := rows.Scan(&id, &p); err != nil {
+			serverError(w, err)
+			return nil, false
+		}
+		paths[id] = p
+	}
+	if err := rows.Err(); err != nil {
+		serverError(w, err)
+		return nil, false
+	}
+	return paths, true
+}
+
+// deleteAssets moves the files to trash. Each one is marked missing as soon as its file has moved, so a folder
+// Picburrow may not write to stops the request without leaving the index and the disk out of step.
+func (a *App) deleteAssets(w http.ResponseWriter, r *http.Request) {
+	paths, ok := a.pickAssets(w, r, false)
+	if !ok {
+		return
+	}
+	n := 0
+	for id, p := range paths {
+		tp := trashPath(p, id)
+		err := os.Mkdir(filepath.Dir(tp), 0o755)
+		if err == nil || errors.Is(err, fs.ErrExist) {
+			err = os.Rename(p, tp)
+		}
+		switch {
+		case errors.Is(err, fs.ErrPermission) || errors.Is(err, syscall.EROFS):
+			httpError(w, http.StatusForbidden, filepath.Dir(p)+": Picburrow may not write here. Give the picburrow user write access to it.")
+			return
+		case err != nil && !errors.Is(err, fs.ErrNotExist): // already gone from disk: trash it all the same
+			serverError(w, err)
+			return
+		}
+		if _, err := a.db.Exec("update assets set missing_at = unixepoch(), updated_at = unixepoch() where id = ?", id); err != nil {
+			serverError(w, err)
+			return
+		}
+		n++
+	}
+	writeJSON(w, map[string]int{"deleted": n})
+}
+
+// restoreTrash moves deleted files back. Never over a file that took the name since; photos that vanished from disk
+// on their own have nothing to move back and stay in trash.
+func (a *App) restoreTrash(w http.ResponseWriter, r *http.Request) {
+	paths, ok := a.pickAssets(w, r, true)
+	if !ok {
+		return
+	}
+	n := 0
+	for id, p := range paths {
+		if _, err := os.Lstat(p); err == nil {
+			continue
+		}
+		tp := trashPath(p, id)
+		if err := os.Rename(tp, p); err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+			serverError(w, err)
+			return
+		}
+		os.Remove(filepath.Dir(tp)) // only goes once empty
+		if _, err := a.db.Exec("update assets set missing_at = null, updated_at = unixepoch() where id = ?", id); err != nil {
+			serverError(w, err)
+			return
+		}
+		n++
+	}
+	if n > 0 {
+		a.startScan() // pairs live photos again
+	}
+	writeJSON(w, map[string]int{"restored": n})
+}
 
 func (a *App) getTrash(w http.ResponseWriter, r *http.Request) {
 	a.writeTiles(w, `select `+tileCols+` from assets a join libraries l on l.id = a.library_id
@@ -36,21 +154,26 @@ func (a *App) deleteTrash(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]int{"removed": n})
 }
 
-// forget deletes index rows and their thumbnails. Never the photo files.
+// forget deletes index rows, their thumbnails and the file deleted here, if any. Never a file still in its folder.
 func (a *App) forget(ids []int64) (int, error) {
 	n := 0
 	for _, id := range ids {
-		res, err := a.db.Exec("delete from assets where id = ? and missing_at is not null", id) // only ever missing ones
+		var p string
+		err := a.db.QueryRow("delete from assets where id = ? and missing_at is not null returning path", id).Scan(&p) // only ever missing ones
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
 		if err != nil {
 			return n, err
 		}
-		if k, _ := res.RowsAffected(); k == 1 {
-			n++
-			for _, s := range []string{"s", "l"} {
-				os.Remove(a.thumbPath(id, s))
-			}
-			os.Remove(a.playPath(id))
+		n++
+		tp := trashPath(p, id)
+		os.Remove(tp)
+		os.Remove(filepath.Dir(tp)) // only goes once empty
+		for _, s := range []string{"s", "l"} {
+			os.Remove(a.thumbPath(id, s))
 		}
+		os.Remove(a.playPath(id))
 	}
 	return n, nil
 }

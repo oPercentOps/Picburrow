@@ -1220,6 +1220,42 @@ func TestLiveRatingsTrashUsers(t *testing.T) {
 	if liveID != nil {
 		t.Fatal("an 8 s video was taken for a live photo")
 	}
+
+	// delete moves a live photo and its clip into a hidden trash folder; restore moves them back
+	if code := del(t, ann, srv.URL+"/api/assets", `{"ids":[]}`); code != 400 {
+		t.Errorf("delete nothing = %d", code)
+	}
+	if code := del(t, ann, srv.URL+"/api/assets", `{"ids":[`+itoa(id("IMG_0001.jpg"))+`]}`); code != 200 {
+		t.Fatalf("delete = %d", code)
+	}
+	for _, name := range []string{"IMG_0001.jpg", "IMG_0001.MOV"} {
+		if _, err := os.Stat(filepath.Join(lib, name)); !os.IsNotExist(err) {
+			t.Fatalf("%s still in its folder", name)
+		}
+		if _, err := os.Stat(trashPath(filepath.Join(lib, name), id(name))); err != nil {
+			t.Fatalf("%s not in trash: %v", name, err)
+		}
+	}
+	a.scanAll() // the scan neither indexes the trash folder nor brings them back
+	var trashed []tile
+	get(t, ann, srv.URL+"/api/trash", &trashed)
+	if len(trashed) != 2 {
+		t.Fatalf("trash after delete = %d, want 2", len(trashed))
+	}
+	if code := post(t, ann, srv.URL+"/api/trash/restore", `{"ids":[`+itoa(id("IMG_0001.jpg"))+`]}`); code != 200 {
+		t.Fatalf("restore = %d", code)
+	}
+	waitScan(t, a)
+	if get(t, ann, srv.URL+"/api/trash", &trashed); len(trashed) != 0 {
+		t.Fatalf("trash after restore = %d", len(trashed))
+	}
+	if _, err := os.Stat(filepath.Join(lib, trashDir)); !os.IsNotExist(err) {
+		t.Fatal("empty trash folder left behind")
+	}
+	a.db.QueryRow("select live_video_id from assets where id = ?", id("IMG_0001.jpg")).Scan(&liveID)
+	if liveID == nil || *liveID != id("IMG_0001.MOV") {
+		t.Fatal("restored live photo not paired again")
+	}
 	var buckets []map[string]any
 	get(t, ann, srv.URL+"/api/timeline/buckets", &buckets)
 	var month []tile
@@ -1304,6 +1340,13 @@ func TestLiveRatingsTrashUsers(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(lib, "IMG_0001.jpg")); err != nil {
 		t.Fatal("a photo file was touched")
+	}
+	// a photo deleted here leaves the disk when trash is emptied
+	del(t, ann, srv.URL+"/api/assets", `{"ids":[`+itoa(id("rated.jpg"))+`]}`)
+	gone := trashPath(filepath.Join(lib, "rated.jpg"), id("rated.jpg"))
+	del(t, ann, srv.URL+"/api/trash", ``)
+	if _, err := os.Stat(gone); !os.IsNotExist(err) {
+		t.Fatal("emptying trash kept the deleted file")
 	}
 
 	// family accounts

@@ -2,9 +2,9 @@
 
 The photo folders you already have, as a timeline on your phone. Picburrow is one small program for a Raspberry Pi NAS, with no Docker, no Postgres and no Redis:
 a timeline by day, a fast fullscreen viewer, and photo details. It runs on a Pi 3, 4 or 5 with **1 GB RAM**
-and 64-bit Raspberry Pi OS, and never changes or deletes the photos in your folders (it only adds the ones a phone sends it with an API key).
+and 64-bit Raspberry Pi OS, and never changes the photos in your folders. It only adds the ones a phone sends it with an API key, and Delete moves a file into a hidden `.picburrow-trash` folder next to it: Restore in Trash puts it back, and it leaves the disk after 30 days or when you empty Trash. On a folder the picburrow user may not write to, Delete just says so.
 
-Status: timeline with date scrubber, viewer, live photos, random slideshow with a sleep mode (starts by itself when the screen is left alone), On this day (photos from today's date in earlier years), English and French (follows the browser language), star ratings, keywords and descriptions from XMP sidecars (digiKam, darktable, Lightroom), rotate (kept in the app, files untouched), folders, favourites, archive, trash, albums, multi-select, search, share links, family accounts, library settings; installable on a phone's home screen. Feature parity 87/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
+Status: timeline with date scrubber, viewer, live photos, random slideshow with a sleep mode (starts by itself when the screen is left alone), On this day (photos from today's date in earlier years), English and French (follows the browser language), star ratings, keywords and descriptions from XMP sidecars (digiKam, darktable, Lightroom), rotate (kept in the app, files untouched), folders, favourites, archive, trash, albums, multi-select, delete (to trash, restorable for 30 days), search, share links, family accounts, library settings; installable on a phone's home screen. Feature parity 87/100 (`replica/parity.md`). See `replica/build-log.md` and `replica/features.csv`.
 
 To hear about new versions: **Watch → Custom → Releases** on GitHub. The project page is `docs/index.html`.
 
@@ -39,7 +39,7 @@ Build the package on any machine with `make deb-pi`.
   on real phones): Syncthing on Android, a photo-transfer app on iPhone, or your NAS's own app.
 - **Away from home**: [docs/remote-access.md](docs/remote-access.md) walks through Tailscale (about ten minutes, nothing opened
   to the internet), your own VPN, or a public HTTPS address. Don't open port 8080 on your router: Picburrow has no HTTPS of its own.
-- **Uninstalling** never deletes `/var/lib/picburrow` (albums, favourites, previews) and never touches your photos.
+- **Uninstalling** never deletes `/var/lib/picburrow` (albums, favourites, previews) and never touches your photos (a deleted photo still waiting in a `.picburrow-trash` folder stays there).
 
 ## Run it anywhere else
 

@@ -115,6 +115,9 @@ func (a *App) scanLibrary(libID int64) error {
 				}
 				return nil
 			}
+			if d.IsDir() && d.Name() == trashDir { // whatever the exclusion patterns say
+				return fs.SkipDir
+			}
 			if d.IsDir() {
 				if info, err := d.Info(); err == nil {
 					a.noteWatch(p, info.ModTime())
@@ -608,9 +611,10 @@ func underAny(p string, roots []string) bool {
 }
 
 // pairLive links each still to its live-photo clip: same Apple content id, or else the same name in the same
-// folder (IMG_1234.HEIC + IMG_1234.MOV) with a clip of 5 s or less. Pairs whose clip went missing are undone.
+// folder (IMG_1234.HEIC + IMG_1234.MOV) with a clip of 5 s or less. Pairs whose clip went missing are undone,
+// unless the still went too (deleted together, they come back together).
 func (a *App) pairLive(libID int64) error {
-	if _, err := a.db.Exec(`update assets set live_video_id = null where library_id = ? and live_video_id in
+	if _, err := a.db.Exec(`update assets set live_video_id = null where library_id = ? and missing_at is null and live_video_id in
 		(select id from assets where missing_at is not null)`, libID); err != nil {
 		return err
 	}

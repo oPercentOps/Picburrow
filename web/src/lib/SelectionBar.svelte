@@ -3,12 +3,13 @@
   import { page } from '$app/state';
   import { api } from '$lib/api';
   import { selection, overrides, picker, say, refresh } from '$lib/state.svelte';
-  import { X, Heart, Archive, BookPlus, BookMinus, Star } from '@lucide/svelte';
+  import { X, Heart, Archive, BookPlus, BookMinus, Star, Trash2, ArchiveRestore } from '@lucide/svelte';
 
   let busy = $state(false);
   let rating = $state(false); // the star menu is open
   const ids = () => [...selection];
   const inAlbum = $derived(page.route.id === '/albums/[id]');
+  const inTrash = $derived(page.route.id === '/trash');
 
   async function patch(change: { favorite?: boolean; archived?: boolean }, done: string) {
     busy = true;
@@ -32,6 +33,27 @@
       selection.clear();
       refresh.n++;
       say(t('Removed {n} from this album. The files stay on disk.', { n }));
+    } catch (e) {
+      say((e as Error).message);
+    } finally {
+      busy = false;
+    }
+  }
+  // Delete moves the files to Trash (restorable for 30 days); in Trash, the same spot restores them.
+  async function trash() {
+    busy = true;
+    try {
+      const list = ids();
+      if (inTrash) {
+        const r = await api<{ restored: number }>('/api/trash/restore', { method: 'POST', body: { ids: list } });
+        refresh.n++;
+        say(t('Restored {n}', { n: r.restored }));
+      } else {
+        const r = await api<{ deleted: number }>('/api/assets', { method: 'DELETE', body: { ids: list } });
+        for (const id of list) overrides[id] = { ...overrides[id], gone: true };
+        say(t('Moved {n} to Trash. Restore them from there within 30 days.', { n: r.deleted }));
+      }
+      selection.clear();
     } catch (e) {
       say((e as Error).message);
     } finally {
@@ -62,6 +84,9 @@
   <button class="btn icon-btn ghost" onclick={() => selection.clear()} aria-label={t('Clear selection')}><X aria-hidden="true" /></button>
   <span class="count" aria-live="polite">{t('{n} selected', { n })}</span>
   <div class="actions">
+    {#if inTrash}
+      <button class="btn ghost" disabled={busy} onclick={trash}><ArchiveRestore aria-hidden="true" /><span class="lbl">{t('Restore')}</span></button>
+    {:else}
     <button class="btn ghost" disabled={busy} onclick={() => patch({ favorite: !allFav() }, allFav() ? t('Removed {n} from favourites', { n }) : t('Added {n} to favourites', { n }))}>
       <Heart aria-hidden="true" /><span class="lbl">{t('Favourite')}</span></button>
     <div class="rate">
@@ -81,6 +106,8 @@
     {:else}
       <button class="btn ghost" disabled={busy} onclick={() => patch({ archived: true }, t('Archived {n}. Find them under Archive.', { n }))}>
         <Archive aria-hidden="true" /><span class="lbl">{t('Archive|verb')}</span></button>
+    {/if}
+    <button class="btn ghost" disabled={busy} onclick={trash}><Trash2 aria-hidden="true" /><span class="lbl">{t('Delete')}</span></button>
     {/if}
   </div>
 </div>

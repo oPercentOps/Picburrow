@@ -1,9 +1,10 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
   import { api, thumbURL, browserCanShow, formatDay, type Asset } from '$lib/api';
-  import { overrides, picker } from '$lib/state.svelte';
+  import { overrides, picker, say } from '$lib/state.svelte';
+  import { page } from '$app/state';
   import { SvelteSet } from 'svelte/reactivity';
-  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore, BookPlus, CirclePlay, RotateCw, Star } from '@lucide/svelte';
+  import { X, Info, Download, ChevronLeft, ChevronRight, ImageOff, Heart, Archive, ArchiveRestore, BookPlus, CirclePlay, RotateCw, Star, Trash2 } from '@lucide/svelte';
 
   // seq: ids to step through (a folder, favourites); without it prev/next follow the timeline.
   // base + readonly: a visitor on a shared album reads through the link and can't change anything.
@@ -62,6 +63,23 @@
         left.add(target); // it leaves this view
         nextId ? go(nextId) : prevId ? go(prevId) : onclose();
       }
+    } catch (e) {
+      saveError = (e as Error).message;
+    }
+  }
+
+  // moves the file to Trash and goes on to the next photo, like archive; Trash itself restores instead
+  const canDelete = $derived(page.route.id !== '/trash');
+  async function remove() {
+    if (!asset || !ready || readonly || !canDelete) return;
+    const target = asset.id;
+    saveError = '';
+    try {
+      await api('/api/assets', { method: 'DELETE', body: { ids: [target] } });
+      overrides[target] = { ...overrides[target], gone: true };
+      left.add(target);
+      say(t('Moved {n} to Trash. Restore them from there within 30 days.', { n: 1 }));
+      nextId ? go(nextId) : prevId ? go(prevId) : onclose();
     } catch (e) {
       saveError = (e as Error).message;
     }
@@ -226,6 +244,7 @@
           <Heart aria-hidden="true" fill={fav ? 'currentColor' : 'none'} /></button>
         <button class="btn icon-btn" onclick={() => save({ archived: !archived })} aria-label={archived ? t('Unarchive') : t('Archive|verb')} disabled={!ready}>
           {#if archived}<ArchiveRestore aria-hidden="true" />{:else}<Archive aria-hidden="true" />{/if}</button>
+        {#if canDelete}<button class="btn icon-btn" onclick={remove} aria-label={t('Delete')} disabled={!ready}><Trash2 aria-hidden="true" /></button>{/if}
         {#if canRotate}<button class="btn icon-btn" onclick={rotate} aria-label={t('Rotate')} disabled={!ready}><RotateCw aria-hidden="true" /></button>{/if}
       {/if}
       {#if asset?.live && canDownload}
