@@ -1,54 +1,52 @@
 # Parity report: Picburrow vs Immich / PhotoPrism (browse + view slice)
 
-Build: 0.1.10 (0.1.9 + the round 2 fixes from `replica/fixes.md` (quick rescan, On this day, sharing with existing accounts, rotate, XMP sidecars)). Date: 2026-11-14.
+Build: 0.1.17 (0.1.10 + RAW previews, library counts, the phone catch-up: lookup, API keys, upload into yyyy-MM folders, and Delete to Trash). Date: 2026-11-20.
 
 | | score |
 | --- | --- |
-| **Overall** | **91.8** (features only; layout not measured, see below) |
-| Features | 91.8 / 100, must-haves **18 of 18**, should-haves **12 of 12** |
+| **Overall** | **91.9** (features only; layout not measured, see below) |
+| Features | 91.9 / 100, must-haves **18 of 18**, should-haves **12.5 of 13** |
 | Layout | not measured |
 | Open bugs | 0 S1, 0 S2 (`replica/bugs.md`) |
-| Tests at this build | `make test` green; e2e 61 passed (the 5 skips are phone-only tests skipped in the desktop run; they pass in the phone run) |
+| Tests at this build | server tests (`go test`) green; web check and e2e still running when this was written |
 
-**Verdict: shippable** by this report's bar: every must-have works, the feature score reaches 80, and no S1 or S2 bug is open (`replica/bugs.md`). That is a family/LAN release; the real-hardware checks below still decide whether it is a *Raspberry Pi 3* release.
+**Verdict: shippable** by this report's bar: every must-have works, the feature score reaches 80, and no S1 or S2 bug is open. As before, that is a family/LAN release. The real-hardware checks still decide whether it is a *Raspberry Pi 3* release.
 
-Up from 87.6 this morning. What moved, all from the round 2 fix plan in `replica/fixes.md`:
+Up from 91.8 at 0.1.10. What moved:
 
-- **New photos picked up within minutes** (a should-have the matrix lacked until the review research): done.
-- **On this day**: no to done.
-- **Partner sharing**: partial to done. A library can be shared with an account that already exists, and taken back.
-- **Rotate**: no to done. The turn is kept in the app; files are not written.
-- **XMP sidecars** and **hierarchical tags**: no to partial. Keywords, descriptions and stars from sidecar files are read and searchable; keywords inside the photo file, and date and GPS from a sidecar, are not.
+- **RAW previews**: no to done. Each preview is made from the JPEG the camera embedded. Eight RAW extensions are covered; only a DNG was tested.
+- **Phone backup/upload**: was left out ("out of slice"), now scored as a **should, partial**. An iOS Shortcut with a personal API key asks which phone photos are missing, then uploads them into yyyy-MM folders. It isn't background backup and there is no Android flow, so it counts half. Scoring a row that used to be skipped adds to the total, so the score rose by only 0.1 although two features moved.
+- **Trash**: still done; photos can now be deleted from the app (selection bar and viewer) and restored.
 
-Everything still missing is a could-have.
+The one should-have not fully done is phone backup. Everything else still missing is a could-have.
 
 ## Feature parity (parity.py)
 
-features 91.8  (44 counted, must-haves 18 of 18 done)
+features 91.9  (45 counted, must-haves 18 of 18 done)
 
 ## By area, weakest first
+- backup                        50.0  (1 features)
 - search                        66.7  (2 features)
 - organize                      79.2  (8 features)
 - clients                       83.3  (2 features)
 - library                       93.2  (9 features)
 - browse                        94.4  (8 features)
-- view                          96.0  (11 features)
+- view                         100.0  (11 features)
 - auth                         100.0  (2 features)
 - sharing                      100.0  (2 features)
 
 ## Missing, in build order
+- [should] backup: Phone backup/upload, partial  (was skip. 0.1.12-0.1.17: a catch-up iOS Shortcut with a personal API key asks POST /api/assets/lookup which phone photos are missing, then sends them to POST /api/assets/upload, saved into yyyy-MM folders of the sender's library, never overwriting. Run by hand or by a Shortcut automation; no background upload, no Android flow. Immich: native apps with background backup)
 - [could] browse: Map of geotagged photos, no  (needs map tiles from an external provider)
 - [could] library: Write favourites/albums back to XMP sidecars, no  (Immich silently fails on read-only mounts; we store in DB and only write sidecars when the mount is writable, with a visible warning otherwise)
 - [could] organize: Duplicate finder (exact hash), no  (Immich uses ML similarity; exact content hash is our 1 GB substitute)
 - [could] organize: Locked folder behind a PIN, no  (Immich locked-folder.md: 15 min unlocked session)
 - [could] search: Reverse geocoding (place names) from offline dataset, no  (Immich uses GeoNames loaded locally; a city-level extract keeps it small)
-- [could] view: RAW (DNG/CR2/ARW) previews, no  (use embedded JPEG preview only; full RAW decode is too heavy for 1 GB)
-- [could] clients: Interface in the user's language, partial  (English and French, chosen by the browser language; no in-app switch)
-- [could] library: XMP sidecar read (description rating date GPS tags), partial  (keywords, description and stars are read; date and GPS from the sidecar are not)
-- [could] organize: Hierarchical tags (read from XMP/IPTC), partial  (tag paths from sidecars are kept and searchable; no tag tree, and tags inside the photo file are not read)
+- [could] clients: Interface in the user's language, partial  (Immich: dozens of community translations. Here: English and French, chosen by the browser language; no in-app switch)
+- [could] library: XMP sidecar read (description rating date GPS tags), partial  (IMG.jpg.xmp preferred over IMG.xmp, as in Immich's xmp-sidecars.md. Read: keywords (digiKam TagsList, Lightroom hierarchicalSubject, dc:subject), description, stars (a rating set in the app wins). Shown in Details, found by Search; a sidecar that appears, changes or goes away later is followed without remaking previews. Not read from the sidecar: date and GPS)
+- [could] organize: Hierarchical tags (read from XMP/IPTC), partial  (Immich tags.md. Tag paths from sidecars (People/Ann) are kept and searchable; no tag tree to browse, and tags stored inside the photo file are not read)
 
 ## Left out on purpose (not scored)
-- Phone backup/upload: out of slice; existing sync tools (Syncthing/SMB/phone backup apps) already drop files on the NAS
 - Face recognition / people: needs ML container; Immich says ML needs RAM beyond 4 GB - impossible in 1 GB
 - Smart (CLIP) search by content: same ML limit
 - Native mobile apps: responsive web app first
@@ -64,11 +62,10 @@ features 91.8  (44 counted, must-haves 18 of 18 done)
 - Full capture details (aperture, shutter, ISO, focal length, flash)
 - Batch rating from the selection bar
 - Sleep mode: slideshow starts when the screen is left alone (photo frame)
-- Guide for getting phone photos into the folder (iPhone and Android): drafted, not tested on real phones
-
+- Tested guide for getting phone photos into the folder (iPhone and Android)
 ## Layout diff: not measured
 
-`imgdiff.py` needs a screenshot of the original and of the clone for each screen, at the same viewport and in the same state. There is none of the original: no Immich or PhotoPrism instance was run, and the images in their public docs show other data, other states and other sizes. A score from those would be a made-up number, so there isn't one. Tried again on 2026-11-14: Immich's public demo is not reachable from the build container.
+`imgdiff.py` needs a screenshot of the original and of the clone for each screen, at the same viewport and in the same state. There is none of the original: no Immich or PhotoPrism instance was run, and the images in their public docs show other data, other states and other sizes. A score from those would be a made-up number, so there isn't one. Tried on 2026-11-14 and not retried for 0.1.17: Immich's public demo was not reachable from the build container then.
 
 To measure it, run Immich on your own machine with the same fixture library (`e2e/make-fixtures.sh`), screenshot S03, S04, S05 and S06 at 1440×900 and 390×844 into `replica/screens/`, then:
 
@@ -96,7 +93,7 @@ Clone against itself (`--mode pixel`, screenshots from this e2e run against the 
 | F03 viewer | favourite, archive, info, download, plus edit, add to album, share, stacks | favourite, archive, info, download, zoom, swipe, add to album, rotate (kept in the app, the file is not written) | gap: other edits, stacks |
 | F05 albums | albums, shared with users as editor/viewer | albums from a selection or the viewer; share with anyone by link | gap: sharing with other accounts |
 | Accounts | users with their own libraries; partner sharing, one-way, switched on later between existing accounts | family accounts with their own folder; an admin shares a library with any account, new or existing, and can stop (favourites, ratings and archive shared; albums personal); deleting the owner hands the library to another member | different: sharing is two-way inside a library, and set by an admin, not by each person |
-| Trash | deleted-from-disk files go to trash, 30 days | same, and putting the file back restores albums and favourites | keep (better) |
+| Trash | deleted-from-disk files go to trash, 30 days | same, and putting the file back restores albums and favourites; since 0.1.16 Delete in the app moves the file into a hidden `.picburrow-trash` folder next to it, Restore moves it back, and emptying or 30 days removes it | keep (better on restore); to check: a two-way sync tool may pass that move back to the phone as a delete; the guide does not mention it |
 | Search | metadata filters + CLIP smart search + OCR + faces | words in name/folder/camera, date range, type, favourites | keep; ML search stays out (no RAM) |
 | F06 share | public link with expiry, password, allowed actions | link with password, expiry, view-only; visitors see nothing else | parity |
 | Loading | thumbhash blur, small, large | 16 px WebP blur, small, large | parity |
@@ -108,6 +105,8 @@ Clone against itself (`--mode pixel`, screenshots from this e2e run against the 
 | Language | dozens of translations, chosen in settings | English or French, following the browser | gap: more languages, an in-app switch |
 | Live photos | PhotoPrism plays them on hover | one item with a Live badge; Play shows the clip over the still | parity (Apple pairs; Google/Samsung embedded clips not read) |
 | Phone app | Immich native apps; PhotoPrism installable PWA | installable web app (manifest, icons) | parity with PhotoPrism |
+| Phone backup | Immich: native apps with background upload; its iOS reviews call it unreliable (fixes.md H5) | an iOS Shortcut with an API key: lookup finds the photos not yet indexed, upload sends them into yyyy-MM folders, never overwriting; run by hand or by a Shortcut automation | gap: not tried on a real iPhone, nothing for Android, no background upload |
+| Promise on the landing page | (none) | `docs/index.html` still says "Your folders, untouched … Nothing is moved, renamed or rewritten". Since 0.1.15/0.1.16 upload adds files and Delete moves them. The README already says this correctly | **fix**: reword to "never rewrites your photos; Delete moves a file to a hidden trash folder you can restore from" |
 
 ## Measured on the build box (x86 container, not a Pi)
 
@@ -122,12 +121,11 @@ Not measured: memory while ffmpeg makes a video playback copy. It runs after all
 
 The 48 MP case is over the 350 MB target set in `architecture.md`. It still fits a 1 GB Pi (about 750 MB usable) only because thumbnails are made one at a time (`--workers 1`). Keep that default. A real 1 GB Pi 3 with real iPhone files is still the deciding test.
 
+
 ## Top five to build next
 
-The round 2 code fixes are built. What is left, by what users of the originals say (`replica/fixes.md`):
-
-1. **The real-hardware pass**: a 1 GB Pi 3 with real iPhone HEICs and live photos, memory during a video conversion, the 15-minute check against a real sync tool, Safari on an iPhone, a screen reader. Still open in `deploy.md` and `test-plan.md`; it decides the release.
-2. **Test the phone-to-folder guide on real phones** (`docs/phone-to-folder.md` is a draft). It answers the strongest evidence against the product.
-3. **Keywords stored inside the photo file** (IPTC/XMP in a JPEG), with a one-time background pass for photos already indexed.
-4. **Duplicate finder** by exact hash: cheap on a Pi, useful after years of phone backups.
-5. **A live refresh of an open timeline** when new photos arrive; today they show after a reload.
+1. **The real-hardware pass**, still the release decider: a 1 GB Pi 3 with real iPhone HEICs, live photos and a real RAW from a camera other than the DNG fixture, memory during a video conversion and during an upload (exiftool reads each uploaded file), Safari on an iPhone, a screen reader.
+2. **Run the catch-up Shortcut on a real iPhone**: lookup, upload, a second run that finds nothing to send. This is the only should-have not fully done, and the biggest user complaint about the originals (fixes.md H5).
+3. **Fix the landing page's "untouched" claim** (behaviour diff above). It is one sentence, but it is a promise that is no longer true.
+4. **Android catch-up**: the same lookup + upload routes from an HTTP-capable automation app, or a tested Syncthing recipe in the guide. Upload would then count as done for both phones.
+5. **Duplicate finder** by exact hash. Uploads and sync tools together make duplicates more likely, and the content hash is already stored.
